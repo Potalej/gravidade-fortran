@@ -1,0 +1,15 @@
+# Arquivos compilados
+*.slo
+*.lo
+*.o
+*.obj
+
+# Arquivos de módulos
+*.mod
+*.smod
+
+# Executáveis
+*.exe
+
+# build
+/build

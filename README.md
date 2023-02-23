@@ -1,2 +1,3 @@
 # gravidade-fortran
-Gravidade, só que em Fortran.
+
+A mesma gravidade, só que em Fortran. Vamo que vamo :)
