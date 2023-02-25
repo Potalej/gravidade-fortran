@@ -13,3 +13,8 @@
 
 # build
 /build
+
+
+### arquivos anteriores
+# serve para manipular arquivos txt. Substituído pelo arquivos.f90, que manipula CSV
+arquivostxt.f90 

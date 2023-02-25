@@ -1,5 +1,9 @@
 module simulacao
+  
   use hamiltoniano
+  use rungekutta4
+  use arquivos
+
   implicit none
   private
   public simular
@@ -25,8 +29,11 @@ module simulacao
   !> Ptot: Momento linear total do sistema
   real, allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
 
+  !> Arquivo
+  type(arquivo) :: Arq
+
   contains
-    procedure :: Iniciar
+    procedure :: Iniciar, rodar
 
   end type
 
@@ -68,5 +75,44 @@ contains
     self % E0 = energia_total(self % M, self % R, self % P)
   
   end subroutine
+
+
+  ! Para simular de fato uma determinada quantidade de passos
+  subroutine rodar (self, qntdPassos)
+
+    implicit none
+    class(simular), intent(inout) :: self
+    integer, intent(in) :: qntdPassos
+    ! iterador e variável de tempo que será o nome do arquivo
+    integer :: i, t
+    
+    real, dimension(2, self % N, self % dim) :: resultado
+    real, dimension(self % N, self % dim) :: R1, P1
+
+    ! instanciamento do método de integração
+    type(integracao) :: RK4
+    call RK4 % Iniciar(self % M)
+
+    ! cria o arquivo onde ficará salvo
+    call self % Arq % criar(1, self % N, self % dim)
+
+    ! condições iniciais
+    R1 = self % R
+    P1 = self % P
+
+    ! roda
+    do i = 1, qntdPassos
+
+      resultado = RK4 % aplicarNVezes(R1, P1, self % passos)
+      R1 = resultado(1,:,:)
+      P1 = resultado(2,:,:)
+
+      call self % Arq % escrever((/R1, P1/))
+
+    end do 
+
+    call self % Arq % fechar()
+
+  end subroutine rodar
 
 end module simulacao
