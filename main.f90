@@ -33,7 +33,7 @@ program main
   ! salva as informações
   call Sim % Iniciar (M, R, P)
 
-  call Sim % rodar(1000)
+  call Sim % rodar(100)
 
   call cpu_time(tf)
 

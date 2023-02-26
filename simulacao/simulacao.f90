@@ -103,7 +103,7 @@ contains
     ! roda
     do i = 1, qntdPassos
 
-      resultado = RK4 % aplicarNVezes(R1, P1, self % passos)
+      resultado = RK4 % aplicarNVezes(R1, P1, self % passos, self % E0)
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
 

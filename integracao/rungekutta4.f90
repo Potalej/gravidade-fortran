@@ -6,6 +6,8 @@
 
 module rungekutta4
 
+  use hamiltoniano
+
   implicit none
   private
   public integracao
@@ -50,7 +52,6 @@ contains
         self % massasInvertidas(a,i) = 1/(massas(a))
       end do 
     end do
-
   end subroutine Iniciar
 
 
@@ -115,30 +116,36 @@ contains
 
 
   ! Aplicador do método com correção (para aplicar várias vezes)
-  function aplicarNVezes (self, R, P, passos)
+  function aplicarNVezes (self, R, P, passos, E0)
 
     implicit none
-    class (integracao), intent(in) :: self
+    class (integracao), intent(in)                    :: self
     real, dimension(self % N, self % dim), intent(in) :: R, P
-    integer, intent(in) :: passos
+    integer, intent(in)                               :: passos
+    real, intent(in)                                  :: E0
     ! para cada passo
     integer :: i
     ! para as forças e passos pós-integração
     real, dimension (self % N, self % dim) :: F, R1, P1
     real, dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
-
     R1 = R
     P1 = P
 
     do i = 1, passos
       ! calcula as forças
       F = self % forcas (R1)
-
+      ! aplicada o método
       resultado = self % metodo (R1, P1, F)
 
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
+      
+      ! aplica a correção
+      call energia_correcao(self % m, R1, P1, E0)
+
     end do
+
+  print *, e0 - energia_total(self % m, resultado(1,:,:), resultado(2,:,:))
 
   aplicarNVezes(1,:,:) = R1
   aplicarNVezes(2,:,:) = P1
