@@ -7,6 +7,7 @@
 module rungekutta4
 
   use hamiltoniano
+  use angular
 
   implicit none
   private
@@ -116,13 +117,14 @@ contains
 
 
   ! Aplicador do método com correção (para aplicar várias vezes)
-  function aplicarNVezes (self, R, P, passos, E0)
+  function aplicarNVezes (self, R, P, passos, E0, J0)
 
     implicit none
     class (integracao), intent(in)                    :: self
     real, dimension(self % N, self % dim), intent(in) :: R, P
     integer, intent(in)                               :: passos
     real, intent(in)                                  :: E0
+    real, dimension(3), intent(in)                    :: J0
     ! para cada passo
     integer :: i
     ! para as forças e passos pós-integração
@@ -140,12 +142,13 @@ contains
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
       
-      ! aplica a correção
+      ! aplica a correção de energia
       call energia_correcao(self % m, R1, P1, E0)
 
-    end do
+      ! aplica a correção de momento angular
+      call angular_correcao(self % m, R1, P1, J0)
 
-  print *, e0 - energia_total(self % m, resultado(1,:,:), resultado(2,:,:))
+    end do
 
   aplicarNVezes(1,:,:) = R1
   aplicarNVezes(2,:,:) = P1

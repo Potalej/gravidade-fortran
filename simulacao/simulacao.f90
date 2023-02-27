@@ -1,6 +1,7 @@
 module simulacao
   
   use hamiltoniano
+  use angular
   use rungekutta4
   use arquivos
 
@@ -28,6 +29,8 @@ module simulacao
   !> Jtot: Momento angular total do sistema
   !> Ptot: Momento linear total do sistema
   real, allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
+  
+  real, dimension(3) :: J0
 
   !> Arquivo
   type(arquivo) :: Arq
@@ -73,6 +76,9 @@ contains
 
     ! salva a energia inicial
     self % E0 = energia_total(self % M, self % R, self % P)
+
+    ! salva o momento angular inicial
+    self % J0 = angular_geral(self % R, self % P)
   
   end subroutine
 
@@ -103,7 +109,7 @@ contains
     ! roda
     do i = 1, qntdPassos
 
-      resultado = RK4 % aplicarNVezes(R1, P1, self % passos, self % E0)
+      resultado = RK4 % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
 

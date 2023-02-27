@@ -81,7 +81,7 @@ contains
     real, intent(in) :: m(:), R(:,:), P(:,:)
 
     ! onde será armazenado o gradiente (2, N, n)
-    real, dimension( 2, size(R), size(R,1) ) :: energia_gradiente
+    real, dimension( 2, size(R, 1), size(R,2) ) :: energia_gradiente
 
     ! derivada em relação às posições
     energia_gradiente(1,:,:) = energia_derivada_posicao(m, R)
@@ -139,7 +139,7 @@ contains
     real, intent(in)                       :: E0 ! energia total inicial
 
     real, dimension(2, size(R), size(R,1)) :: energia_grad
-    real                                   :: norma_grad2, fator
+    real                                   :: norma_grad2, fator, E
 
     ! calcula a energia no momento atual
     E = energia_total(m, R, P)
