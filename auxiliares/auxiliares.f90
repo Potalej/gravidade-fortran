@@ -9,7 +9,7 @@ module auxiliares
 
   implicit none
   private
-  public produto_vetorial, tensor_inercia_geral, sistema_linear3
+  public produto_vetorial, tensor_inercia_geral, sistema_linear3, centro_massas, momentoLinear_total
 
 contains
 
@@ -94,5 +94,35 @@ contains
     sistema_linear3(3) = (1/detA) * determinante((/A(1,:), A(2,:), b/))
 
   end function
+
+  ! centro de massas
+  function centro_massas (massas, posicoes)
+
+    implicit none
+    real, intent(in)   :: massas(:), posicoes(:,:)
+    real, dimension(3) :: centro_massas
+    integer            :: a
+
+    do a = 1, size(massas)
+      centro_massas = centro_massas + massas(a) * posicoes(a,:)
+    end do
+
+    centro_massas = centro_massas / sum(massas)
+
+  end function
+
+  ! momento linear total
+  function momentoLinear_total (momentos)
+
+    implicit none
+    real, intent(in)   :: momentos(:,:)
+    real, dimension(3) :: momentoLinear_total
+    integer            :: a
+
+    do a = 1, size(momentos,1)
+      momentoLinear_total = momentoLinear_total + momentos(a,:)
+    end do
+
+  end function momentoLinear_total
 
 end module auxiliares

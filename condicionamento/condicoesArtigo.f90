@@ -5,7 +5,7 @@ module condicoesArtigo
 
   implicit none
   private
-  public condicionar, zerar_momentoAngular, zerar_energiaTotal, zerar_centroMassas
+  public condicionar, zerar_momentoAngular, zerar_energiaTotal, zerar_centroMassas, zerar_momentoLinear, gerar_condicionado
 
 contains
 
@@ -117,25 +117,56 @@ contains
 
   end subroutine zerar_centroMassas
 
-  ! subroutine condicionar (N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
-  subroutine condicionar (massas, posicoes, momentos)
-    implicit none
+  ! zerando o momento linear total
+  subroutine zerar_momentoLinear (massas, momentos)
 
-    ! integer, intent(in)      :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
+    implicit none
+    real, intent(inout) :: massas(:), momentos(:,:)
+    real, dimension(3) :: pcm ! análogo ao rcm
+    integer            :: a
+
+    ! usa o mesmo método porque a ideia é exatamente igual
+    pcm = momentoLinear_total(momentos) / sum(massas)
+    ! substitui
+    do a = 1, size(massas)
+      momentos(a,:) = momentos(a,:) - massas(a)*pcm
+    end do
+
+  end subroutine
+
+  ! condiciona vetores já existentes
+  subroutine condicionar (massas, posicoes, momentos)
+    
+    implicit none
     real, intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
 
-    ! gera os valores
-    ! gerarValores(N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)
-
-    ! zera o momento angular
-
     ! zera o centro de massas
-
+    call zerar_centroMassas(massas, posicoes)
+    
     ! zera o momento linear
+    call zerar_momentoLinear(massas, momentos)
+    
+    ! zera o momento angular
+    call zerar_momentoAngular(massas, posicoes, momentos)
 
     ! zera a energia total
-
+    call zerar_energiaTotal(massas, posicoes, momentos)
 
   end subroutine condicionar
+
+  ! gerar valores aleatórios condicionados
+  subroutine gerar_condicionado (N, massas, posicoes, momentos, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
+
+    implicit none
+    integer, intent(in) :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
+    real, intent(inout) :: massas(:), posicoes(:,:), momentos(:,:)
+
+    ! gera os valores
+    call gerarValores(N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)
+
+    ! condiciona
+    call condicionar(massas, posicoes, momentos)
+
+  end subroutine gerar_condicionado
 
 end module condicoesArtigo
