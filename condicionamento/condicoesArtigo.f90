@@ -5,7 +5,7 @@ module condicoesArtigo
 
   implicit none
   private
-  public condicionar, zerar_momentoAngular
+  public condicionar, zerar_momentoAngular, zerar_energiaTotal
 
 contains
 
@@ -83,6 +83,24 @@ contains
 
   end subroutine zerar_momentoAngular
 
+  ! zerando a energia total
+  subroutine zerar_energiaTotal (massas, posicoes, momentos)
+
+    implicit none
+    real, intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
+    real                :: EP, EC, fator
+
+    ! calcula as energias
+    EP = energia_potencial(massas, posicoes)
+    EC = energia_cinetica(massas, momentos)
+
+    ! calcula o fator
+    fator = (-EP/EC)**0.5
+
+    ! aplica sobre os momentos
+    momentos = fator * momentos
+
+  end subroutine zerar_energiaTotal
 
   ! subroutine condicionar (N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
   subroutine condicionar (massas, posicoes, momentos)
