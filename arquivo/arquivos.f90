@@ -37,22 +37,22 @@ module arquivos
 
   implicit none
   private
-  public arquivo
+  public arquivo, ler_csv
 
   ! classe de arquivo
   type :: arquivo
 
   ! id do arquivo
-  integer :: idarq
+  integer :: idarq, qntdCorpos_int, dimensao_int
   ! nome do arquivo, qntd de corpos, formato e dimensão
-  character(:), allocatable :: nomearq, formato, qntdCorpos, dimensao
+  character(:), allocatable :: nomearq, formato, formatoMassas, qntdCorpos, dimensao
   ! extensão
   character(4) :: extensao = '.csv'
   ! diretório padrão (fora da pasta build)
   character(3) :: dir = "../"
   
   contains
-    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato
+    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas
 
   end type
 
@@ -101,7 +101,12 @@ contains
     self % qntdCorpos = espacosVazios(qntdCorpos)
     self % dimensao = espacosVazios(dimensao)
 
+    self % qntdCorpos_int = qntdCorpos
+    self % dimensao_int = dimensao
+
     self % formato = '(2(' // self % qntdCorpos // '(' // self % dimensao // '(F15.7, :, ","))))'
+    self % formatoMassas = '(' // self % qntdCorpos // '(F15.7, :, ","))'
+
 
   end subroutine criarFormato
 
@@ -128,12 +133,24 @@ contains
 
   end subroutine criar
 
+  ! escrever massas
+  subroutine escrever_massas (self, massas)
+
+      implicit none
+      class(arquivo), intent(in) :: self
+      real, intent(in)           :: massas(:)
+
+      ! salva
+      write (self % idarq, self % formatoMassas) massas
+
+  end subroutine escrever_massas
+
   ! escrever no arquivo
   subroutine escrever (self, array)
 
     implicit none
     class(arquivo), intent(in) :: self
-    real, intent(in)           :: array(2,3,3)
+    real, intent(in)           :: array(2,self % qntdCorpos_int,self % dimensao_int)
 
     ! salva 
     write (self % idarq, self % formato) array
@@ -149,5 +166,53 @@ contains
     close(self % idarq)
 
   end subroutine fechar
+
+  ! ler arquivo CSV
+  subroutine ler_csv (nome, massas, R, P)
+
+    character(len=*), intent(in) :: nome
+    real, allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
+    character(len=10000) :: massas_string
+    integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
+
+    open(newunit=iu,file=nome,status='old',action='read')
+
+    ! captura a string de massas
+    read(iu,'(A)') massas_string    
+    
+    ! captura a quantidade de corpos a partir da quantidade de vírgulas
+    do i = 1, len(massas_string)
+      if (massas_string(i:i) == ',') then
+        qntdCorpos = qntdCorpos + 1
+      end if
+    end do
+    qntdCorpos = qntdCorpos + 1 ! número de vírgulas = N - 1
+
+    ! captura o número de linhas do CSV
+    do while (.true.) 
+      read(iu,*, iostat=io)
+      if (io /= 0) exit
+      qntdLinhas = qntdLinhas+1
+    end do
+    
+    ! captura as massas
+    rewind(iu)
+    allocate(massas(qntdCorpos))
+    read(iu, *) massas
+
+    ! aloca os tamanhos
+    allocate(R(qntdLinhas,qntdCorpos,3))
+    allocate(P(qntdLinhas,qntdCorpos,3))
+
+    ! captura as posições e momentos
+    do i = 1, qntdLinhas
+      read(iu,*) R(i,:,:),P(i,:,:)
+      R(i,:,:) = transpose(R(i,:,:))
+      P(i,:,:) = transpose(P(i,:,:))
+    end do
+    
+    close(iu)
+
+  end subroutine ler_csv
 
 end module arquivos

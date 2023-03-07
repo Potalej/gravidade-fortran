@@ -1,5 +1,6 @@
 program main
   use condicoesArtigo
+  use arquivos
   use analise
   use simulacao
   use rungekutta4
@@ -10,16 +11,18 @@ program main
   type(integracao) :: RK4
   
   ! arrays padrão
+  ! real, allocatable :: M(:), R(:,:,:), P(:,:,:), FSomas(:,:), R1(:,:,:), P1(:,:)
   real, allocatable :: M(:), R(:,:), P(:,:), FSomas(:,:), R1(:,:,:), P1(:,:)
   ! quantidade de corpos
-  integer :: N
+  integer :: N = 0
 
   ! tempo de execução
   real :: t0, tf
 
   ! condições iniciais
-  M = [100.0,100.0,80.0]
-  N = size(M)
+  N = 4
+
+  allocate(M(N))
   
   allocate(R(N,3))
   R(:,:) = 0
@@ -27,8 +30,14 @@ program main
   allocate(P(N,3))
   P(:,:) = 0
 
-  call gerar_condicionado(3, M, R, P, -100, 100, -10, 10, 100, 100)
-
+  ! EXEMPLO DE GERAÇÃO CONDICIONADA
+  call gerar_condicionado(N, M, R, P, -100, 100, -10, 10, 100, 100)
   call exibir_informacoes(M, R, P)
+
+  ! salva as informações
+  call Sim % Iniciar (M, R, P)
+
+  ! integra
+  call Sim % rodar(10)
 
 end program

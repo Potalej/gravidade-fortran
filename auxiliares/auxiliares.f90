@@ -103,10 +103,11 @@ contains
     real, dimension(3) :: centro_massas
     integer            :: a
 
+    centro_massas(:) = 0
+
     do a = 1, size(massas)
       centro_massas = centro_massas + massas(a) * posicoes(a,:)
     end do
-
     centro_massas = centro_massas / sum(massas)
 
   end function

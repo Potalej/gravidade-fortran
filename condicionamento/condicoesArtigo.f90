@@ -145,7 +145,7 @@ contains
     
     ! zera o momento linear
     call zerar_momentoLinear(massas, momentos)
-    
+
     ! zera o momento angular
     call zerar_momentoAngular(massas, posicoes, momentos)
 

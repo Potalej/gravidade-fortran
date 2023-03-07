@@ -65,7 +65,7 @@ contains
     self % P = P0
 
     ! salva a dimensão
-    self % dim = size(R0,1)
+    self % dim = size(R0,2)
 
     ! salva momento linear total inicial
     self % Ptot = [(0, i = 1, self % dim)]
@@ -101,6 +101,9 @@ contains
 
     ! cria o arquivo onde ficará salvo
     call self % Arq % criar(1, self % N, self % dim)
+
+    ! salva as massas
+    call self % Arq % escrever_massas(self % M)
 
     ! condições iniciais
     R1 = self % R
