@@ -5,7 +5,7 @@ module condicoesArtigo
 
   implicit none
   private
-  public condicionar, zerar_momentoAngular, zerar_energiaTotal
+  public condicionar, zerar_momentoAngular, zerar_energiaTotal, zerar_centroMassas
 
 contains
 
@@ -101,6 +101,21 @@ contains
     momentos = fator * momentos
 
   end subroutine zerar_energiaTotal
+
+  ! zerando o centro de massas
+  subroutine zerar_centroMassas (massas, posicoes)
+
+    implicit none
+    real, intent(inout) :: massas(:), posicoes(:,:)
+    real, dimension(3)  :: rcm
+    integer             :: a
+
+    rcm = centro_massas(massas, posicoes)
+    do a = 1, size(massas)
+      posicoes(a,:) = posicoes(a,:) - rcm
+    end do
+
+  end subroutine zerar_centroMassas
 
   ! subroutine condicionar (N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
   subroutine condicionar (massas, posicoes, momentos)
