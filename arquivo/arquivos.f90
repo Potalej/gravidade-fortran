@@ -80,7 +80,7 @@ contains
       i = i + 1
 
       ! cria nome 
-      self % nomearq = self % dir//trim(datahoje)//"_"//trim(numero)//self % extensao
+      self % nomearq = self % dir//"data/"//trim(datahoje)//"_"//trim(numero)//self % extensao
 
       ! verifica se existe
       inquire(file=trim(self % nomearq), exist=existe)

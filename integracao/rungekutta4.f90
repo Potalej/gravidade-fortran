@@ -73,10 +73,10 @@ contains
         ! distância entre os corpos
         distancia = norm2(R(b,:) - R(a,:))**3
         ! força entre os corpos a e b
-        Fab = self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
         ! Adiciona na matriz
-        forcas(a,:) = forcas(a,:) + Fab
-        forcas(b,:) = forcas(b,:) - Fab
+        forcas(a,:) = forcas(a,:) - Fab
+        forcas(b,:) = forcas(b,:) + Fab
       end do
     end do
 
@@ -142,16 +142,16 @@ contains
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
       
-      ! aplica a correção de energia
-      call energia_correcao(self % m, R1, P1, E0)
+      ! aplica a correção de energia (ainda nao funciona direito)
+      ! call energia_correcao(self % m, R1, P1, E0, self % G)
 
       ! aplica a correção de momento angular
       call angular_correcao(self % m, R1, P1, J0)
 
     end do
 
-  aplicarNVezes(1,:,:) = R1
-  aplicarNVezes(2,:,:) = P1
+    aplicarNVezes(1,:,:) = R1
+    aplicarNVezes(2,:,:) = P1
 
   end function aplicarNVezes
 

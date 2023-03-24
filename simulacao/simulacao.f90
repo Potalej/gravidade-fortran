@@ -21,7 +21,7 @@ module simulacao
   !> G: Constante de gravitação universal
   !> E0: Energia total inicial
   !> mtot: Massa total do sistema
-  real :: h = 0.05, G = 1.0, E0, mtot
+  real :: h = 0.01, G = 3.0, E0, mtot
   
   !> M: Massas do sistema
   !> R: Posições das partículas
@@ -108,6 +108,8 @@ contains
     ! condições iniciais
     R1 = self % R
     P1 = self % P
+
+    call self % Arq % escrever((/R1, P1/))
 
     ! roda
     do i = 1, qntdPassos

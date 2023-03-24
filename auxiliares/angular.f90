@@ -57,6 +57,8 @@ contains
     gradJy(:,:,:) = 0.0
     gradJz(:,:,:) = 0.0
 
+    normas2(:) = 0.0
+
     do a = 1, size(m)
 
       Rx = R(a, 1)

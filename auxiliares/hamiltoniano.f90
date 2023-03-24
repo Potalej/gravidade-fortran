@@ -76,15 +76,15 @@ contains
   end function
 
   ! Gradiente da energia total
-  function energia_gradiente (m, R, P)
+  function energia_gradiente (m, R, P, G)
     implicit none
-    real, intent(in) :: m(:), R(:,:), P(:,:)
+    real, intent(in) :: m(:), R(:,:), P(:,:), G
 
     ! onde será armazenado o gradiente (2, N, n)
     real, dimension( 2, size(R, 1), size(R,2) ) :: energia_gradiente
 
     ! derivada em relação às posições
-    energia_gradiente(1,:,:) = energia_derivada_posicao(m, R)
+    energia_gradiente(1,:,:) = energia_derivada_posicao(m, R, G)
 
     ! derivada em relação aos momentos
     energia_gradiente(2,:,:) = energia_derivada_momentos(m, P)
@@ -92,9 +92,9 @@ contains
   end function energia_gradiente
 
   ! Derivadas parciais da energia total em relação às posições
-  function energia_derivada_posicao (m, R)
+  function energia_derivada_posicao (m, R, G)
     implicit none
-    real, intent(in)           :: m(:), R(:,:)
+    real, intent(in)           :: m(:), R(:,:), G
 
     real, dimension( size(R), size(R,1) )   :: energia_derivada_posicao ! vetor de derivadas
     integer                                 :: a, b ! iteradores
@@ -109,7 +109,7 @@ contains
         rab3 = norm2( R(b,:) - R(a,:) )**3
 
         ! salva a primeira componente (a)
-        energia_derivada_posicao(a,:) = energia_derivada_posicao(a,:) - m(b)*m(a)*( R(b,:) - R(a,:) )/rab3
+        energia_derivada_posicao(a,:) = energia_derivada_posicao(a,:) - G*m(b)*m(a)*( R(a,:) - R(b,:) )/rab3
 
         ! salva a segunda componente (b)
         energia_derivada_posicao(b,:) = energia_derivada_posicao(b,:) + energia_derivada_posicao(a,:)
@@ -132,11 +132,11 @@ contains
   end function energia_derivada_momentos
 
   ! Correção utilizando o gradiente de energia
-  subroutine energia_correcao (m, R, P, E0)
+  subroutine energia_correcao (m, R, P, E0, G)
     implicit none
     real, intent(in)                       :: m(:)
     real, intent(inout)                    :: R(:,:), P(:,:)
-    real, intent(in)                       :: E0 ! energia total inicial
+    real, intent(in)                       :: E0, G ! energia total inicial e gravidade
 
     real, dimension(2, size(R), size(R,1)) :: energia_grad
     real                                   :: norma_grad2, fator, E
@@ -145,7 +145,7 @@ contains
     E = energia_total(m, R, P)
 
     ! calcula o gradiente da energia
-    energia_grad = energia_gradiente(m, R, P)
+    energia_grad = energia_gradiente(m, R, P, G)
 
     ! norma do gradiente
     norma_grad2 = norm2(energia_grad)**2
