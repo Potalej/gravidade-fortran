@@ -6,7 +6,7 @@
 ! 
 
 module angular
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   use auxiliares
 
   implicit none
@@ -18,8 +18,8 @@ contains
   ! calcula o momento angular de uma partícula
   function angular_individual (Ra, Pa)
     implicit none
-    real, dimension(3), intent(in) :: Ra, Pa
-    real, dimension(3)             :: angular_individual
+    real(pf), dimension(3), intent(in) :: Ra, Pa
+    real(pf), dimension(3)             :: angular_individual
     
     angular_individual = produto_vetorial(Ra, Pa)
 
@@ -28,11 +28,11 @@ contains
   ! calcula o momento angular do sistema inteiro
   function angular_geral (R, P)
     implicit none
-    real, dimension(:,:), intent(in) :: R, P
-    real, dimension(3)               :: angular_geral
+    real(pf), dimension(:,:), intent(in) :: R, P
+    real(pf), dimension(3)               :: angular_geral
     integer                          :: a
 
-    angular_geral = (/0.0,0.0,0.0/)
+    angular_geral = (/0.0_pf,0.0_pf,0.0_pf/)
     do a = 1, size(R,1)
       angular_geral = angular_geral + angular_individual(R(a,:), P(a,:))      
     end do
@@ -43,21 +43,21 @@ contains
   ! ajuste do momento angular
   subroutine angular_correcao (m, R, P, J0)
     implicit none
-    real, dimension(:), intent(in)      :: m
-    real, dimension(:,:), intent(inout) :: R, P
-    real, dimension(3), intent(in)      :: J0
+    real(pf), dimension(:), intent(in)      :: m
+    real(pf), dimension(:,:), intent(inout) :: R, P
+    real(pf), dimension(3), intent(in)      :: J0
     integer :: a
 
     ! gradientes e normas
-    real, dimension(2, size(R,1), 3) :: gradJx, gradJy, gradJz
-    real, dimension(3)                     :: J, difJ, normas2
-    real                                   :: Rx, Ry, Rz, Px, Py, Pz
+    real(pf), dimension(2, size(R,1), 3) :: gradJx, gradJy, gradJz
+    real(pf), dimension(3)                     :: J, difJ, normas2
+    real(pf)                                   :: Rx, Ry, Rz, Px, Py, Pz
     
-    gradJx(:,:,:) = 0.0
-    gradJy(:,:,:) = 0.0
-    gradJz(:,:,:) = 0.0
+    gradJx(:,:,:) = 0.0_pf
+    gradJy(:,:,:) = 0.0_pf
+    gradJz(:,:,:) = 0.0_pf
 
-    normas2(:) = 0.0
+    normas2(:) = 0.0_pf
 
     do a = 1, size(m)
 
@@ -69,14 +69,14 @@ contains
       Py = P(a, 2)
       Pz = P(a, 3)
 
-      gradJx(1,a,:) = (/0.0, Pz, -Py/)
-      gradJx(2,a,:) = (/0.0, -Rz, Ry/)
+      gradJx(1,a,:) = (/0.0_pf, Pz, -Py/)
+      gradJx(2,a,:) = (/0.0_pf, -Rz, Ry/)
 
-      gradJy(1,a,:) = (/-Pz, 0.0, Px/)
-      gradJy(2,a,:) = (/Rz, 0.0, -Rx/)
+      gradJy(1,a,:) = (/-Pz, 0.0_pf, Px/)
+      gradJy(2,a,:) = (/Rz, 0.0_pf, -Rx/)
 
-      gradJz(1,a,:) = (/Py, -Px, 0.0/)
-      gradJz(2,a,:) = (/-Ry, Rx, 0.0/)
+      gradJz(1,a,:) = (/Py, -Px, 0.0_pf/)
+      gradJz(2,a,:) = (/-Ry, Rx, 0.0_pf/)
 
       normas2(1) = normas2(1) + Pz**2 + Rz**2 + Py**2 + Ry**2
       normas2(2) = normas2(2) + Pz**2 + Rz**2 + Px**2 + Rx**2

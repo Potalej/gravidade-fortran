@@ -6,7 +6,7 @@
 !   Clacula o produto vetorial entre dois vetores u, v \in R^3
 
 module auxiliares
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   implicit none
   private
   public produto_vetorial, tensor_inercia_geral, sistema_linear3, centro_massas, momentoLinear_total
@@ -17,10 +17,10 @@ contains
   function produto_vetorial (u, v)
 
     implicit none
-    real, dimension(3), intent(in) :: u, v
-    real, dimension(3)             :: produto_vetorial
+    real(pf), dimension(3), intent(in) :: u, v
+    real(pf), dimension(3)             :: produto_vetorial
 
-    produto_vetorial(:) = 0
+    produto_vetorial(:) = 0.0_pf
 
     produto_vetorial(1) =  u(2)*v(3)-v(2)*u(3)
     produto_vetorial(2) = -u(1)*v(3)+v(1)*u(3)
@@ -31,7 +31,7 @@ contains
   ! determinante de uma matriz 3x3
   real function determinante (M) result (det)
 
-    real, dimension(3,3), intent(in) :: M
+    real(pf), dimension(3,3), intent(in) :: M
 
     det = M(1,1)*(M(2,2)*M(3,3)-M(3,2)*M(2,3)) - M(1,2)*(M(2,1)*M(3,3)-M(2,3)*M(3,1)) + M(1,3)*(M(2,1)*M(3,2)-M(2,2)*M(3,1))
 
@@ -41,9 +41,9 @@ contains
   function tensor_inercia (m, R)
 
     implicit none
-    real, dimension(3), intent(in) :: R
-    real, intent(in)               :: m
-    real, dimension(3,3) :: tensor_inercia
+    real(pf), dimension(3), intent(in) :: R
+    real(pf), intent(in)               :: m
+    real(pf), dimension(3,3) :: tensor_inercia
     integer              :: a, b
 
     do a = 1, 3
@@ -63,12 +63,12 @@ contains
   function tensor_inercia_geral (massas, posicoes)
 
     implicit none
-    real, dimension(:), intent(in) :: massas
+    real(pf), dimension(:), intent(in) :: massas
     integer :: a
-    real, dimension(size(massas),3) :: posicoes
-    real, dimension(3,3) :: tensor_inercia_geral
+    real(pf), dimension(size(massas),3) :: posicoes
+    real(pf), dimension(3,3) :: tensor_inercia_geral
 
-    tensor_inercia_geral(:,:) = 0
+    tensor_inercia_geral(:,:) = 0.0_pf
     
     do a = 1, size(massas)
       tensor_inercia_geral = tensor_inercia_geral + tensor_inercia(massas(a), posicoes(a,:))
@@ -80,10 +80,10 @@ contains
   function sistema_linear3 (A, b)
 
     implicit none
-    real, dimension(3,3), intent(in) :: A
-    real, dimension(3), intent(in)   :: b
-    real, dimension(3)               :: sistema_linear3
-    real                             :: detA
+    real(pf), dimension(3,3), intent(in) :: A
+    real(pf), dimension(3), intent(in)   :: b
+    real(pf), dimension(3)               :: sistema_linear3
+    real(pf)                             :: detA
 
     ! calcula a determinante de A
     detA = determinante(A)
@@ -99,11 +99,11 @@ contains
   function centro_massas (massas, posicoes)
 
     implicit none
-    real, intent(in)   :: massas(:), posicoes(:,:)
-    real, dimension(3) :: centro_massas
+    real(pf), intent(in)   :: massas(:), posicoes(:,:)
+    real(pf), dimension(3) :: centro_massas
     integer            :: a
 
-    centro_massas(:) = 0
+    centro_massas(:) = 0.0_pf
 
     do a = 1, size(massas)
       centro_massas = centro_massas + massas(a) * posicoes(a,:)
@@ -116,8 +116,8 @@ contains
   function momentoLinear_total (momentos)
 
     implicit none
-    real, intent(in)   :: momentos(:,:)
-    real, dimension(3) :: momentoLinear_total
+    real(pf), intent(in)   :: momentos(:,:)
+    real(pf), dimension(3) :: momentoLinear_total
     integer            :: a
 
     do a = 1, size(momentos,1)

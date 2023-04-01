@@ -31,7 +31,7 @@
 ! 
 
 module arquivos
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   ! pacote de strings
   use strings
 
@@ -104,7 +104,8 @@ contains
     self % qntdCorpos_int = qntdCorpos
     self % dimensao_int = dimensao
 
-    self % formato = '(2(' // self % qntdCorpos // '(' // self % dimensao // '(F15.7, :, ","))))'
+    ! self % formato = '(2(' // self % qntdCorpos // '(' // self % dimensao // '(F15.7, :, ","))))'
+    self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F15.7, :, ","))))'
     self % formatoMassas = '(' // self % qntdCorpos // '(F15.7, :, ","))'
 
 
@@ -138,7 +139,7 @@ contains
 
       implicit none
       class(arquivo), intent(in) :: self
-      real, intent(in)           :: massas(:)
+      real(pf), intent(in)           :: massas(:)
 
       ! salva
       write (self % idarq, self % formatoMassas) massas
@@ -150,7 +151,7 @@ contains
 
     implicit none
     class(arquivo), intent(in) :: self
-    real, intent(in)           :: array(2,self % qntdCorpos_int,self % dimensao_int)
+    real(pf), intent(in)           :: array(2,self % qntdCorpos_int,self % dimensao_int)
 
     ! salva 
     write (self % idarq, self % formato) array
@@ -171,7 +172,7 @@ contains
   subroutine ler_csv (nome, massas, R, P)
 
     character(len=*), intent(in) :: nome
-    real, allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
+    real(pf), allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
     character(len=10000) :: massas_string
     integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
 

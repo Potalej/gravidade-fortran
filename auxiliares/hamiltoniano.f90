@@ -29,7 +29,7 @@
 ! 
 
 module hamiltoniano
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   implicit none
   private
   public energia_cinetica, energia_potencial, energia_total, energia_gradiente, energia_correcao
@@ -37,51 +37,50 @@ module hamiltoniano
 contains
 
   ! Energia cinética
-  real function energia_cinetica (m, P) result(soma_ec)
+  function energia_cinetica (m, P)
     implicit none
-    real :: m(:), P(:,:)
+    real(pf) :: m(:), P(:,:), energia_cinetica
     integer :: a
     
-    soma_ec = 0
+    energia_cinetica = 0
     do a = 1, size(m)
-      soma_ec = soma_ec + norm2(P(a,:))**2 / (2 * m(a))
+      energia_cinetica = energia_cinetica + norm2(P(a,:))**2 / (2 * m(a))
     end do 
   end function
 
   ! Energia potencial
-  real function energia_potencial (m, R) result(soma_ep)
+  function energia_potencial (m, R)
     implicit none
-    real :: m(:), R(:,:)
-    real :: distancia
+    real(pf) :: m(:), R(:,:)
+    real(pf) :: distancia, energia_potencial
     integer :: a = 1, b = 1
 
-    soma_ep = 0
+    energia_potencial = 0.0_pf
     do a = 2, size(m)
       do b = 1, a-1
         distancia = norm2(R(a,:) - R(b,:))
-        soma_ep = soma_ep + m(a) * m(b) / distancia
+        energia_potencial = energia_potencial + m(a) * m(b) / distancia
       end do
     end do
     
-    soma_ep = - soma_ep
+    energia_potencial = - energia_potencial
   end function
 
   ! Energia total
-  real function energia_total (m, R, P) result(soma)
+  function energia_total (m, R, P)
     implicit none
-    real :: m(:), R(:,:), P(:,:)
-    
-    soma = 0
-    soma = energia_cinetica(m, P) + energia_potencial(m, R)
+    real(pf) :: m(:), R(:,:), P(:,:)
+    real(pf) :: energia_total
+    energia_total = energia_cinetica(m, P) + energia_potencial(m, R)
   end function
 
   ! Gradiente da energia total
   function energia_gradiente (m, R, P, G)
     implicit none
-    real, intent(in) :: m(:), R(:,:), P(:,:), G
+    real(pf), intent(in) :: m(:), R(:,:), P(:,:), G
 
     ! onde será armazenado o gradiente (2, N, n)
-    real, dimension( 2, size(R, 1), size(R,2) ) :: energia_gradiente
+    real(pf), dimension( 2, size(R, 1), size(R,2) ) :: energia_gradiente
 
     ! derivada em relação às posições
     energia_gradiente(1,:,:) = energia_derivada_posicao(m, R, G)
@@ -94,11 +93,11 @@ contains
   ! Derivadas parciais da energia total em relação às posições
   function energia_derivada_posicao (m, R, G)
     implicit none
-    real, intent(in)           :: m(:), R(:,:), G
+    real(pf), intent(in)           :: m(:), R(:,:), G
 
-    real, dimension( size(R), size(R,1) )   :: energia_derivada_posicao ! vetor de derivadas
+    real(pf), dimension( size(R), size(R,1) )   :: energia_derivada_posicao ! vetor de derivadas
     integer                                 :: a, b ! iteradores
-    real                                    :: rab3 ! para salvar o cubo da distancia entre dois corpos
+    real(pf)                                    :: rab3 ! para salvar o cubo da distancia entre dois corpos
 
     ! define como zero para começar
     energia_derivada_posicao(:,:) = 0
@@ -120,9 +119,9 @@ contains
   ! Derivadas parcais da energia total em relação aos momentos
   function energia_derivada_momentos (m, P)
     implicit none
-    real, intent(in)         :: m(:), P(:,:)
+    real(pf), intent(in)         :: m(:), P(:,:)
 
-    real, dimension( size(P), size(P,1) ) :: energia_derivada_momentos ! vetor de derivadas
+    real(pf), dimension( size(P), size(P,1) ) :: energia_derivada_momentos ! vetor de derivadas
     integer                               :: a ! iterador
 
     do a = 1, size(m)
@@ -134,12 +133,12 @@ contains
   ! Correção utilizando o gradiente de energia
   subroutine energia_correcao (m, R, P, E0, G)
     implicit none
-    real, intent(in)                       :: m(:)
-    real, intent(inout)                    :: R(:,:), P(:,:)
-    real, intent(in)                       :: E0, G ! energia total inicial e gravidade
+    real(pf), intent(in)                       :: m(:)
+    real(pf), intent(inout)                    :: R(:,:), P(:,:)
+    real(pf), intent(in)                       :: E0, G ! energia total inicial e gravidade
 
-    real, dimension(2, size(R), size(R,1)) :: energia_grad
-    real                                   :: norma_grad2, fator, E
+    real(pf), dimension(2, size(R), size(R,1)) :: energia_grad
+    real(pf)                                   :: norma_grad2, fator, E
 
     ! calcula a energia no momento atual
     E = energia_total(m, R, P)

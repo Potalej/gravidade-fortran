@@ -1,5 +1,5 @@
 module simulacao
-  
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   use hamiltoniano
   use angular
   use rungekutta4
@@ -21,16 +21,16 @@ module simulacao
   !> G: Constante de gravitação universal
   !> E0: Energia total inicial
   !> mtot: Massa total do sistema
-  real :: h = 0.01, G = 3.0, E0, mtot
+  real(pf) :: h = 0.01_pf, G = 30.0_pf, E0, mtot
   
   !> M: Massas do sistema
   !> R: Posições das partículas
   !> P: Momento linear das partículas
   !> Jtot: Momento angular total do sistema
   !> Ptot: Momento linear total do sistema
-  real, allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
+  real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
   
-  real, dimension(3) :: J0
+  real(pf), dimension(3) :: J0
 
   !> Arquivo
   type(arquivo) :: Arq
@@ -47,7 +47,7 @@ contains
 
     class(simular), intent(inout) :: self
 
-    real, allocatable :: M(:), R0(:,:), P0(:,:)
+    real(pf), allocatable :: M(:), R0(:,:), P0(:,:)
     
     integer :: a, i
     
@@ -92,8 +92,8 @@ contains
     ! iterador e variável de tempo que será o nome do arquivo
     integer :: i, t
     
-    real, dimension(2, self % N, self % dim) :: resultado
-    real, dimension(self % N, self % dim) :: R1, P1
+    real(pf), dimension(2, self % N, self % dim) :: resultado
+    real(pf), dimension(self % N, self % dim) :: R1, P1
 
     ! instanciamento do método de integração
     type(integracao) :: RK4

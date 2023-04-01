@@ -1,4 +1,5 @@
 module condicoesArtigo
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   use angular
   use hamiltoniano
   use auxiliares
@@ -12,7 +13,7 @@ contains
   function gerar_vetores3d (N, min, max)
 
     integer, intent(in)     :: N, min, max
-    real, dimension(N,3)    :: gerar_vetores3d
+    real(pf), dimension(N,3)    :: gerar_vetores3d
     integer, dimension(N,3) :: ajuste
 
     ajuste(:,:) = min
@@ -22,13 +23,16 @@ contains
 
     ! agora condiciona no intervalo
     gerar_vetores3d = gerar_vetores3d * (max - min + 1) + ajuste
+    
+    ! arruma
+    gerar_vetores3d = transpose(reshape(gerar_vetores3d, (/3,N/)))
 
   end function gerar_vetores3d
 
   function gerar_massas (N, min, max)
 
     integer, intent(in) :: N, min, max
-    real, dimension(N)  :: gerar_massas
+    real(pf), dimension(N)  :: gerar_massas
     integer          :: ajuste(N)
 
     ajuste(:) = min
@@ -45,7 +49,7 @@ contains
 
     implicit none
     integer, intent(in)      :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
-    real, intent(inout) :: posicoes(N,3), momentos(N,3), massas(N)
+    real(pf), intent(inout) :: posicoes(N,3), momentos(N,3), massas(N)
 
     ! gera massas
     massas = gerar_massas(N, minMassas, maxMassas)
@@ -62,9 +66,9 @@ contains
   subroutine zerar_momentoAngular (massas, posicoes, momentos)
     
     implicit none
-    real, intent(inout)    :: posicoes(:,:), momentos(:,:), massas(:)
+    real(pf), intent(inout)    :: posicoes(:,:), momentos(:,:), massas(:)
     integer                :: a
-    real                :: momentoAngular_total(3), vetorRotacao(3), tensorInercia(3,3)
+    real(pf)                :: momentoAngular_total(3), vetorRotacao(3), tensorInercia(3,3)
 
     ! calcula o momento angular total
     momentoAngular_total = angular_geral (posicoes,momentos)
@@ -87,8 +91,8 @@ contains
   subroutine zerar_energiaTotal (massas, posicoes, momentos)
 
     implicit none
-    real, intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
-    real                :: EP, EC, fator
+    real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
+    real(pf)               :: EP, EC, fator
 
     ! calcula as energias
     EP = energia_potencial(massas, posicoes)
@@ -106,8 +110,8 @@ contains
   subroutine zerar_centroMassas (massas, posicoes)
 
     implicit none
-    real, intent(inout) :: massas(:), posicoes(:,:)
-    real, dimension(3)  :: rcm
+    real(pf), intent(inout) :: massas(:), posicoes(:,:)
+    real(pf), dimension(3)  :: rcm
     integer             :: a
 
     rcm = centro_massas(massas, posicoes)
@@ -121,8 +125,8 @@ contains
   subroutine zerar_momentoLinear (massas, momentos)
 
     implicit none
-    real, intent(inout) :: massas(:), momentos(:,:)
-    real, dimension(3) :: pcm ! análogo ao rcm
+    real(pf), intent(inout) :: massas(:), momentos(:,:)
+    real(pf), dimension(3) :: pcm ! análogo ao rcm
     integer            :: a
 
     ! usa o mesmo método porque a ideia é exatamente igual
@@ -138,7 +142,7 @@ contains
   subroutine condicionar (massas, posicoes, momentos)
     
     implicit none
-    real, intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
+    real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
 
     ! zera o centro de massas
     call zerar_centroMassas(massas, posicoes)
@@ -159,7 +163,7 @@ contains
 
     implicit none
     integer, intent(in) :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
-    real, intent(inout) :: massas(:), posicoes(:,:), momentos(:,:)
+    real(pf), intent(inout) :: massas(:), posicoes(:,:), momentos(:,:)
 
     ! gera os valores
     call gerarValores(N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)

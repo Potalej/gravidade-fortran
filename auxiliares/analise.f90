@@ -2,7 +2,7 @@
 ! 
 
 module analise
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   use angular
   use hamiltoniano
   use auxiliares
@@ -17,7 +17,7 @@ contains
   subroutine exibir_informacoes (massas, posicoes, momentos)
 
     implicit none
-    real, intent(in) :: massas(:), posicoes(:,:), momentos(:,:)
+    real(pf), intent(in) :: massas(:), posicoes(:,:), momentos(:,:)
 
     print *, 'Momento angular total: ', angular_geral(posicoes, momentos)
     print *, 'Energia total: ', energia_total(massas, posicoes, momentos)

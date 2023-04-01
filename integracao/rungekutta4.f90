@@ -5,7 +5,7 @@
 ! 
 
 module rungekutta4
-
+  use, intrinsic :: iso_fortran_env, only: pf=>real64
   use hamiltoniano
   use angular
 
@@ -17,11 +17,11 @@ module rungekutta4
   
     ! m: Massas
     ! massasInvertidas : Matriz com o inverso das massas para facilitar a integração dos momentos
-    real, allocatable :: m(:), massasInvertidas(:,:)
+    real(pf), allocatable :: m(:), massasInvertidas(:,:)
 
     ! h: Passo de integração
     ! G: Constante de gravitação
-    real :: h = 0.05, G = 3.0
+    real(pf) :: h = 0.05, G = 3.0
 
     ! dim: Dimensão do problema
     ! N: Quantidade de partículas
@@ -38,7 +38,7 @@ contains
   subroutine Iniciar (self, massas)
     implicit none
     class(integracao), intent(inout) :: self
-    real, allocatable :: massas(:)
+    real(pf), allocatable :: massas(:)
     integer :: a, i
 
     ! quantidade de partículas
@@ -60,11 +60,11 @@ contains
   function forcas (self, R)
     implicit none
     class(integracao), intent(in) :: self
-    real, dimension(self % N, self % dim), intent(in) :: R
-    real, dimension(self % dim) :: Fab
+    real(pf), dimension(self % N, self % dim), intent(in) :: R
+    real(pf), dimension(self % dim) :: Fab
     integer :: a, b
-    real :: distancia
-    real, dimension(self % N, self % dim) :: forcas
+    real(pf) :: distancia
+    real(pf), dimension(self % N, self % dim) :: forcas
     
     forcas(:,:) = 0
 
@@ -88,12 +88,12 @@ contains
 
     implicit none
     class(integracao), intent(in) :: self
-    real, dimension(self % N, self % dim), intent(in) :: R, P, FSomas
-    real, dimension(self % N, self % dim) :: R1, P1
-    real, dimension(2, self % N, self % dim) :: metodo
+    real(pf), dimension(self % N, self % dim), intent(in) :: R, P, FSomas
+    real(pf), dimension(self % N, self % dim) :: R1, P1
+    real(pf), dimension(2, self % N, self % dim) :: metodo
 
     ! componentes da integração (kappas)
-    real, dimension(self % N, self % dim) :: k1, k2, k3, k4, fator
+    real(pf), dimension(self % N, self % dim) :: k1, k2, k3, k4, fator
 
     ! faz a integração sobre as equações x'
     k1 = P * self % massasInvertidas
@@ -121,15 +121,15 @@ contains
 
     implicit none
     class (integracao), intent(in)                    :: self
-    real, dimension(self % N, self % dim), intent(in) :: R, P
+    real(pf), dimension(self % N, self % dim), intent(in) :: R, P
     integer, intent(in)                               :: passos
-    real, intent(in)                                  :: E0
-    real, dimension(3), intent(in)                    :: J0
+    real(pf), intent(in)                                  :: E0
+    real(pf), dimension(3), intent(in)                    :: J0
     ! para cada passo
     integer :: i
     ! para as forças e passos pós-integração
-    real, dimension (self % N, self % dim) :: F, R1, P1
-    real, dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
+    real(pf), dimension (self % N, self % dim) :: F, R1, P1
+    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
     R1 = R
     P1 = P
 
