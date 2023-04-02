@@ -2,7 +2,8 @@ module simulacao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   use hamiltoniano
   use angular
-  use rungekutta4
+  ! use rungekutta4
+  use rkf45
   use arquivos
 
   implicit none
@@ -97,7 +98,7 @@ contains
 
     ! instanciamento do método de integração
     type(integracao) :: RK4
-    call RK4 % Iniciar(self % M)
+    call RK4 % Iniciar(self % M, self % G, self % h)
 
     ! cria o arquivo onde ficará salvo
     call self % Arq % criar(1, self % N, self % dim)
