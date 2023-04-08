@@ -115,13 +115,22 @@ contains
     ! roda
     do i = 1, qntdPassos
 
+      ! calcula a quantidade de passos com base no tamanho do h
+      ! self % passos = self % passos * RK4 % h / self % h
+
       resultado = RK4 % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
 
       call self % Arq % escrever((/R1, P1/))
 
+      if (mod(i, 500) == 0) then
+        print *, 'passo: ', i
+      end if
+
     end do 
+
+    print *, 'h final: ', RK4 % h
 
     call self % Arq % fechar()
 

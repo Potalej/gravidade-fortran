@@ -32,8 +32,8 @@ contains
   real function determinante (M) result (det)
 
     real(pf), dimension(3,3), intent(in) :: M
-
-    det = M(1,1)*(M(2,2)*M(3,3)-M(3,2)*M(2,3)) - M(1,2)*(M(2,1)*M(3,3)-M(2,3)*M(3,1)) + M(1,3)*(M(2,1)*M(3,2)-M(2,2)*M(3,1))
+    det = M(1,1)*(-M(3,2)*M(2,3)) - M(1,2)*(M(2,1)*M(3,3)-M(2,3)*M(3,1)) + M(1,3)*(M(2,1)*M(3,2)-M(2,2)*M(3,1))
+    det = det + M(1,1)*M(2,2)*M(3,3)
 
   end function determinante
 
@@ -80,18 +80,21 @@ contains
   function sistema_linear3 (A, b)
 
     implicit none
-    real(pf), dimension(3,3), intent(in) :: A
+    real(pf), dimension(3,3), intent(inout) :: A
     real(pf), dimension(3), intent(in)   :: b
     real(pf), dimension(3)               :: sistema_linear3
-    real(pf)                             :: detA
+    real(pf)                             :: detA, c=10**3
+
+    A = A*(1/c)
 
     ! calcula a determinante de A
-    detA = determinante(A)
+    detA = determinante(A) * (c**3)
+    A = A*c
 
     ! aplica o método
-    sistema_linear3(1) = (1/detA) * determinante((/b, A(2,:), A(3,:)/))
-    sistema_linear3(2) = (1/detA) * determinante((/A(1,:), b , A(3,:)/))
-    sistema_linear3(3) = (1/detA) * determinante((/A(1,:), A(2,:), b/))
+    sistema_linear3(1) = determinante((/b, A(2,:), A(3,:)/))/detA
+    sistema_linear3(2) = determinante((/A(1,:), b , A(3,:)/))/detA
+    sistema_linear3(3) = determinante((/A(1,:), A(2,:), b/))/detA
 
   end function
 

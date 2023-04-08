@@ -35,11 +35,11 @@ program main
   ! salva as informações
   call Sim % Iniciar (M, R, P)
 
-  call Sim % rodar(1000)
+  call Sim % rodar(4000)
 
   call cpu_time(tf)
 
   print *
-  print *, 'Tempo: ', tf - t0
+  print *, 'Tempo: ', tf - t0 
 
 end program

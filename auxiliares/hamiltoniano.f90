@@ -95,7 +95,7 @@ contains
     implicit none
     real(pf), intent(in)           :: m(:), R(:,:), G
 
-    real(pf), dimension( size(R), size(R,1) )   :: energia_derivada_posicao ! vetor de derivadas
+    real(pf), dimension( size(R,1), size(R,2) )   :: energia_derivada_posicao ! vetor de derivadas
     integer                                 :: a, b ! iteradores
     real(pf)                                    :: rab3 ! para salvar o cubo da distancia entre dois corpos
 
@@ -142,10 +142,8 @@ contains
 
     ! calcula a energia no momento atual
     E = energia_total(m, R, P)
-
     ! calcula o gradiente da energia
     energia_grad = energia_gradiente(m, R, P, G)
-
     ! norma do gradiente
     norma_grad2 = norm2(energia_grad)**2
 

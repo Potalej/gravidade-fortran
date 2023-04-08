@@ -105,8 +105,8 @@ contains
     self % dimensao_int = dimensao
 
     ! self % formato = '(2(' // self % qntdCorpos // '(' // self % dimensao // '(F15.7, :, ","))))'
-    self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F15.7, :, ","))))'
-    self % formatoMassas = '(' // self % qntdCorpos // '(F15.7, :, ","))'
+    self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F25.13, :, ","))))'
+    self % formatoMassas = '(' // self % qntdCorpos // '(F25.7, :, ","))'
 
 
   end subroutine criarFormato

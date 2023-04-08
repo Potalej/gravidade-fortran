@@ -156,6 +156,8 @@ contains
     ! zera a energia total
     call zerar_energiaTotal(massas, posicoes, momentos)
 
+    call zerar_momentoAngular(massas, posicoes, momentos)
+    
   end subroutine condicionar
 
   ! gerar valores aleatórios condicionados
