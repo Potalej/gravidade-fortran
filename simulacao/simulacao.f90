@@ -2,8 +2,8 @@ module simulacao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   use hamiltoniano
   use angular
-  ! use rungekutta4
-  use rkf45
+  use rungekutta4
+  ! use rkf45
   use arquivos
 
   implicit none
@@ -16,13 +16,13 @@ module simulacao
   !> N: Quantidade de corpos
   !> passos: Quantidade de passos por integração
   !> dim: Dimensão do problema
-  integer :: N, passos = 100, dim = 3
+  integer :: N, passos, dim = 3
 
   !> h: Tamanho do passo de integração
   !> G: Constante de gravitação universal
   !> E0: Energia total inicial
   !> mtot: Massa total do sistema
-  real(pf) :: h = 0.01_pf, G = 30.0_pf, E0, mtot
+  real(pf) :: h, G, E0, mtot
   
   !> M: Massas do sistema
   !> R: Posições das partículas
@@ -44,14 +44,25 @@ module simulacao
 contains
   
   ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, M, R0, P0)
+  subroutine Iniciar (self, G, M, R0, P0, h, passos)
 
     class(simular), intent(inout) :: self
 
     real(pf), allocatable :: M(:), R0(:,:), P0(:,:)
-    
+    real(pf) :: G, h
+    integer :: passos
+
     integer :: a, i
     
+    ! salva a quantidade de passos
+    self % passos = passos
+
+    ! salva o tamanho dos passos
+    self % h = h
+
+    ! salva a gravidade
+    self % G = G
+
     ! salva as massas
     self % M = M  
     
@@ -76,7 +87,7 @@ contains
     end do
 
     ! salva a energia inicial
-    self % E0 = energia_total(self % M, self % R, self % P)
+    self % E0 = energia_total(G, self % M, self % R, self % P)
 
     ! salva o momento angular inicial
     self % J0 = angular_geral(self % R, self % P)
@@ -118,9 +129,8 @@ contains
       ! calcula a quantidade de passos com base no tamanho do h
       ! self % passos = self % passos * RK4 % h / self % h
 
-      resultado = RK4 % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
-      R1 = resultado(1,:,:)
-      P1 = resultado(2,:,:)
+      call RK4 % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
+      print *, 'energia:', energia_total(self % G, self % M, R1, P1)
 
       call self % Arq % escrever((/R1, P1/))
 

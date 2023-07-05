@@ -18,7 +18,7 @@ contains
   ! calcula o momento angular de uma partícula
   function angular_individual (Ra, Pa)
     implicit none
-    real(pf), dimension(3), intent(in) :: Ra, Pa
+    real(pf), dimension(:), intent(in) :: Ra, Pa
     real(pf), dimension(3)             :: angular_individual
     
     angular_individual = produto_vetorial(Ra, Pa)

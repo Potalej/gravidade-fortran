@@ -14,13 +14,13 @@ module analise
 contains
 
   ! exibe as informações
-  subroutine exibir_informacoes (massas, posicoes, momentos)
+  subroutine exibir_informacoes (G, massas, posicoes, momentos)
 
     implicit none
-    real(pf), intent(in) :: massas(:), posicoes(:,:), momentos(:,:)
+    real(pf), intent(in) :: G, massas(:), posicoes(:,:), momentos(:,:)
 
     print *, 'Momento angular total: ', angular_geral(posicoes, momentos)
-    print *, 'Energia total: ', energia_total(massas, posicoes, momentos)
+    print *, 'Energia total: ', energia_total(G, massas, posicoes, momentos)
     print *, 'Centro de massas: ', centro_massas(massas, posicoes)
     print *, 'Momento linear total: ', momentoLinear_total(momentos)
 

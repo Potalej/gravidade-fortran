@@ -88,14 +88,14 @@ contains
   end subroutine zerar_momentoAngular
 
   ! zerando a energia total
-  subroutine zerar_energiaTotal (massas, posicoes, momentos)
+  subroutine zerar_energiaTotal (G, massas, posicoes, momentos)
 
     implicit none
-    real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
+    real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
     real(pf)               :: EP, EC, fator
 
     ! calcula as energias
-    EP = energia_potencial(massas, posicoes)
+    EP = energia_potencial(G, massas, posicoes)
     EC = energia_cinetica(massas, momentos)
 
     ! calcula o fator
@@ -139,10 +139,10 @@ contains
   end subroutine
 
   ! condiciona vetores já existentes
-  subroutine condicionar (massas, posicoes, momentos)
+  subroutine condicionar (G, massas, posicoes, momentos)
     
     implicit none
-    real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
+    real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
 
     ! zera o centro de massas
     call zerar_centroMassas(massas, posicoes)
@@ -154,24 +154,24 @@ contains
     call zerar_momentoAngular(massas, posicoes, momentos)
 
     ! zera a energia total
-    call zerar_energiaTotal(massas, posicoes, momentos)
+    call zerar_energiaTotal(G, massas, posicoes, momentos)
 
     call zerar_momentoAngular(massas, posicoes, momentos)
     
   end subroutine condicionar
 
   ! gerar valores aleatórios condicionados
-  subroutine gerar_condicionado (N, massas, posicoes, momentos, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
+  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
 
     implicit none
     integer, intent(in) :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
-    real(pf), intent(inout) :: massas(:), posicoes(:,:), momentos(:,:)
+    real(pf), intent(inout) :: G, massas(:), posicoes(:,:), momentos(:,:)
 
     ! gera os valores
     call gerarValores(N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)
 
     ! condiciona
-    call condicionar(massas, posicoes, momentos)
+    call condicionar(G, massas, posicoes, momentos)
 
   end subroutine gerar_condicionado
 

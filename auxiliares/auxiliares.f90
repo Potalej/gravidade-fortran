@@ -17,7 +17,7 @@ contains
   function produto_vetorial (u, v)
 
     implicit none
-    real(pf), dimension(3), intent(in) :: u, v
+    real(pf), dimension(:), intent(in) :: u, v
     real(pf), dimension(3)             :: produto_vetorial
 
     produto_vetorial(:) = 0.0_pf

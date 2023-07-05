@@ -9,6 +9,7 @@ module rungekutta4
   use rungekutta
   use hamiltoniano
   use angular
+  use correcao
 
   implicit none
   private
@@ -30,6 +31,9 @@ module rungekutta4
     ! dim: Dimensão do problema
     ! N: Quantidade de partículas
     integer :: dim = 3, N
+
+    ! vetores para aplicar a correcao
+    real(pf), allocatable :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
 
     contains
       procedure :: Iniciar, metodo, aplicarNVezes
@@ -59,6 +63,12 @@ contains
 
     ! inicia o método
     call self % baseRK % Iniciar(self % n, self % m, self % G, self % h)
+
+    ! alocando variaveis de correcao
+    allocate(self%grads(10, 6*self%N))
+    allocate(self%gradsT(6*self%N,10))
+    allocate(self%vetorCorrecao(1:6*self%N))
+
   end subroutine Iniciar
 
   ! Método em si
@@ -95,11 +105,11 @@ contains
 
 
   ! Aplicador do método com correção (para aplicar várias vezes)
-  function aplicarNVezes (self, R, P, passos, E0, J0)
+  subroutine aplicarNVezes (self, R, P, passos, E0, J0)
 
     implicit none
-    class (integracao), intent(in)                    :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R, P
+    class (integracao), intent(inout)                    :: self
+    real(pf), dimension(self % N, self % dim), intent(inout) :: R, P
     integer, intent(in)                               :: passos
     real(pf), intent(in)                                  :: E0
     real(pf), dimension(3), intent(in)                    :: J0
@@ -107,7 +117,7 @@ contains
     integer :: i
     ! para as forças e passos pós-integração
     real(pf), dimension (self % N, self % dim) :: F, R1, P1
-    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
+    real(pf), dimension (2, self % N, self % dim) :: resultado  
     R1 = R
     P1 = P
 
@@ -124,14 +134,19 @@ contains
       ! call energia_correcao(self % m, R1, P1, E0, self % G)
 
       ! aplica a correção de momento angular
-      call angular_correcao(self % m, R1, P1, J0)
+      ! call angular_correcao(self % m, R1, P1, J0)
 
+      ! aplica a correcao geral
+      call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao)
     end do
 
-    aplicarNVezes(1,:,:) = R1
-    aplicarNVezes(2,:,:) = P1
+    R = R1
+    P = P1
 
-  end function aplicarNVezes
+    ! aplicarNVezes(1,:,:) = R1
+    ! aplicarNVezes(2,:,:) = P1
+
+  end subroutine aplicarNVezes
 
 
 end module rungekutta4

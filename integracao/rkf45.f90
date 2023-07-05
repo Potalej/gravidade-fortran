@@ -188,7 +188,7 @@ contains
     integer :: i
     ! para as forças e passos pós-integração
     real(pf), dimension (self % N, self % dim) :: F, R1, P1
-    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
+    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezesControleAutomatico
     real(pf) :: h_soma
     
     R1 = R
@@ -219,10 +219,10 @@ contains
       ! call angular_correcao(self % m, R1, P1, J0)
     end do
 
-    aplicarNVezes(1,:,:) = R1
-    aplicarNVezes(2,:,:) = P1
+    aplicarNVezesControleAutomatico(1,:,:) = R1
+    aplicarNVezesControleAutomatico(2,:,:) = P1
 
-  end function aplicarNVezes
+  end function aplicarNVezesControleAutomatico
 
   subroutine tolerancia (self, TE, k1, k2, k3, k4, k5, k6)
 

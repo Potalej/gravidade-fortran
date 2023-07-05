@@ -49,10 +49,10 @@ contains
   end function
 
   ! Energia potencial
-  function energia_potencial (m, R)
+  function energia_potencial (G, m, R)
     implicit none
     real(pf) :: m(:), R(:,:)
-    real(pf) :: distancia, energia_potencial
+    real(pf) :: distancia, energia_potencial, G
     integer :: a = 1, b = 1
 
     energia_potencial = 0.0_pf
@@ -63,15 +63,15 @@ contains
       end do
     end do
     
-    energia_potencial = - energia_potencial
+    energia_potencial = - G*energia_potencial
   end function
 
   ! Energia total
-  function energia_total (m, R, P)
+  function energia_total (G, m, R, P)
     implicit none
     real(pf) :: m(:), R(:,:), P(:,:)
-    real(pf) :: energia_total
-    energia_total = energia_cinetica(m, P) + energia_potencial(m, R)
+    real(pf) :: energia_total, G
+    energia_total = energia_cinetica(m, P) + energia_potencial(G, m, R)
   end function
 
   ! Gradiente da energia total
@@ -141,7 +141,7 @@ contains
     real(pf)                                   :: norma_grad2, fator, E
 
     ! calcula a energia no momento atual
-    E = energia_total(m, R, P)
+    E = energia_total(G, m, R, P)
     ! calcula o gradiente da energia
     energia_grad = energia_gradiente(m, R, P, G)
     ! norma do gradiente
