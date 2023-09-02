@@ -3,7 +3,7 @@
 ! métodos para facilitar o trabalho com strings
 ! 
 ! = function espacosVazios (valor)
-! dado um valor integer(7), cria uma string sem espaços
+! dado um valor integer(7), cria uma string sem espacos
 ! vazios com esse inteiro.
 ! 
 
@@ -14,7 +14,7 @@ module strings
   public espacosVazios
   
 contains
-  ! para remover espaços vazios
+  ! para remover espacos vazios
   function espacosVazios (valor)
 
     implicit none
@@ -26,10 +26,10 @@ contains
     ! transforma o valor em string
     write(valor_str, '(I7)') valor
 
-    ! alinha à esquerda para facilitar
+    ! alinha a esquerda para facilitar
     valor_str = adjustl(valor_str)
 
-    ! onde ficará salvo
+    ! onde ficara salvo
     valor_str_parcial = ""
     
     ! elimina os caracteres vazios

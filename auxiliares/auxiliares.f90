@@ -1,9 +1,34 @@
-! Funções auxiliares gerais
+! Funcoes auxiliares gerais
 ! 
-! Funções
+! Funcoes
 ! 
-! = produto_vetorial (u,v)
-!   Clacula o produto vetorial entre dois vetores u, v \in R^3
+! = function produto_vetorial (u,v)
+! Calcula o produto vetorial entre dois vetores u, v em R^3
+! 
+! = real function determinante (M)
+! Calcula o determinante de uma matriz 3x3 dada.
+! 
+! = function tensor_inercia (m, R)
+! Calcula o tensor de inercia dadas a massas e posicao de
+! uma particula.
+! 
+! = function tensor_inercia_geral (massas, posicoes)
+! Calcula o tensor de inercia geral dadas as massas e posicoes
+! das particulas, sendo este a soma dos tensores de inercia
+! individuais.
+! 
+! = function sistema_linear3 (A,b)
+! Resolve um sistema de tres equacoes lineares na forma Ax = b
+! usando o metodo de Cramer.
+! 
+! = function centro_massas (massas, posicoes)
+! Calcula o centro de massas do sistema dadas as massas e posicoes
+! das particulas.
+! 
+! = function momentoLinear_total (momentos)
+! Calcula o momento linear total do sistema dados os momentos
+! lineares individuais das particulas.
+! 
 
 module auxiliares
   use, intrinsic :: iso_fortran_env, only: pf=>real64
@@ -37,7 +62,7 @@ contains
 
   end function determinante
 
-  ! tensor de inércia
+  ! tensor de inercia
   function tensor_inercia (m, R)
 
     implicit none
@@ -76,7 +101,7 @@ contains
 
   end function tensor_inercia_geral
 
-  ! resolve um sistema de 3 equações lineares usando o método de Cramer
+  ! resolve um sistema de 3 equacoes lineares usando o metodo de Cramer
   function sistema_linear3 (A, b)
 
     implicit none
@@ -91,7 +116,7 @@ contains
     detA = determinante(A) * (c**3)
     A = A*c
 
-    ! aplica o método
+    ! aplica o metodo
     sistema_linear3(1) = determinante((/b, A(2,:), A(3,:)/))/detA
     sistema_linear3(2) = determinante((/A(1,:), b , A(3,:)/))/detA
     sistema_linear3(3) = determinante((/A(1,:), A(2,:), b/))/detA

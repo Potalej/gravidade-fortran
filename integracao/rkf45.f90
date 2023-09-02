@@ -1,7 +1,7 @@
-! Integração
+! Integracao via Runge-Kutta-Fehlberg (RKF45)
 ! 
-! Aqui consta a classe de integração numérica via método de Runge-Kutta de 
-! ordem 4.
+! Aqui consta a classe de integracao numerica via metodo de Runge-Kutta-Fehlberg de 
+! ordem 4/5.
 ! 
 
 module rkf45
@@ -9,29 +9,20 @@ module rkf45
   use rungekutta
   use hamiltoniano
   use angular
+  use correcao
+  use colisao
+  use integrador
 
   implicit none
   private
-  public integracao
+  public integracao_rkf45
 
-
-  type :: integracao
+  type, extends(integracao) :: integracao_rkf45
 
     ! base do runge-kutta
     type(RK) :: baseRK
   
-    ! m: Massas
-    real(pf), allocatable :: m(:)
-
-    ! h: Passo de integração
-    ! G: Constante de gravitação
-    real(pf) :: h, G
-
-    ! dim: Dimensão do problema
-    ! N: Quantidade de partículas
-    integer :: dim = 3, N
-
-    ! constantes do método
+    ! constantes do metodo
     real, dimension(6) :: c = (/0, 1/4, 3/8, 12/13, 1, 1/2/)
     real, dimension(6) :: a2 = (/1/4, 0, 0, 0, 0, 0/)    
     real, dimension(6) :: a3 = (/3/32, 9/32, 0, 0, 0, 0/)
@@ -45,21 +36,22 @@ module rkf45
     real(pf) :: epsilon = 0.00001_pf
 
     contains
-      procedure :: Iniciar, metodo, aplicarNVezes, tolerancia
+      procedure :: Iniciar, metodo, aplicarNVezes, tolerancia, aplicarNVezesControleAutomatico
 
   end type
 
 contains
 
   ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, massas, G, h)
+  subroutine Iniciar (self, massas, G, h, corrigir, colidir)
     implicit none
-    class(integracao), intent(inout) :: self
+    class(integracao_rkf45), intent(inout) :: self
     real(pf), allocatable :: massas(:)
     real(pf)              :: G, h
+    logical,intent(in) :: corrigir, colidir
     integer :: a, i
 
-    ! quantidade de partículas
+    ! quantidade de particulas
     self % N = size(massas)
     ! massas
     allocate(self % m (self % N))
@@ -70,21 +62,32 @@ contains
     ! passo
     self % h = h
 
-    ! inicia o método
+    ! Se vai ou nao corrigir
+    self % corrigir = corrigir
+
+    ! Se vai ou nao colidir
+    self % colidir = colidir
+
+    ! inicia o metodo
     call self % baseRK % Iniciar(self % n, self % m, self % G, self % h)
+
+    ! alocando variaveis de correcao
+    allocate(self%grads(10, 6*self%N))
+    allocate(self%gradsT(6*self%N,10))
+    allocate(self%vetorCorrecao(1:6*self%N))
   end subroutine Iniciar
 
-  ! Método em si
+  ! Metodo em si
   function metodo (self, R, P, FSomas, controle)
 
     implicit none
-    class(integracao), intent(inout)                      :: self
+    class(integracao_rkf45), intent(inout)                      :: self
     real(pf), dimension(self % N, self % dim), intent(in) :: R, P, FSomas
     real(pf), dimension(self % N, self % dim)             :: R1, P1
     real(pf), dimension(2, self % N, self % dim)          :: metodo
     logical                                               :: controle
 
-    ! componentes da integração (kappas)
+    ! componentes da integracao (kappas)
     real(pf), dimension(self % N, self % dim) :: k1, k2, k3, k4, k5, k6, fator
     real(pf) :: TE
 
@@ -113,7 +116,7 @@ contains
       else
         fator = self%b1(1) * k1 + self%b1(2) * k2 + self%b1(3) * k3 + self%b1(4) + k4 + self%b1(5) * k5 + self%b1(6) * k6
         
-        ! integra as posições
+        ! integra as posicoes
         R1 = R + fator
         ! integra os momentos
         P1 = P + self % h * FSomas
@@ -122,8 +125,7 @@ contains
         metodo(2,:,:) = P1
 
         if (TE > 0) then
-          ! self % h = self % h * (self%epsilon/(2*TE))**(0.25)
-          self % h = 0.01_pf
+          self % h = 0.001_pf
           self % baseRK % h = self % h
         end if
         
@@ -135,52 +137,56 @@ contains
   end function metodo
 
 
-  ! Aplicador do método com correção (para aplicar várias vezes)
-  function aplicarNVezes (self, R, P, passos, E0, J0)
+  ! Aplicador do metodo com correcao (para aplicar varias vezes)
+  subroutine aplicarNVezes (self, R, P, passos, E0, J0)
 
     implicit none
-    class (integracao), intent(inout)                    :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R, P
+    class (integracao_rkf45), intent(inout)                    :: self
+    real(pf), dimension(self % N, self % dim), intent(inout) :: R, P
     integer, intent(in)                               :: passos
     real(pf), intent(in)                                  :: E0
     real(pf), dimension(3), intent(in)                    :: J0
     ! para cada passo
     integer :: i
-    ! para as forças e passos pós-integração
+    ! para as forcas e passos pos-integracao
     real(pf), dimension (self % N, self % dim) :: F, R1, P1
-    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezes
+    real(pf), dimension (2, self % N, self % dim) :: resultado 
+    ! para verificar se corrigiu
+    logical :: corrigiu = .FALSE.
 
     R1 = R
     P1 = P
 
     do i = 1, passos
-      ! calcula as forças
+      ! calcula as forcas
       F = self % baseRK % forcas (R1)
-      ! aplicada o método
+      ! aplicada o metodo
       resultado = self % metodo (R1, P1, F, .false.)
 
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
 
-      ! aplica a correção de energia (ainda nao funciona direito)
-      ! call energia_correcao(self % m, R1, P1, E0, self % G)
+      ! aplica a correcao geral
+      call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
 
-      ! aplica a correção de momento angular
-      ! call angular_correcao(self % m, R1, P1, J0)
+      if (.NOT. corrigiu) then
+        call verificar_e_colidir (self % m, R1, P1)
+      endif
+
     end do
 
-    aplicarNVezes(1,:,:) = R1
-    aplicarNVezes(2,:,:) = P1
+    R = R1
+    P = P1
 
-  end function aplicarNVezes
+  end subroutine aplicarNVezes
 
-  ! Aplicador do método com correção (para aplicar várias vezes) e 
+  ! Aplicador do metodo com correcao (para aplicar varias vezes) e 
   ! com controle de passo atraves do parametro h0
-  function aplicarNVezesControleAutomatico (self, R, P, passos, E0, J0, h0)
+  subroutine aplicarNVezesControleAutomatico (self, R, P, passos, E0, J0, h0)
     
     implicit none
-    class (integracao), intent(inout)                    :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R, P
+    class (integracao_rkf45), intent(inout)                    :: self
+    real(pf), dimension(self % N, self % dim), intent(inout) :: R, P
     integer, intent(in)                               :: passos
     real(pf), intent(in)                                  :: E0, h0
     real(pf), dimension(3), intent(in)                    :: J0
@@ -188,7 +194,7 @@ contains
     integer :: i
     ! para as forças e passos pós-integração
     real(pf), dimension (self % N, self % dim) :: F, R1, P1
-    real(pf), dimension (2, self % N, self % dim) :: resultado , aplicarNVezesControleAutomatico
+    real(pf), dimension (2, self % N, self % dim) :: resultado
     real(pf) :: h_soma
     
     R1 = R
@@ -200,9 +206,9 @@ contains
 
       loop_while: do while (h_soma < h0)
 
-        ! calcula as forças
+        ! calcula as forcas
         F = self % baseRK % forcas (R1)
-        ! aplicada o método
+        ! aplicada o metodo
         resultado = self % metodo (R1, P1, F, .true.)
 
         R1 = resultado(1,:,:)
@@ -212,22 +218,17 @@ contains
 
       end do loop_while
 
-      ! aplica a correção de energia (ainda nao funciona direito)
-      ! call energia_correcao(self % m, R1, P1, E0, self % G)
-
-      ! aplica a correção de momento angular
-      ! call angular_correcao(self % m, R1, P1, J0)
     end do
 
-    aplicarNVezesControleAutomatico(1,:,:) = R1
-    aplicarNVezesControleAutomatico(2,:,:) = P1
+    R = R1
+    P = P1
 
-  end function aplicarNVezesControleAutomatico
+  end subroutine aplicarNVezesControleAutomatico
 
   subroutine tolerancia (self, TE, k1, k2, k3, k4, k5, k6)
 
     implicit none
-    class(integracao), intent(in) :: self
+    class(integracao_rkf45), intent(in) :: self
     real(pf), dimension(self % N, self % dim) :: TE_soma, k1, k2, k3, k4, k5, k6
     real(pf), dimension(3) :: TE_vet
     real(pf) :: TE

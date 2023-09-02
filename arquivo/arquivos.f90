@@ -1,33 +1,33 @@
 ! Arquivo
 ! 
-! Para o manejo das questões voltadas para arquivos .CSV, como a
+! Para o manejo das questoes voltadas para arquivos .CSV, como a
 ! abertura, a leitura e a escrita destes.
 ! 
-! O objeto `arquivo` tem as propriedades de criação, escrita, fechamento,
-! criação de nome e criação de formato.
+! O objeto `arquivo` tem as propriedades de criacao, escrita, fechamento,
+! criacao de nome e criacao de formato.
 ! 
 ! = subroutine criar (self, idarq, qntdCorpos, dimensao)
-! cria um arquivo .CSV que se configura para fazer a formatação de uma
-! determinada quantidade de partículas e uma determinada quantidade de 
-! dimensões. O `idarq` é utilizado como identificar único do arquivo.
+! cria um arquivo .CSV que se configura para fazer a formatacao de uma
+! determinada quantidade de particulas e uma determinada quantidade de 
+! dimensoes. O `idarq` é utilizado como identificar unico do arquivo.
 ! 
 ! = subroutine escrever (self, array)
-! dado um real :: array(2,3,3), cuja ideia é ser (/Rk, Pk/), os vetores
-! são salvos no CSV.
+! dado um real :: array(2,3,3), cuja ideia eh ser (/Rk, Pk/), os vetores
+! sao salvos no CSV.
 ! 
 ! = subroutine fechar (self)
-! fecha o arquivo quando termina a simulação.
+! fecha o arquivo quando termina a simulacao.
 ! 
 ! = subroutine criarFormato (self, qntdCorpos, dimensao)
-! para uma determinada quantidade de partículas e dimensões, é criada a
-! formatação para transformar o array em uma string corretamente. Sendo
+! para uma determinada quantidade de particulas e dimensoes, eh criada a
+! formatacao para transformar o array em uma string corretamente. Sendo
 ! N := qntdCorpos e D := dimensao, por exemplo, deve ser gerada a seguinte
-! formatação: '(2 (N ( D( F15.7, :, "," ) )))'
+! formatacao: '(2 (N ( D( F15.7, :, "," ) )))'
 ! 
 ! = subroutine nomeArquivo (self)
 ! cria o nome do arquivo baseado no dia corrente e contando a partir do 10,
-! ou seja, não havendo arquivos CSV do mesmo dia é criado um AAAAMMDD_10.csv,
-! e caso haja é criado AAAAMMDD_11.csv, AAAAMMDD_12.csv, etc.
+! ou seja, nao havendo arquivos CSV do mesmo dia eh criado um AAAAMMDD_10.csv,
+! e caso haja eh criado AAAAMMDD_11.csv, AAAAMMDD_12.csv, etc.
 ! 
 
 module arquivos
@@ -44,7 +44,7 @@ module arquivos
 
   ! id do arquivo
   integer :: idarq, qntdCorpos_int, dimensao_int
-  ! nome do arquivo, qntd de corpos, formato e dimensão
+  ! nome do arquivo, qntd de corpos, formato e dimensao
   character(:), allocatable :: nomearq, formato, formatoMassas, qntdCorpos, dimensao
   ! extensão
   character(4) :: extensao = '.csv'
@@ -58,19 +58,22 @@ module arquivos
 
 contains
 
-  ! para criação do nome do arquivo
+  ! para criacao do nome do arquivo
   subroutine nomeArquivo (self)
 
     implicit none
     class(arquivo), intent(inout) :: self
 
-    ! para iterar e não repetir arquivo
+    ! para iterar e nao repetir arquivo
     integer :: i = 10
     character(2) :: numero
-    logical :: existe = .true.
+    logical :: existe
 
     ! para capturar a data
     character(9) :: datahoje
+
+    ! Por padrao, existe
+    existe = .true.
  
     ! em string
     call date_and_time(datahoje)
@@ -88,7 +91,7 @@ contains
 
   end subroutine nomeArquivo
 
-  ! formatação do arquivo
+  ! formatacao do arquivo
   subroutine criarFormato (self, qntdCorpos, dimensao)
 
     implicit none
@@ -97,34 +100,33 @@ contains
     character                     :: formato
     integer                       :: i = 1
 
-    ! salva a quantidade de corpos e dimensão
+    ! salva a quantidade de corpos e dimensao
     self % qntdCorpos = espacosVazios(qntdCorpos)
     self % dimensao = espacosVazios(dimensao)
 
     self % qntdCorpos_int = qntdCorpos
     self % dimensao_int = dimensao
 
-    ! self % formato = '(2(' // self % qntdCorpos // '(' // self % dimensao // '(F15.7, :, ","))))'
     self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F25.13, :, ","))))'
     self % formatoMassas = '(' // self % qntdCorpos // '(F25.7, :, ","))'
 
 
   end subroutine criarFormato
 
-  ! criação do arquivo
+  ! criacao do arquivo
   subroutine criar (self, idarq, qntdCorpos, dimensao)
 
     implicit none
     class(arquivo), intent(inout) :: self
     integer, intent(in)           :: idarq, qntdCorpos, dimensao
     character(len=18)             :: nomearq
-    logical                       :: existe ! para verificar se já existe ou não
+    logical                       :: existe ! para verificar se ja existe ou nao
 
-    ! cria formatação
+    ! cria formatacao
     call self % criarFormato(qntdCorpos, dimensao)
     print *, 'Formato : ', self % formato
 
-    ! criação do nome do arquivo
+    ! criacao do nome do arquivo
     call self % nomeArquivo()
     print *, 'Arquivo de saída: ', self % nomearq
 
@@ -139,7 +141,7 @@ contains
 
       implicit none
       class(arquivo), intent(in) :: self
-      real(pf), intent(in)           :: massas(:)
+      real(pf), intent(in)       :: massas(:)
 
       ! salva
       write (self % idarq, self % formatoMassas) massas
@@ -151,7 +153,7 @@ contains
 
     implicit none
     class(arquivo), intent(in) :: self
-    real(pf), intent(in)           :: array(2,self % qntdCorpos_int,self % dimensao_int)
+    real(pf), intent(in)       :: array(2,self % qntdCorpos_int,self % dimensao_int)
 
     ! salva 
     write (self % idarq, self % formato) array
@@ -171,9 +173,9 @@ contains
   ! ler arquivo CSV
   subroutine ler_csv (nome, massas, R, P)
 
-    character(len=*), intent(in) :: nome
+    character(len=*), intent(in)         :: nome
     real(pf), allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
-    character(len=10000) :: massas_string
+    character(len=10000)                 :: massas_string
     integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
 
     open(newunit=iu,file=nome,status='old',action='read')
@@ -181,15 +183,15 @@ contains
     ! captura a string de massas
     read(iu,'(A)') massas_string    
     
-    ! captura a quantidade de corpos a partir da quantidade de vírgulas
+    ! captura a quantidade de corpos a partir da quantidade de virgulas
     do i = 1, len(massas_string)
       if (massas_string(i:i) == ',') then
         qntdCorpos = qntdCorpos + 1
       end if
     end do
-    qntdCorpos = qntdCorpos + 1 ! número de vírgulas = N - 1
+    qntdCorpos = qntdCorpos + 1 ! numero de virgulas = N - 1
 
-    ! captura o número de linhas do CSV
+    ! captura o numero de linhas do CSV
     do while (.true.) 
       read(iu,*, iostat=io)
       if (io /= 0) exit
@@ -205,7 +207,7 @@ contains
     allocate(R(qntdLinhas,qntdCorpos,3))
     allocate(P(qntdLinhas,qntdCorpos,3))
 
-    ! captura as posições e momentos
+    ! captura as posicoes e momentos
     do i = 1, qntdLinhas
       read(iu,*) R(i,:,:),P(i,:,:)
       R(i,:,:) = transpose(R(i,:,:))

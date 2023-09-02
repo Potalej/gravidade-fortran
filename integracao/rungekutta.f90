@@ -1,8 +1,8 @@
-! Integração
+! Integracao
 ! 
-! Aqui consta o básico da integração numérica com o método de Runge-Kutta.
-! Os métodos básicos aqui servem apenas para construir outras classes que
-! usem de fato o método, como RK4 e RKF45.
+! Aqui consta o basico da integracao numerica com o metodo de Runge-Kutta.
+! Os metodos basicos aqui servem apenas para construir outras classes que
+! usem de fato o metodo, como RK4 e RKF45.
 
 module rungekutta
   use, intrinsic :: iso_fortran_env, only: pf=>real64
@@ -14,15 +14,15 @@ module rungekutta
   type :: RK
 
     ! m: Massas
-    ! massasInvertidas : Matriz como inverso das massas para facilitar a integração dos momentos
+    ! massasInvertidas : Matriz como inverso das massas para facilitar a integracao dos momentos
     real(pf), allocatable :: m(:), massasInvertidas(:,:)
 
-    ! h: Passo de integração
-    ! G: Constante de gravitação
+    ! h: Passo de integracao
+    ! G: Constante de gravitacao
     real(pf) :: h, G
 
-    ! dim: dimensão do problema
-    ! N: quantidade de partículas
+    ! dim: dimensao do problema
+    ! N: quantidade de particulas
     integer :: dim = 3, N
 
     contains
@@ -60,7 +60,7 @@ contains
     self % h = h
   end subroutine Iniciar  
 
-  ! Matriz de forças
+  ! Matriz de forcas
   function forcas (self, R)
     implicit none
     class(RK), intent(in) :: self
@@ -74,9 +74,9 @@ contains
 
     do a = 2, self % N
       do b = 1, a - 1
-        ! distância entre os corpos
+        ! distancia entre os corpos
         distancia = norm2(R(b,:) - R(a,:))**3
-        ! força entre os corpos a e b
+        ! forca entre os corpos a e b
         Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
         ! Adiciona na matriz
         forcas(a,:) = forcas(a,:) - Fab

@@ -1,44 +1,50 @@
 module simulacao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
+  ! Auxiliares
+  use config
   use hamiltoniano
   use angular
-  use rungekutta4
-  ! use rkf45
   use arquivos
+  ! Metodos de integracao numerica
+  use rungekutta4
+  use rkf45
+  use verlet
 
   implicit none
   private
   public simular
 
-  ! classe de simulação
+  ! Classe de simulacao
   type :: simular
   
-  !> N: Quantidade de corpos
-  !> passos: Quantidade de passos por integração
-  !> dim: Dimensão do problema
-  integer :: N, passos, dim = 3
+    !> N: Quantidade de corpos
+    !> passos: Quantidade de passos por integracao
+    !> dim: Dimensao do problema
+    integer :: N, passos, dim = 3
 
-  !> h: Tamanho do passo de integração
-  !> G: Constante de gravitação universal
-  !> E0: Energia total inicial
-  !> mtot: Massa total do sistema
-  real(pf) :: h, G, E0, mtot
-  
-  !> M: Massas do sistema
-  !> R: Posições das partículas
-  !> P: Momento linear das partículas
-  !> Jtot: Momento angular total do sistema
-  !> Ptot: Momento linear total do sistema
-  real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
-  
-  real(pf), dimension(3) :: J0
+    !> h: Tamanho do passo de integracao
+    !> G: Constante de gravitacao universal
+    !> E0: Energia total inicial
+    !> mtot: Massa total do sistema
+    real(pf) :: h, G, E0, mtot
+    
+    !> M: Massas do sistema
+    !> R: Posicoes das particulas
+    !> P: Momento linear das particulas
+    !> Jtot: Momento angular total do sistema
+    !> Ptot: Momento linear total do sistema
+    real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
+    
+    real(pf), dimension(3) :: J0
 
-  !> Arquivo
-  type(arquivo) :: Arq
+    ! Configuracoes
+    logical :: corrigir=.FALSE., colidir=.FALSE.
 
-  contains
-    procedure :: Iniciar, rodar
+    !> Arquivo
+    type(arquivo) :: Arq
 
+    contains
+      procedure :: Iniciar, rodar_verlet, rodar_rk4, rodar_rkf45
   end type
 
 contains
@@ -51,99 +57,199 @@ contains
     real(pf), allocatable :: M(:), R0(:,:), P0(:,:)
     real(pf) :: G, h
     integer :: passos
-
     integer :: a, i
     
-    ! salva a quantidade de passos
+    ! Salva a quantidade de passos
     self % passos = passos
 
-    ! salva o tamanho dos passos
+    ! Salva o tamanho dos passos
     self % h = h
 
-    ! salva a gravidade
+    ! Salva a gravidade
     self % G = G
 
-    ! salva as massas
+    ! Salva as massas
     self % M = M  
     
-    ! quantidade corpos no sistema
+    ! Quantidade corpos no sistema
     self % N = size(M)
 
-    ! massa total do sistema
+    ! Massa total do sistema
     self % mtot = sum(self % M)
 
-    ! salvas as posições e os momentos
+    ! Salva as posicoes e os momentos
     self % R = R0
     self % P = P0
 
-    ! salva a dimensão
+    ! Salva a dimensao
     self % dim = size(R0,2)
 
-    ! salva momento linear total inicial
+    ! Salva momento linear total inicial
     self % Ptot = [(0, i = 1, self % dim)]
-    ! percorre os corpos
+    ! Percorre os corpos
     do a = 1, self % N
       self % Ptot = self % Ptot + self % P(a,:)
     end do
+    print *, 'Momento linear:', self % Ptot
 
-    ! salva a energia inicial
+    ! Salva a energia inicial
     self % E0 = energia_total(G, self % M, self % R, self % P)
+    print *, 'Energia total:', self % E0
 
-    ! salva o momento angular inicial
+    ! Salva o momento angular inicial
     self % J0 = angular_geral(self % R, self % P)
-  
+    print *, 'Momento angular:', self % J0
+
   end subroutine
 
-
-  ! Para simular de fato uma determinada quantidade de passos
-  subroutine rodar (self, qntdPassos)
-
+  ! Simulacao com o metodo Velocity Verlet (Simpletico)
+  subroutine rodar_verlet (self, qntdPassos)
     implicit none
     class(simular), intent(inout) :: self
     integer, intent(in) :: qntdPassos
-    ! iterador e variável de tempo que será o nome do arquivo
+    ! iterador e variavel de tempo que sera o nome do arquivo
     integer :: i, t
+    ! Integrador
+    type(integracao_verlet) :: integrador
+    ! Escritor de arquivos
+    type(arquivo) :: Arq
     
     real(pf), dimension(2, self % N, self % dim) :: resultado
     real(pf), dimension(self % N, self % dim) :: R1, P1
 
-    ! instanciamento do método de integração
-    type(integracao) :: RK4
-    call RK4 % Iniciar(self % M, self % G, self % h)
+    ! Instanciamento do integrador    
+    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
-    ! cria o arquivo onde ficará salvo
-    call self % Arq % criar(1, self % N, self % dim)
+    ! Cria o arquivo onde sera salvo
+    call Arq % criar(2, self % N, self % dim)
 
-    ! salva as massas
-    call self % Arq % escrever_massas(self % M)
+    ! Salva as massas
+    call Arq % escrever_massas(self % M)
 
-    ! condições iniciais
+    ! Condicoes iniciais
     R1 = self % R
     P1 = self % P
 
-    call self % Arq % escrever((/R1, P1/))
+    call Arq % escrever((/R1, P1/))
 
-    ! roda
+    ! Roda
     do i = 1, qntdPassos
 
-      ! calcula a quantidade de passos com base no tamanho do h
-      ! self % passos = self % passos * RK4 % h / self % h
+      ! Integracao
+      call integrador % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
 
-      call RK4 % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
-      print *, 'energia:', energia_total(self % G, self % M, R1, P1)
-
-      call self % Arq % escrever((/R1, P1/))
+      call Arq % escrever((/R1, P1/))
 
       if (mod(i, 500) == 0) then
+        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
         print *, 'passo: ', i
       end if
 
     end do 
 
-    print *, 'h final: ', RK4 % h
+    call Arq % fechar()
 
-    call self % Arq % fechar()
+  end subroutine rodar_verlet
 
-  end subroutine rodar
+  ! Simulacao com o metodo de Runge-Kutta de ordem 4 (RK4)
+  subroutine rodar_rk4 (self, qntdPassos)
+
+    implicit none
+    class(simular), intent(inout) :: self
+    integer, intent(in) :: qntdPassos
+    ! Iterador e variavel de tempo que sera o nome do arquivo
+    integer :: i, t
+    ! Integrador
+    type(integracao_rk4) :: integrador
+    ! Escritor de arquivos
+    type(arquivo) :: Arq
+    
+    real(pf), dimension(2, self % N, self % dim) :: resultado
+    real(pf), dimension(self % N, self % dim) :: R1, P1
+
+    ! Instanciamento do integrador    
+    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+
+    ! Cria o arquivo onde ficara salvo
+    call Arq % criar(1, self % N, self % dim)
+
+    ! Salva as massas
+    call Arq % escrever_massas(self % M)
+
+    ! Condicoes iniciais
+    R1 = self % R
+    P1 = self % P
+
+    call Arq % escrever((/R1, P1/))
+
+    ! Roda
+    do i = 1, qntdPassos
+
+      call integrador % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
+
+      call Arq % escrever((/R1, P1/))
+
+      if (mod(i, 500) == 0) then
+        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
+        print *, 'passo: ', i
+      end if
+
+    end do 
+
+    call Arq % fechar()
+
+  end subroutine rodar_rk4
+
+  ! Simulacao com o metodo de Runge-Kutta-Fehlberg (RKF45)
+  subroutine rodar_rkf45 (self, qntdPassos)
+
+    implicit none
+    class(simular), intent(inout) :: self
+    integer, intent(in) :: qntdPassos
+    ! Iterador e variavel de tempo que sera o nome do arquivo
+    integer :: i, t
+    ! Integrador
+    type(integracao_rkf45) :: integrador
+    ! Escritor de arquivos
+    type(arquivo) :: Arq
+    
+    real(pf), dimension(2, self % N, self % dim) :: resultado
+    real(pf), dimension(self % N, self % dim) :: R1, P1
+
+    ! Instanciamento do integrador    
+    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+
+    ! Cria o arquivo onde ficara salvo
+    call Arq % criar(1, self % N, self % dim)
+
+    ! Salva as massas
+    call Arq % escrever_massas(self % M)
+
+    ! Condicoes iniciais
+    R1 = self % R
+    P1 = self % P
+
+    call Arq % escrever((/R1, P1/))
+
+    ! Roda
+    do i = 1, qntdPassos
+
+      ! Calcula a quantidade de passos com base no tamanho do h
+      self % passos = self % passos * integrador % h / self % h
+
+      call integrador % aplicarNVezesControleAutomatico(R1, P1, self % passos, self%E0, self%J0, 1.5_pf*self % h)
+
+      call Arq % escrever((/R1, P1/))
+
+      if (mod(i, 500) == 0) then
+        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
+        print *, 'passo: ', i
+      end if
+
+    end do 
+
+    call Arq % fechar()
+
+  end subroutine rodar_rkf45
 
 end module simulacao

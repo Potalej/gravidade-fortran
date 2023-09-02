@@ -4,6 +4,48 @@
 ! das propriedades simpleticas do espaco de fases do sistema
 ! hamiltoniano.
 ! 
+! Funcoes
+! 
+! = subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu)
+! Funcao central, que aplica a correcao conforme descrito.
+! 
+! = function Gx (G, massas, posicoes, momentos, N)
+! Vetor de estados. Contem as dez integrais de movimento no momento pre-correcao.
+! 
+! = function matriz_normal (G, massas, posicoes, momentos, N, grads)
+! Matriz dada pelo produto interno dos gradientes de cada integral de movimento.
+! Trata-se de uma matriz 10x10.
+! 
+! = function gradiente_energia (G, massas, Rs, Ps, N)
+! Calcula o gradiente da energia total do sistema. 
+! 
+! = function gradiente_angularX (posicoes, momentos, N)
+! Calcula o gradiente do componente X do momento angular.
+! 
+! = function gradiente_angularY (posicoes, momentos, N)
+! Calcula o gradiente do componente Y do momento angular.
+! 
+! = function gradiente_angularZ (posicoes, momentos, N)
+! Calcula o gradiente do componente Z do momento angular.
+! 
+! = function gradiente_linearX (N)
+! Gradiente do componente X do momento linear total do sistema.
+! 
+! = function gradiente_linearY (N)
+! Gradiente do componente Y do momento linear total do sistema.
+! 
+! = function gradiente_linearZ (N)
+! Gradiente do componente Z do momento linear total do sistema.
+! 
+! = function gradiente_centroMassasX (massas, N)
+! Gradiente do componente X do centro de massas.
+! 
+! = function gradiente_centroMassasY (massas, N)
+! Gradiente do componente Y do centro de massas.
+! 
+! = function gradiente_centroMassasZ (massas, N)
+! Gradiente do componente Z do centro de massas.
+! 
 
 module correcao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
@@ -19,14 +61,14 @@ module correcao
 contains
 
   ! aplica a correcao
-  subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao)
+  subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu)
     implicit none
     real(pf), intent(in) :: G, massas(:)
     real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
     integer  :: N, a, INFO, b
     integer :: pivos(10)
-    real(pf) :: JJt(10, 10), vetG(10)
-    ! real(pf), allocatable :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
+    real(pf) :: JJt(10, 10), vetG(10), minimo_lagrange
+    logical, intent(inout) :: corrigiu
 
     N = size(massas)
     
@@ -37,29 +79,41 @@ contains
     vetG = Gx(G, massas, posicoes, momentos, N)
 
     ! resolve o sistema
-    ! r8mat_fs(10, JJt, vetG, vetorCorrecao)
     call dgesv(10, 1, JJt, 10, pivos, vetG, 10, INFO)
 
     if (INFO == 0) then
-      ! se tiver solucao, aplica a correcao
-      do a = 1, 10
-        grads(a,:) = vetG(a)*grads(a,:)
-      end do
-      gradsT = transpose(grads)
+      ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
+      ! multiplicadores de Lagrange precisam ser nao negativos
+      ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,
+      ! esta mais proximo do 0 ou do -1. Se for do 0, levarei em conta.
+      minimo_lagrange = minval(vetorCorrecao)
+      if (minimo_lagrange >= -1_pf) then
+        ! se for maior, entao corrige
+        corrigiu = .TRUE.
+        ! aplica a correcao
+        do a = 1, 10
+          grads(a,:) = vetG(a)*grads(a,:)
+        end do
+        gradsT = transpose(grads)
 
-      do a = 1, 6*N
-        vetorCorrecao(a) = sum(gradsT(a,:))
-      end do
+        do a = 1, 6*N
+          vetorCorrecao(a) = sum(gradsT(a,:))
+        end do
 
-      ! aplica a correcao
-      do a = 1, N
-        posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
-        posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
-        posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
-        momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
-        momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
-        momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
-      end do
+        ! aplica a correcao
+        do a = 1, N
+          posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
+          posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
+          posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
+          momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
+          momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
+          momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
+        end do
+      else
+        corrigiu = .FALSE.
+        print *, 'nao corrigiu pq ', minimo_lagrange
+      end if
+
     end if
 
   end subroutine corrigir

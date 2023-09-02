@@ -1,4 +1,4 @@
-! Para facilitar na análise
+! Para facilitar na analise
 ! 
 
 module analise
@@ -13,7 +13,7 @@ module analise
 
 contains
 
-  ! exibe as informações
+  ! exibe as informacoes
   subroutine exibir_informacoes (G, massas, posicoes, momentos)
 
     implicit none
