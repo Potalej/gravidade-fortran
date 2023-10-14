@@ -5,6 +5,8 @@ project("gravidade" LANGUAGES "Fortran")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(OpenBLAS REQUIRED)
 
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -ffast-math -fopenmp")
+
 add_executable(
   "gravidade" 
   "main.f90" 

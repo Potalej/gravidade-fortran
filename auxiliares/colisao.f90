@@ -22,11 +22,11 @@ contains
 
   subroutine verificar_e_colidir (m, R, P)
     implicit none
-    real(pf) :: m(:), R(:,:), P(:,:)
+    real(pf) :: m(:), R(:,:), P(:,:), max_aprox = 3
     integer :: a, b
     do a = 2, size(m)
       do b = 1, a-1
-        if (norm2(R(b,:)-R(a,:)) <= 1) then
+        if (norm2(R(b,:)-R(a,:)) <= max_aprox) then
           ! Agora verifica o sinal da derivada da distancia
           ! e estiver negativo, eh porque estao se aproximando
           if (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) then
@@ -58,9 +58,7 @@ contains
     
     ! calcula as componentes do plano
     ua_p = ua - u1*Normal
-    ! ua_p = ua_p / norm2(ua_p)
     ub_p = ub - u2*Normal
-    ! ub_p = ub_p / norm2(ub_p)
 
     ! obtem as novas velocidades
     Pa = ma * (ua_p + (u1*(ma-mb)+2*mb*u2)/(ma+mb) * Normal_)

@@ -14,7 +14,7 @@
 ! 
 ! = function matriz_normal (G, massas, posicoes, momentos, N, grads)
 ! Matriz dada pelo produto interno dos gradientes de cada integral de movimento.
-! Trata-se de uma matriz 10x10.
+! Trata-se de uma matriz 4x4.
 ! 
 ! = function gradiente_energia (G, massas, Rs, Ps, N)
 ! Calcula o gradiente da energia total do sistema. 
@@ -66,8 +66,8 @@ contains
     real(pf), intent(in) :: G, massas(:)
     real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
     integer  :: N, a, INFO, b
-    integer :: pivos(10)
-    real(pf) :: JJt(10, 10), vetG(10), minimo_lagrange
+    integer :: pivos(4)
+    real(pf) :: JJt(4, 4), vetG(4), minimo_lagrange
     logical, intent(inout) :: corrigiu
 
     N = size(massas)
@@ -79,40 +79,39 @@ contains
     vetG = Gx(G, massas, posicoes, momentos, N)
 
     ! resolve o sistema
-    call dgesv(10, 1, JJt, 10, pivos, vetG, 10, INFO)
+    call dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
 
-    if (INFO == 0) then
+    if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) then
       ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
       ! multiplicadores de Lagrange precisam ser nao negativos
       ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,
       ! esta mais proximo do 0 ou do -1. Se for do 0, levarei em conta.
-      minimo_lagrange = minval(vetorCorrecao)
-      if (minimo_lagrange >= -1_pf) then
-        ! se for maior, entao corrige
-        corrigiu = .TRUE.
-        ! aplica a correcao
-        do a = 1, 10
-          grads(a,:) = vetG(a)*grads(a,:)
-        end do
-        gradsT = transpose(grads)
+      ! minimo_lagrange = minval(vetorCorrecao)
+      ! se for maior, entao corrige
+      corrigiu = .TRUE.
+      ! aplica a correcao
+      do a = 1, 4
+        grads(a,:) = vetG(a)*grads(a,:)
+      end do
+      gradsT = transpose(grads)
 
-        do a = 1, 6*N
-          vetorCorrecao(a) = sum(gradsT(a,:))
-        end do
+      do a = 1, 6*N
+        vetorCorrecao(a) = sum(gradsT(a,:))
+      end do
 
-        ! aplica a correcao
-        do a = 1, N
-          posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
-          posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
-          posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
-          momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
-          momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
-          momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
-        end do
-      else
-        corrigiu = .FALSE.
-        print *, 'nao corrigiu pq ', minimo_lagrange
-      end if
+      ! aplica a correcao
+      do a = 1, N
+        posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
+        posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
+        posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
+        momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
+        momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
+        momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
+      end do
+      ! else
+      !   corrigiu = .FALSE.
+      !   print *, 'nao corrigiu pq ', minimo_lagrange
+      ! end if
 
     end if
 
@@ -122,7 +121,7 @@ contains
   function Gx (G, massas, posicoes, momentos, N)
     implicit none
     integer  :: N
-    real(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), Gx(10), J(3), Rcm(3), P(3)
+    real(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), Gx(4), J(3), Rcm(3), P(3)
 
     ! energia total
     Gx(1) = energia_total(G, massas, posicoes, momentos)
@@ -132,18 +131,6 @@ contains
     Gx(2) = J(1)
     Gx(3) = J(2)
     Gx(4) = J(3)
-
-    ! momento linear
-    P = momentoLinear_total(momentos)
-    Gx(5) = P(1)
-    Gx(6) = P(2)
-    Gx(7) = P(3)
-
-    ! centro de massas
-    Rcm = centro_massas(massas, posicoes)
-    Gx(8) = Rcm(1)
-    Gx(9) = Rcm(2)
-    Gx(10) = Rcm(3)
 
     Gx = - Gx
   
@@ -155,22 +142,16 @@ contains
     implicit none
     integer  :: N, gi, gj
     real(pf) :: G, massas(N), posicoes(N,3), momentos(N,3)
-    real(pf),intent(inout) :: grads(10, 6*N)
-    real(pf) :: matriz_normal(10,10)
+    real(pf),intent(inout) :: grads(4, 6*N)
+    real(pf) :: matriz_normal(4,4)
 
     grads(1,:)=gradiente_energia(G, massas, posicoes, momentos, N)
     grads(2,:)=gradiente_angularX(posicoes, momentos, N)
     grads(3,:)=gradiente_angularY(posicoes, momentos, N)
     grads(4,:)=gradiente_angularZ(posicoes, momentos, N)
-    grads(5,:)=gradiente_linearX(N)
-    grads(6,:)=gradiente_linearY(N)
-    grads(7,:)=gradiente_linearZ(N)
-    grads(8,:)=gradiente_centroMassasX(massas, N)
-    grads(9,:)=gradiente_centroMassasY(massas, N)
-    grads(10,:)=gradiente_centroMassasZ(massas, N)
 
-    do gi = 1, 10
-      do gj = 1, 10
+    do gi = 1, 4
+      do gj = 1, 4
         matriz_normal(gi, gj) = DOT_PRODUCT(grads(gi,:), grads(gj,:))
       end do
     end do
@@ -191,7 +172,6 @@ contains
       gradiente_energia(6*a-2) = Ps(a,1)/massas(a)
       gradiente_energia(6*a-1) = Ps(a,2)/massas(a)
       gradiente_energia(6*a-0) = Ps(a,3)/massas(a)
-      ! gradiente_energia(a,:) = [ 0.0_pf, 0.0_pf, 0.0_pf, Ps(a,1)/massas(a), Ps(a,2)/massas(a), Ps(a,3)/massas(a) ]
       
       do b = 1, N
         if (b /= a) then
@@ -202,20 +182,12 @@ contains
           gradiente_energia(6*a-5) = gradiente_energia(6*a-5)+distancia(1)
           gradiente_energia(6*a-4) = gradiente_energia(6*a-4)+distancia(2)
           gradiente_energia(6*a-3) = gradiente_energia(6*a-3)+distancia(3)
-
-          ! gradiente_energia(a,1) = gradiente_energia(a,1)+massas(b)*distancia(1)
-          ! gradiente_energia(a,2) = gradiente_energia(a,2)+massas(b)*distancia(2)
-          ! gradiente_energia(a,3) = gradiente_energia(a,3)+massas(b)*distancia(3)
         end if
       end do
 
       gradiente_energia(6*a-5) = gradiente_energia(6*a-5) * (-G*massas(a))
       gradiente_energia(6*a-4) = gradiente_energia(6*a-4) * (-G*massas(a))
       gradiente_energia(6*a-3) = gradiente_energia(6*a-3) * (-G*massas(a))
-
-      ! gradiente_energia(a,1) = gradiente_energia(a,1) * (-G*massas(a))
-      ! gradiente_energia(a,2) = gradiente_energia(a,2) * (-G*massas(a))
-      ! gradiente_energia(a,3) = gradiente_energia(a,3) * (-G*massas(a))
     end do
     
   end function gradiente_energia
