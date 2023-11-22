@@ -1,7 +1,6 @@
 module simulacao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   ! Auxiliares
-  use config
   use hamiltoniano
   use angular
   use arquivos

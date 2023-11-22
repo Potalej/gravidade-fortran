@@ -4,7 +4,6 @@
 module integrador
 
   use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use config
   implicit none
   private
   public integracao
