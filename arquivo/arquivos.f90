@@ -49,10 +49,10 @@ module arquivos
   ! extensão
   character(4) :: extensao = '.csv'
   ! diretório padrão (fora da pasta build)
-  character(3) :: dir = "../"
+  character(8) :: dir = "../data/"
   
   contains
-    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas
+    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho
 
   end type
 
@@ -83,7 +83,7 @@ contains
       i = i + 1
 
       ! cria nome 
-      self % nomearq = self % dir//"data/"//trim(datahoje)//"_"//trim(numero)//self % extensao
+      self % nomearq = self % dir//trim(datahoje)//"_"//trim(numero)//self % extensao
 
       ! verifica se existe
       inquire(file=trim(self % nomearq), exist=existe)
@@ -139,14 +139,33 @@ contains
   ! escrever massas
   subroutine escrever_massas (self, massas)
 
-      implicit none
-      class(arquivo), intent(in) :: self
-      real(pf), intent(in)       :: massas(:)
+    implicit none
+    class(arquivo), intent(in) :: self
+    real(pf), intent(in)       :: massas(:)
 
-      ! salva
-      write (self % idarq, self % formatoMassas) massas
+    ! salva
+    write (self % idarq, self % formatoMassas) massas
 
   end subroutine escrever_massas
+
+  ! Escreve o cabecalho (contendo h, G, massas)
+  subroutine escrever_cabecalho (self, h, G, massas)
+
+    implicit none
+    class(arquivo), intent(in) :: self
+    real(pf), intent(in)       :: massas(:)
+    real(pf)                   :: h, G
+
+    ! Salva h
+    write (self % idarq, "(F25.7, :, ',')") h
+
+    ! Salva G
+    write (self % idarq, "(F25.7, :, ',')") G
+
+    ! Salva as massas
+    call self%escrever_massas(massas)
+
+  end subroutine escrever_cabecalho
 
   ! escrever no arquivo
   subroutine escrever (self, array)

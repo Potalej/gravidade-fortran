@@ -122,8 +122,8 @@ contains
     ! Cria o arquivo onde sera salvo
     call Arq % criar(2, self % N, self % dim)
 
-    ! Salva as massas
-    call Arq % escrever_massas(self % M)
+    ! Salva as infos de cabecalho
+    call Arq % escrever_cabecalho(self % h, self % G, self % M)
 
     ! Condicoes iniciais
     R1 = self % R
