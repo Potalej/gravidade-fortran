@@ -9,6 +9,7 @@ module verlet
   use correcao
   use colisao
   use integrador
+  use hamiltoniano
 
   implicit none
   private
@@ -141,6 +142,8 @@ contains
     ! Para as forcas e passos pos-integracao
     real(pf), dimension(self%N, self%dim) :: R1, P1, FSomas_ant
     real(pf), dimension(3, self%N, self%dim) :: resultado
+    ! Energia total aproximada
+    real(pf) :: Et_aprox
 
     ! Salvando as primeiras posicoes e momentos
     R1 = R
@@ -159,16 +162,24 @@ contains
         call verificar_e_colidir(self % m, R1, P1)
       end if
 
-      ! Separando as variaveis
+      ! Et_aprox = energia_total_aproximada(1, self%h, self%G, self%m, R1, P1, resultado(1,:,:), resultado(2,:,:))
+      ! print *, 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)  
+
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
       FSomas_ant = resultado(3,:,:)
 
       if (self%corrigir) then
         call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
-      endif
+      end if
 
     end do
+
+    ! Et_aprox = energia_total_aproximada(passos, self%h, self%G, self%m, R, P, R1, P1)
+    ! print *, 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)
+    ! if (ABS(Et_aprox) > 0.0001_pf) then
+    !   call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
+    ! end if
 
     R = R1
     P = P1

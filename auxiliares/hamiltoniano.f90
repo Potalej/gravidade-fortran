@@ -22,7 +22,7 @@ module hamiltoniano
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   implicit none
   private
-  public energia_cinetica, energia_potencial, energia_total
+  public energia_cinetica, energia_potencial, energia_total, energia_total_aproximada
 
 contains
 
@@ -62,6 +62,35 @@ contains
     real(pf) :: m(:), R(:,:), P(:,:)
     real(pf) :: energia_total, G
     energia_total = energia_cinetica(m, P) + energia_potencial(G, m, R)
+  end function
+
+  ! Energia total aproximada
+  ! Baseado na relacao de Lagrange-Jacobi, a segunda derivada do momento de inercia
+  ! fornece uma aproximacao para a diferenca entre a energia total e a potencial.
+  ! Com alguns rearranjos eh possivel estimar a energia total.
+  function energia_total_aproximada (qntd_passos, h, G, m, R_ant, P_ant, R_pos, P_pos)
+    implicit none
+    real(pf) :: m(:), R_ant(:,:), R_pos(:,:), P_ant(:,:), P_pos(:,:)
+    real(pf) :: G, h
+    real(pf) :: D_ant = 0.0_pf, D_pos = 0.0_pf, T = 0.0_pf, der_D
+    real(pf) :: energia_total_aproximada
+    integer   :: a, qntd_passos
+
+    ! Derivada do momento de dilatacao D = sum ri dot pi
+    do a = 1, size(m)
+      D_ant = D_ant + DOT_PRODUCT(R_ant(a,:), P_ant(a,:))
+      D_pos = D_pos + DOT_PRODUCT(R_pos(a,:), P_pos(a,:))
+    end do
+
+    ! energia cinetica
+    T = energia_cinetica(m, P_pos)
+
+    ! Derivada de D
+    der_D = (D_pos - D_ant)/(h*qntd_passos)
+
+    print *, 'D_pos=', D_pos, '| D_ant=', D_ant, '| der_D=', der_D, '| T=', T
+
+    energia_total_aproximada = der_D - T
   end function
 
 end module hamiltoniano

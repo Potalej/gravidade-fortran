@@ -127,7 +127,7 @@ contains
 
     implicit none
     real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
-    real(pf)               :: EP, EC, fator
+    real(pf)               :: EP, EC, fator, H2
 
     ! Calcula as energias
     EP = energia_potencial(G, massas, posicoes)
@@ -138,6 +138,11 @@ contains
 
     ! Aplica sobre os momentos
     momentos = fator * momentos
+
+    ! Se quiser gerar com energia negativa faz uma homotetia
+    ! H2 = -60.0_pf
+    ! fator = EP / (EP + H2)
+    ! posicoes = fator * posicoes
 
   end subroutine zerar_energiaTotal
 
