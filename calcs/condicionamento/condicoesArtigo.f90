@@ -44,7 +44,8 @@ contains
 
   function gerar_vetores3d (N, min, max)
 
-    integer, intent(in)     :: N, min, max
+    integer, intent(in)     :: N
+    real(pf), intent(in)    :: min, max
     real(pf), dimension(N,3)    :: gerar_vetores3d
     integer, dimension(N,3) :: ajuste
 
@@ -63,7 +64,8 @@ contains
 
   function gerar_massas (N, min, max)
 
-    integer, intent(in) :: N, min, max
+    integer, intent(in) :: N
+    real(pf), intent(in) :: min, max
     real(pf), dimension(N)  :: gerar_massas
     integer          :: ajuste(N)
 
@@ -77,23 +79,24 @@ contains
 
   end function gerar_massas
 
-  subroutine gerarValores (N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)
+  subroutine gerarValores (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
 
     implicit none
-    integer, intent(in)      :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
+    integer, intent(in)      :: N
+    real(pf), dimension(2), intent(in) :: int_posicoes, int_momentos, int_massas
     real(pf), intent(inout) :: posicoes(N,3), momentos(N,3), massas(N)
 
     ! Gera massas
-    print *, 'gerando massas'
-    massas = gerar_massas(N, minMassas, maxMassas)
+    WRITE (*,*) '    i.   gerando massas'
+    massas = gerar_massas(N, int_massas(1), int_massas(2))
 
     ! Gera as posições
-    print *, 'gerando posicoes'
-    posicoes = gerar_vetores3d(N, minPos, maxPos)
+    WRITE (*,*) '    ii.  gerando posicoes'
+    posicoes = gerar_vetores3d(N, int_posicoes(1), int_posicoes(2))
 
     ! Gera os momentos
-    print *, 'gerando momentos'
-    momentos = gerar_vetores3d(N, minMom, maxMom)
+    WRITE (*,*) '    iii. gerando momentos'
+    momentos = gerar_vetores3d(N, int_momentos(1), int_momentos(2))
 
   end subroutine gerarValores
 
@@ -202,23 +205,34 @@ contains
   end subroutine condicionar
 
   ! Gerar valores aleatorios condicionados
-  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, minPos, maxPos, minMom, maxMom, minMassas, maxMassas)
+  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
 
     implicit none
-    integer, intent(in)     :: N, minPos, maxPos, minMom, maxMom, minMassas, maxMassas
+    integer, intent(in)     :: N
+    real(pf), dimension(2), intent(in) :: int_posicoes, int_momentos, int_massas
     real(pf), intent(inout) :: G
     real(pf), intent(inout), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
 
+    WRITE (*,*) "# GERACAO DAS CONDICOES INICIAIS"
+    
     ! Gera os valores
-    print *, 'gerando valores'
+    WRITE (*,*) '  > Gerando valores...'
     allocate(massas (N))
     allocate(posicoes (N, 3))
     allocate(momentos (N, 3))
-    call gerarValores(N, massas, posicoes, momentos, minMassas, maxMassas, minPos, maxPos, minMom, maxMom)
+    call gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
 
     ! Condiciona
-    print *, 'condicionando'
+    WRITE (*,*) '  > Condicionando...'
     call condicionar(G, massas, posicoes, momentos)
+
+    ! Exibe as integrais primeiras do sistema
+    WRITE (*,*) '    -  H  =', energia_total(G,massas,posicoes,momentos) 
+    WRITE (*,*) '    - Rcm =', centro_massas(massas,posicoes) 
+    WRITE (*,*) '    -  P  =', momentoLinear_total(momentos) 
+    WRITE (*,*) '    -  J  =', angular_geral(posicoes,momentos) 
+
+    WRITE (*,*) '  > Condicoes iniciais geradas!'
 
   end subroutine gerar_condicionado
 

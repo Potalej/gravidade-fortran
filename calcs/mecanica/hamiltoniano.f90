@@ -88,7 +88,7 @@ contains
     ! Derivada de D
     der_D = (D_pos - D_ant)/(h*qntd_passos)
 
-    print *, 'D_pos=', D_pos, '| D_ant=', D_ant, '| der_D=', der_D, '| T=', T
+    WRITE (*,*) 'D_pos=', D_pos, '| D_ant=', D_ant, '| der_D=', der_D, '| T=', T
 
     energia_total_aproximada = der_D - T
   end function

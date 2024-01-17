@@ -3,6 +3,7 @@ module simulacao
   ! Auxiliares
   use hamiltoniano
   use angular
+  use auxiliares
   use arquivos
   ! Metodos de integracao numerica
   use rungekutta4
@@ -32,7 +33,8 @@ module simulacao
     !> P: Momento linear das particulas
     !> Jtot: Momento angular total do sistema
     !> Ptot: Momento linear total do sistema
-    real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:)
+    !> Rcm: Centro de massas do sistema
+    real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:), Rcm(:)
     
     real(pf), dimension(3) :: J0
 
@@ -84,20 +86,16 @@ contains
     self % dim = size(R0,2)
 
     ! Salva momento linear total inicial
-    self % Ptot = [(0, i = 1, self % dim)]
-    ! Percorre os corpos
-    do a = 1, self % N
-      self % Ptot = self % Ptot + self % P(a,:)
-    end do
-    print *, 'Momento linear:', self % Ptot
+    self % Ptot = momentoLinear_total(self % P)
 
     ! Salva a energia inicial
     self % E0 = energia_total(G, self % M, self % R, self % P)
-    print *, 'Energia total:', self % E0
 
     ! Salva o momento angular inicial
     self % J0 = angular_geral(self % R, self % P)
-    print *, 'Momento angular:', self % J0
+
+    ! Salva o centro de massas inicial
+    self % Rcm = centro_massas(self % M, self % R)
 
   end subroutine
 
@@ -140,8 +138,8 @@ contains
       call Arq % escrever((/R1, P1/))
 
       if (mod(i, 500) == 0) then
-        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
-        print *, 'passo: ', i
+        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
+        WRITE (*,*) 'passo: ', i
       end if
 
     end do 
@@ -189,8 +187,8 @@ contains
       call Arq % escrever((/R1, P1/))
 
       if (mod(i, 500) == 0) then
-        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
-        print *, 'passo: ', i
+        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
+        WRITE (*,*) 'passo: ', i
       end if
 
     end do 
@@ -241,8 +239,8 @@ contains
       call Arq % escrever((/R1, P1/))
 
       if (mod(i, 500) == 0) then
-        print *, 'energia:', energia_total(self % G, self % M, R1, P1)
-        print *, 'passo: ', i
+        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
+        WRITE (*,*) 'passo: ', i
       end if
 
     end do 

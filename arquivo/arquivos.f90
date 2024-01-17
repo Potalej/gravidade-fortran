@@ -124,11 +124,11 @@ contains
 
     ! cria formatacao
     call self % criarFormato(qntdCorpos, dimensao)
-    print *, 'Formato : ', self % formato
+    WRITE (*,*) 'Formato : ', self % formato
 
     ! criacao do nome do arquivo
     call self % nomeArquivo()
-    print *, 'Arquivo de saída: ', self % nomearq
+    WRITE (*,*) 'Arquivo de saída: ', self % nomearq
 
     ! agora cria o arquivo
     self % idarq = idarq

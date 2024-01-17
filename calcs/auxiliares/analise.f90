@@ -19,10 +19,10 @@ contains
     implicit none
     real(pf), intent(in) :: G, massas(:), posicoes(:,:), momentos(:,:)
 
-    print *, 'Momento angular total: ', angular_geral(posicoes, momentos)
-    print *, 'Energia total: ', energia_total(G, massas, posicoes, momentos)
-    print *, 'Centro de massas: ', centro_massas(massas, posicoes)
-    print *, 'Momento linear total: ', momentoLinear_total(momentos)
+    WRITE (*,*) 'Momento angular total: ', angular_geral(posicoes, momentos)
+    WRITE (*,*) 'Energia total: ', energia_total(G, massas, posicoes, momentos)
+    WRITE (*,*) 'Centro de massas: ', centro_massas(massas, posicoes)
+    WRITE (*,*) 'Momento linear total: ', momentoLinear_total(momentos)
 
   end subroutine exibir_informacoes
 

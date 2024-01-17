@@ -110,7 +110,7 @@ contains
       end if
       
       if (TE > self % epsilon) then
-        ! print *, 'caiu aqui: ', TE, ' / ', self % h
+        ! WRITE (*,*) 'caiu aqui: ', TE, ' / ', self % h
         self % h = self % h * (self%epsilon/(2*TE))**(0.25)
         self % baseRK % h = self % h
       else

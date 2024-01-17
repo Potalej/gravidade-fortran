@@ -1,0 +1,28 @@
+! Integrais primeiras desejadas
+Etot 0.0
+Jtot 0.0,0.0,0.0
+Ptot 0.0,0.0,0.0
+Rcm  0.0,0.0,0.0
+
+! Constantes
+G 1.0
+
+! Quantidade de corpos
+N 100
+
+! Intervalos para geracao
+Intervalo-Massas    1000.0, 10000.0
+Intervalo-Posicoes -5000.0, 5000.0
+Intervalo-Momentos -1.0,    1.0
+
+! Sobre a integracao (verlet / rk4)
+integrador verlet
+timestep   0.01
+passos     100
+
+! Intervalo de integracao
+t0 -500.0
+tf  500.0
+
+! Uso do corretor numerico
+corretor F

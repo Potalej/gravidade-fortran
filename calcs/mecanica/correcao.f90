@@ -110,7 +110,7 @@ contains
       end do
       ! else
       !   corrigiu = .FALSE.
-      !   print *, 'nao corrigiu pq ', minimo_lagrange
+      !   WRITE (*,*) 'nao corrigiu pq ', minimo_lagrange
       ! end if
 
     end if

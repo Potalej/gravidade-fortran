@@ -10,21 +10,30 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -ffast-math -f
 add_executable(
   "gravidade" 
   "main.f90" 
-  "./simulacao/simulacao.f90" 
-  "./auxiliares/hamiltoniano.f90" 
-  "./integracao/rungekutta4.f90" 
-  "arquivo/arquivos.f90" 
-  "auxiliares/strings.f90" 
-  "auxiliares/angular.f90" 
-  "auxiliares/auxiliares.f90" 
-  "condicionamento/condicoesArtigo.f90" 
-  "auxiliares/analise.f90" 
-  "integracao/rungekutta.f90" 
-  "integracao/rkf45.f90" 
-  "auxiliares/correcao.f90" 
-  "auxiliares/colisao.f90" 
-  "integracao/verlet.f90" 
-  "integracao/integrador.f90" 
+
+  "./calcs/simulacao/simulacao_sorteio.f90"
+  "./calcs/simulacao/simulacao.f90" 
+
+  "./arquivo/leitura.f90"
+  "./arquivo/arquivos.f90" 
+
+  "./strings/strings.f90" 
+
+  "./calcs/condicionamento/condicoesArtigo.f90" 
+
+  "./calcs/auxiliares/auxiliares.f90" 
+  "./calcs/auxiliares/analise.f90"
+
+  "./calcs/mecanica/hamiltoniano.f90" 
+  "./calcs/mecanica/angular.f90" 
+  "./calcs/mecanica/correcao.f90" 
+  "./calcs/mecanica/colisao.f90" 
+
+  "./calcs/integracao/integrador.f90" 
+  "./calcs/integracao/verlet.f90" 
+  "./calcs/integracao/rungekutta.f90" 
+  "./calcs/integracao/rungekutta4.f90" 
+  "./calcs/integracao/rkf45.f90" 
 )
 target_link_libraries(gravidade
   ${OpenBLAS_LIB}

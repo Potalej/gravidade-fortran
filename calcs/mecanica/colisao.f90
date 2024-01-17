@@ -31,7 +31,7 @@ contains
           ! e estiver negativo, eh porque estao se aproximando
           if (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) then
             call colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
-            print *, 'colidiu'
+            WRITE (*,*) 'colidiu'
           endif
         endif 
       end do

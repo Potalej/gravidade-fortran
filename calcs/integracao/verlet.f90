@@ -163,7 +163,7 @@ contains
       end if
 
       ! Et_aprox = energia_total_aproximada(1, self%h, self%G, self%m, R1, P1, resultado(1,:,:), resultado(2,:,:))
-      ! print *, 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)  
+      ! WRITE (*,*) 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)  
 
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
@@ -176,7 +176,7 @@ contains
     end do
 
     ! Et_aprox = energia_total_aproximada(passos, self%h, self%G, self%m, R, P, R1, P1)
-    ! print *, 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)
+    ! WRITE (*,*) 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)
     ! if (ABS(Et_aprox) > 0.0001_pf) then
     !   call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
     ! end if

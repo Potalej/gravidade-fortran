@@ -16,6 +16,30 @@ ninja -C build
 
 Um executável será gerado no diretório `build`.
 
+Outra possibilidade é com o uso dos helpers. Use:
+
+```
+sh helpers/build.sh
+```
+
+para compilar o programa. Se quiser compilar e rodar um exemplo de preset, use:
+
+```
+sh helpers/compilar_gerar.sh
+```
+
+## 🧮 Simulando com Presets
+
+É possível utilizar presets (i.e., arquivos com configurações pré-definidas) para gerar valores iniciais aleatórios com determinadas condições, como com uma energia total desejada, por exemplo.
+
+Com base em um preset modelo disponível em "presets/", escreva seu preset e rode com:
+
+```
+./gravidade preset=\"SEU_ARQUIVO.txt\"
+```
+
+Atenção às barras invertidas, que são necessárias para a leitura do nome do arquivo no Fortran.
+
 ## 🧮 Simulando
 
 Para determinar as condições iniciais do problema, é necessário escrever um "main.f90" conforme os exemplos na pasta "exemplos". É possível gerar condições iniciais aleatórias para qualquer valor de N, sendo estes condicionados ou não, ou inserir os dados manualmente. O "main.f90" padrão é um problema de 3 corpos cujas trajetórias formam uma lemniscata, com o método de Verlet.
