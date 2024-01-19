@@ -15,6 +15,7 @@ add_executable(
   "main.f90" 
 
   "./calcs/simulacao/simulacao_sorteio.f90"
+  "./calcs/simulacao/simulacao_vi.f90"
   "./calcs/simulacao/simulacao.f90" 
 
   "./arquivo/leitura.f90"

@@ -33,9 +33,17 @@ module leitura
     INTEGER :: N
     ! Intervalo de integracao
     REAL(pf) :: t0, tf
+    ! Uso de corretor e colisoes
+    LOGICAL  :: corretor, colisoes
+
+    ! Massas, posicoes e momentos
+    REAL(pf), allocatable :: R(:,:), P(:,:), massas(:)
+    ! Nome do problema de valores iniciais
+    CHARACTER(50)         :: nome 
+
 
     contains
-      procedure :: config, tratamento
+      procedure :: config, tratamento, valores_iniciais
   end type
 
 contains
@@ -109,4 +117,67 @@ contains
 
   end subroutine tratamento
 
+  subroutine valores_iniciais (self, arquivo)
+    class(preset_config),  intent(inout) :: self
+    character(256), intent(inout) :: arquivo
+    character(len=48)             :: atributo, valor
+    real(pf), dimension(3)        :: R, P
+    integer                       :: a ! iterador
+
+    WRITE (*,*) "= Leitura do arquivo de valores iniciais"
+    WRITE (*,*) '> Lendo o arquivo "', TRIM(arquivo), '"...'
+
+    OPEN(2,file=arquivo)
+    READ(2,*) ! Comentario ("Configs")
+    
+    READ(2,*) atributo, self % nome
+    READ(2,*) atributo, self % integrador
+    READ(2,*) atributo, self % timestep
+    READ(2,*) atributo, self % passos
+    READ(2,*) atributo, self % t0 ! tempo inicial
+    READ(2,*) atributo, self % tf ! tempo final
+    READ(2,*) atributo, self % corretor
+    READ(2,*) atributo, self % colisoes 
+
+    READ(2,*) ! Espaco
+    READ(2,*) ! Comentario
+
+    ! Constantes
+    READ(2,*) atributo, self % N
+    READ(2,*) atributo, self % G
+
+    READ(2,*) ! Espaco
+    READ(2,*) ! Comentario
+
+    ! Aloca os espacos na memoria
+    allocate(self%massas(self%N))
+    allocate(self%R(self%N,3))
+    allocate(self%P(self%N,3))
+
+    ! Leitura das massas
+    do a = 1, self%N
+      READ(2,*) self%massas(a)
+    end do
+
+    READ(2,*) ! Espaco
+    READ(2,*) ! Comentario
+
+    ! Leitura das posicoes
+    do a = 1, self%N
+      READ(2,*) self%R(a,:)
+    end do
+
+    READ(2,*) ! Espaco
+    READ(2,*) ! Comentario
+
+    ! Leitura dos momentos lineares
+    do a = 1, self%N
+      READ(2,*) self%P(a,:)
+    end do
+
+    CLOSE(2)
+
+    WRITE (*,*) '> Arquivo lido com sucesso!'
+
+  end subroutine valores_iniciais
 end module

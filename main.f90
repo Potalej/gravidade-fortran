@@ -2,12 +2,14 @@ program main
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   use OMP_LIB
   use simulacao_sorteio
+  use simulacao_vi
   use leitura
   use condicoesArtigo
   implicit none
 
-  character(256)  :: preset
-  character(1024) :: comando
+  character(256)  :: preset  ! Configuracao de preset
+  character(256)  :: vi      ! Valores iniciais
+  character(1024) :: comando ! Comando todo
 
   type(preset_config) :: preset_configs
 
@@ -78,6 +80,7 @@ contains
   subroutine formatar_cli
     character(256) :: msg
     namelist /cmd/ preset
+    namelist /cmd/ vi
     integer :: io
 
     if (len_trim(comando)>0) then
@@ -91,13 +94,18 @@ contains
 
   subroutine rodar
     namelist /cmd/ preset
-    LOGICAL :: sorteio = .true. ! PROVISORIO
+    namelist /cmd/ vi
+    LOGICAL :: sorteio = .false. ! PROVISORIO
+    LOGICAL :: valores_iniciais = .true. ! PROVISORIO
 
-    if (preset == "") then
+    if (preset == "" .AND. vi == "") then
       WRITE (*,*) 'Entrada vazia!'
     else if (sorteio) then
       call cabecalho
       call simular_sorteio(preset)
+    else if (valores_iniciais) then
+      call cabecalho
+      call simular_vi(vi)
     endif
 
   end subroutine rodar
