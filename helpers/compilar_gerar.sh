@@ -6,4 +6,4 @@ ninja -C build
 echo '\nCompilado!\n'
 
 # Roda
-cd build && ./gravidade preset=\"../presets/exemplo1.txt\" && cd ..
+cd build && ./gravidade preset=\"../presets/condicionar/exemplo.txt\" && cd ..

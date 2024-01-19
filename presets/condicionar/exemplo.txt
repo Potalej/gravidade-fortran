@@ -24,5 +24,6 @@ passos     5
 t0    0.0
 tf    1.0
 
-! Uso do corretor numerico
+! Outras opcoes
 corretor F
+colisoes F

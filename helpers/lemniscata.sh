@@ -6,4 +6,4 @@ ninja -C build
 echo '\nCompilado!\n'
 
 # Roda
-cd build && ./gravidade vi=\"../presets/lemniscata.txt\" && cd ..
+cd build && ./gravidade vi=\"../presets/valores_iniciais/lemniscata.txt\" && cd ..
