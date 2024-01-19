@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" LANGUAGES "Fortran")
+project("gravidade" VERSION 0.1
+        DESCRIPTION "Simulacoes de gravidade em Fortran!"
+        LANGUAGES Fortran)
+enable_language(Fortran)
 
 #dependece lib
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -35,6 +38,7 @@ add_executable(
   "./calcs/integracao/rungekutta4.f90" 
   "./calcs/integracao/rkf45.f90" 
 )
+
 target_link_libraries(gravidade
   ${OpenBLAS_LIB}
 )

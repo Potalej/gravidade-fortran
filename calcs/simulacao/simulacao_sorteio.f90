@@ -55,6 +55,11 @@ contains
         WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
         call rodar(configs%timestep,massas,posicoes,momentos)
       end if
+    ! Se for positivo, apenas roda normal
+    else
+      ! Roda apenas o futuro
+      WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
+      call rodar(configs%timestep,massas,posicoes,momentos)
     end if
 
   end subroutine simular_sorteio
@@ -69,13 +74,14 @@ contains
     ! timer
     t0 = omp_get_wtime()
 
+    WRITE (*,*) 'Rodando com ', qntd_total_passos, ' passos'
+
     SELECT CASE (configs%integrador)
       CASE ("verlet")
         Sim_verlet % corrigir = .FALSE.
         Sim_verlet % colidir  = .FALSE.
         call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos)
         call Sim_verlet%rodar_verlet(qntd_total_passos)
-        STOP
       ! Adicionar outros casos posteriormente
     END SELECT
 

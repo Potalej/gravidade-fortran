@@ -1,5 +1,7 @@
 module simulacao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
+  use OMP_LIB
+
   ! Auxiliares
   use hamiltoniano
   use angular
@@ -114,6 +116,8 @@ contains
     real(pf), dimension(2, self % N, self % dim) :: resultado
     real(pf), dimension(self % N, self % dim) :: R1, P1
 
+    real(pf) :: t0, tf, tempo_total = 0.0_pf
+
     ! Instanciamento do integrador    
     call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
@@ -132,8 +136,15 @@ contains
     ! Roda
     do i = 1, qntdPassos
 
+      ! timer
+      t0 = omp_get_wtime()
+
       ! Integracao
       call integrador % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
+
+      ! timer
+      tf = omp_get_wtime()
+      tempo_total = tempo_total + tf - t0
 
       call Arq % escrever((/R1, P1/))
 
@@ -143,6 +154,8 @@ contains
       end if
 
     end do 
+
+    WRITE (*,*) "Tempo total:", tempo_total 
 
     call Arq % fechar()
 
@@ -228,7 +241,7 @@ contains
 
     call Arq % escrever((/R1, P1/))
 
-    ! Roda
+    ! Roda  
     do i = 1, qntdPassos
 
       ! Calcula a quantidade de passos com base no tamanho do h
@@ -243,7 +256,7 @@ contains
         WRITE (*,*) 'passo: ', i
       end if
 
-    end do 
+    end do
 
     call Arq % fechar()
 
