@@ -28,8 +28,9 @@ para compilar o programa. Se quiser compilar e rodar um exemplo de preset, use:
 sh helpers/compilar_gerar.sh
 ```
 
-## 🧮 Simulando com Presets
+## 🧮 Simulando
 
+### Presets para geração
 É possível utilizar presets (i.e., arquivos com configurações pré-definidas) para gerar valores iniciais aleatórios com determinadas condições, como com uma energia total desejada, por exemplo.
 
 Com base em um preset modelo disponível em "presets/", escreva seu preset e rode com:
@@ -40,10 +41,18 @@ Com base em um preset modelo disponível em "presets/", escreva seu preset e rod
 
 Atenção às barras invertidas, que são necessárias para a leitura do nome do arquivo no Fortran.
 
-## 🧮 Simulando
+### Valores iniciais
+Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através do argumento `vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
 
-Para determinar as condições iniciais do problema, é necessário escrever um "main.f90" conforme os exemplos na pasta "exemplos". É possível gerar condições iniciais aleatórias para qualquer valor de N, sendo estes condicionados ou não, ou inserir os dados manualmente. O "main.f90" padrão é um problema de 3 corpos cujas trajetórias formam uma lemniscata, com o método de Verlet.
+Para rodar este caso, utilize:
 
+```
+./gravidade vi=\"SEU_ARQUIVO.txt\"
+```
+
+Novamente, atenção às barras invertidas, que são necessárias para a leitura do nome do arquivo no Fortran.
+
+## Métodos
 Os métodos de integração disponíveis são:
 - [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem)
 - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method)
