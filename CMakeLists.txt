@@ -46,3 +46,9 @@ add_executable(
 target_link_libraries(gravidade
   ${OpenBLAS_LIB}
 )
+
+add_custom_command(TARGET gravidade POST_BUILD 
+  COMMAND "${CMAKE_COMMAND}" -E copy 
+     "$<TARGET_FILE:gravidade>"
+     "../$<CONFIGURATION>/$<TARGET_FILE_NAME:gravidade>" 
+  COMMENT "Copiando para o lado de fora")

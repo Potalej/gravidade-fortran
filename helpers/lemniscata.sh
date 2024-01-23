@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # Compila
-cmake -B build -G Ninja
-ninja -C build
-echo '\nCompilado!\n'
+sh ./helpers/build.sh
 
 # Roda
-cd build && ./gravidade vi=\"../presets/valores_iniciais/lemniscata.txt\" && cd ..
+./gravidade -vi ./presets/valores_iniciais/lemniscata.txt

@@ -16,7 +16,7 @@ contains
 
   ! Metodo principal da classe
   subroutine simular_vi (arquivo)
-    character(256), intent(inout) :: arquivo
+    character(LEN=*), intent(inout) :: arquivo
 
     ! Tempo de execucao
     real :: t0, tf

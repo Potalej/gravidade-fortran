@@ -4,12 +4,13 @@
 *.o
 *.obj
 
-# Arquivos de módulos
+# Arquivos de modulos
 *.mod
 *.smod
 
-# Executáveis
+# Executaveis
 *.exe
+gravidade*
 
 # build
 /build
@@ -24,5 +25,8 @@ arquivostxt.f90
 
 # resultados de simulações
 /data/*
+# Resultaods de plots
+/plot/*
 
-/exemplos
+# Outros
+/outros

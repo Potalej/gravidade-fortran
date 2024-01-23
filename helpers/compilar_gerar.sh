@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # Compila
-cmake -B build -G Ninja
-ninja -C build
-echo '\nCompilado!\n'
+sh ./helpers/build.sh
 
 # Roda
-cd build && ./gravidade preset=\"../presets/condicionar/exemplo.txt\" && cd ..
+./gravidade -s ./presets/condicionar/exemplo.txt
