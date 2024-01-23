@@ -37,7 +37,7 @@ module arquivos
 
   implicit none
   private
-  public arquivo, ler_csv
+  public arquivo, ler_csv, criar_dir
 
   ! classe de arquivo
   type :: arquivo
@@ -65,8 +65,8 @@ contains
     class(arquivo), intent(inout) :: self
 
     ! para iterar e nao repetir arquivo
-    integer :: i = 10
-    character(2) :: numero
+    integer :: i = 1
+    character(3) :: numero
     logical :: existe
 
     ! para capturar a data
@@ -79,7 +79,7 @@ contains
     call date_and_time(datahoje)
 
     do while (existe)
-      write(numero, '(I2)') i
+      write(numero, '(I3.3)') i
       i = i + 1
 
       ! cria nome 
@@ -190,14 +190,21 @@ contains
   end subroutine fechar
 
   ! ler arquivo CSV
-  subroutine ler_csv (nome, massas, R, P)
+  subroutine ler_csv (nome, h, G, massas, R, P)
 
     character(len=*), intent(in)         :: nome
+    real(pf), intent(inout)              :: G, h
     real(pf), allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
     character(len=10000)                 :: massas_string
     integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
 
     open(newunit=iu,file=nome,status='old',action='read')
+
+    ! Captura o tamanho do passo
+    read(iu, *) h
+
+    ! Captura a gravidade
+    read(iu, *) G
 
     ! captura a string de massas
     read(iu,'(A)') massas_string    
@@ -227,14 +234,23 @@ contains
     allocate(P(qntdLinhas,qntdCorpos,3))
 
     ! captura as posicoes e momentos
-    do i = 1, qntdLinhas
+    do i = 1, qntdLinhas-1
       read(iu,*) R(i,:,:),P(i,:,:)
-      R(i,:,:) = transpose(R(i,:,:))
-      P(i,:,:) = transpose(P(i,:,:))
+      ! R(i,:,:) = transpose(R(i,:,:))
+      ! P(i,:,:) = transpose(P(i,:,:))
     end do
     
     close(iu)
 
   end subroutine ler_csv
 
+  ! Criacao de diretorio
+  subroutine criar_dir (dir)
+
+    IMPLICIT NONE
+    CHARACTER(LEN=*) :: dir
+
+    call SYSTEM("mkdir " // trim(dir))
+
+  end subroutine criar_dir
 end module arquivos

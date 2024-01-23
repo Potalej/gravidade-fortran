@@ -5,11 +5,13 @@ program main
   use simulacao_vi
   use leitura
   use condicoesArtigo
+  use plot
   implicit none
 
   character(256)  :: preset  ! Configuracao de preset
   character(256)  :: vi      ! Valores iniciais
   character(1024) :: comando ! Comando todo
+  character(256)  :: exibir  ! Exibir trajetorias
 
   type(preset_config) :: preset_configs
 
@@ -25,7 +27,7 @@ contains
     integer :: i
 
     if (command_argument_count() == 0) then
-      ERROR STOP 'Nenhum parametro informado! Para mais informacoes, use -help'
+      ERROR STOP 'Nenhum parametro informado! Para mais informacoes, use --help'
     endif
 
     ! Tratamento de casos de parametros
@@ -81,6 +83,7 @@ contains
     character(256) :: msg
     namelist /cmd/ preset
     namelist /cmd/ vi
+    namelist /cmd/ exibir
     integer :: io
 
     if (len_trim(comando)>0) then
@@ -93,21 +96,44 @@ contains
   end subroutine formatar_cli
 
   subroutine rodar
+    IMPLICIT NONE
     namelist /cmd/ preset
     namelist /cmd/ vi
-    LOGICAL :: sorteio = .false. ! PROVISORIO
-    LOGICAL :: valores_iniciais = .true. ! PROVISORIO
+    namelist /cmd/ exibir
+    LOGICAL :: sorteio = .false.          ! PROVISORIO
+    LOGICAL :: valores_iniciais = .false. ! PROVISORIO
+    LOGICAL :: exibir_grafico = .true.    ! PROVISORIO
 
     if (preset == "" .AND. vi == "") then
       WRITE (*,*) 'Entrada vazia!'
+
     else if (sorteio) then
       call cabecalho
       call simular_sorteio(preset)
+
     else if (valores_iniciais) then
       call cabecalho
       call simular_vi(vi)
+
+    else if (exibir_grafico) then
+      call cabecalho
+      call rodar_exibir(exibir)
     endif
 
   end subroutine rodar
+
+  subroutine rodar_exibir (dir)
+    IMPLICIT NONE
+    CHARACTER(len=*) :: dir
+    real(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
+    real(pf) :: G, h
+
+    ! Abre o arquivo salvo para leitura
+    call ler_csv(dir, h, G, massas, R, P)
+    
+    ! Exibe as trajetorias
+    call plotar_trajetorias(R,1,2)
+
+  end subroutine rodar_exibir
 
 end program

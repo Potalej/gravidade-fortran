@@ -14,12 +14,15 @@ add_executable(
   "gravidade" 
   "main.f90" 
 
+  "./libs/gnufor.f90"
+
   "./calcs/simulacao/simulacao_sorteio.f90"
   "./calcs/simulacao/simulacao_vi.f90"
   "./calcs/simulacao/simulacao.f90" 
 
   "./arquivo/leitura.f90"
-  "./arquivo/arquivos.f90" 
+  "./arquivo/arquivos.f90"
+  "./arquivo/plot.f90" 
 
   "./strings/strings.f90" 
 
