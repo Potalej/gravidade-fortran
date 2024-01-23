@@ -14,7 +14,7 @@ e para compilar com o `ninja`:
 ninja -C build
 ```
 
-Um executável será gerado no diretório `build`.
+Um executável será gerado no diretório raiz.
 
 Outra possibilidade é com o uso dos helpers. Use:
 
@@ -36,21 +36,24 @@ sh helpers/compilar_gerar.sh
 Com base em um preset modelo disponível em "presets/", escreva seu preset e rode com:
 
 ```
-./gravidade preset=\"SEU_ARQUIVO.txt\"
+./gravidade -s SEU_ARQUIVO.txt
 ```
 
-Atenção às barras invertidas, que são necessárias para a leitura do nome do arquivo no Fortran.
-
 ### Valores iniciais
-Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através do argumento `vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
+Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através da opção `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
 
 Para rodar este caso, utilize:
 
 ```
-./gravidade vi=\"SEU_ARQUIVO.txt\"
+./gravidade -vi SEU_ARQUIVO.txt
 ```
 
-Novamente, atenção às barras invertidas, que são necessárias para a leitura do nome do arquivo no Fortran.
+### Visualizando
+Além disso, é possível também visualizar as simulações feitas através da opção `-e` ou `--exibir`. É uma visualização simples das trajetórias, mas pode ajudar a conferir resultados rapidamente.
+
+```
+./gravidade -e SEU_ARQUIVO.csv
+```
 
 ## Métodos
 Os métodos de integração disponíveis são:

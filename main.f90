@@ -22,6 +22,8 @@ program main
   ! O segundo deve ser o arquivo
   CALL get_command_argument(2, arq)
 
+  CALL cabecalho
+
   ! Acoes
   SELECT CASE (acao)
     ! Helper
@@ -31,17 +33,14 @@ program main
     
     ! Usa um preset para gerar valores
     CASE ('-s', '--sorteio')
-      CALL cabecalho
       CALL simular_sorteio(arq)
     
     ! Valores iniciais
     CASE ('-vi', '--valores-iniciais')
-      CALL cabecalho
       CALL simular_vi(arq)
 
     ! Para visualizar as trajetorias
     CASE ('-e', '--exibir')
-      CALL cabecalho
       CALL rodar_exibir(arq)
 
     ! Default
@@ -54,14 +53,22 @@ contains
 
   ! Ajudador
   subroutine help
-    WRITE (*,*)
-    WRITE (*,*) 'Uso:'
+    WRITE (*,*) 'SINOPSE:'
     WRITE (*,*) '   # ./gravidade [--help|-h]'
-    WRITE (*,*) '   # ./gravidade preset=\"preset.txt\"'
+    WRITE (*,*) '   # ./gravidade [OPCAO] [ARQUIVO]'
     WRITE (*,*)
-    WRITE (*,*) 'Opcoes:'
-    WRITE (*,*) '   -h --help    Exibe a ajuda.'
-    WRITE (*,*) '   preset       Define um preset para gerar condicoes iniciais' 
+    WRITE (*,*) 'OPCOES:'
+    WRITE (*,*) '   -h, --help'
+    WRITE (*,*) '         Exibe a ajuda.'
+    WRITE (*,*)
+    WRITE (*,*) '   -s, --sorteio' 
+    WRITE (*,*) '         Utiliza um preset informado para gerar valores iniciais aleatorios'
+    WRITE (*,*)
+    WRITE (*,*) '   -vi, --valores-iniciais' 
+    WRITE (*,*) '         Utiliza os valores iniciais contidos em um arquivo informado para simular.'
+    WRITE (*,*)
+    WRITE (*,*) '   -e, --exibir' 
+    WRITE (*,*) '         Gera um grafico com as trajetorias dos corpos no arquivo informado.'
     WRITE (*,*)
   end subroutine help
 
