@@ -35,6 +35,9 @@ module arquivos
   ! pacote de strings
   use strings
 
+  ! OPENMP
+  use OMP_LIB
+
   implicit none
   private
   public arquivo, ler_csv, criar_dir
@@ -197,6 +200,7 @@ contains
     real(pf), allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
     character(len=10000)                 :: massas_string
     integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
+    real(pf) :: t0, tf
 
     open(newunit=iu,file=nome,status='old',action='read')
 
@@ -233,14 +237,17 @@ contains
     allocate(R(qntdLinhas,qntdCorpos,3))
     allocate(P(qntdLinhas,qntdCorpos,3))
 
+    t0 = omp_get_wtime()
+
     ! captura as posicoes e momentos
     do i = 1, qntdLinhas-1
       read(iu,*) R(i,:,:),P(i,:,:)
-      ! R(i,:,:) = transpose(R(i,:,:))
-      ! P(i,:,:) = transpose(P(i,:,:))
     end do
+    tf = omp_get_wtime()
     
     close(iu)
+
+    WRITE (*,*) "TEMPO DE LEITURA: ", tf-t0
 
   end subroutine ler_csv
 
