@@ -66,36 +66,25 @@ contains
     integer :: a, b, thread, threads, qntdPorThread
     real(pf) :: distancia
     real(pf), dimension(self % N, self % dim) :: forcas
-    real(pf), dimension(self%N,self%N,self%dim) :: MF
     
     forcas(:,:) = 0
-    MF(:,:,:) = 0
     
     !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(MF, self, R) REDUCTION(+:forcas)
       !$OMP DO
       do a = 2, self%N
         do b = 1, a-1
           ! distancia entre os corpos
-          distancia = norm2(R(b,:) - R(a,:))**3 + self % h
+          distancia = norm2(R(b,:) - R(a,:))**3
           ! forca entre os corpos a e b
           Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
           
           ! Adiciona na matriz
-          ! MF(a,b,:) = -Fab
-          ! MF(b,a,:) =  Fab
           forcas(a,:) = forcas(a,:) - Fab
           forcas(b,:) = forcas(b,:) + Fab
         end do
       end do
       !$OMP END DO
     !$OMP END PARALLEL
-
-    ! do a = 1, self%N
-    !   forcas(a,1) = SUM(MF(a,:,1))
-    !   forcas(a,2) = SUM(MF(a,:,2))
-    !   forcas(a,3) = SUM(MF(a,:,3))
-    ! enddo
-          
 
   end function forcas
 

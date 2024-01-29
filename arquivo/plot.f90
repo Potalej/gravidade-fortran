@@ -17,28 +17,7 @@ module plot
   use, intrinsic :: iso_fortran_env, only: pf=>real64
 
   use arquivos
-contains
-
-  ! ************************************************************
-  !! multiplos_salvar
-  !
-  ! Objetivos:
-  !   Prepara o ambiente para um plot multiplo, criando um 
-  !   diretorio para salvar os plots.
-  !
-  ! Modificado:
-  !   22 de janeiro de 2023
-  !
-  ! Autoria:
-  !   oap
-  !
-  ! subroutine diretorio_plot
-
-  !   IMPLICIT NONE
-  !   ! INTEGER 
-    
-
-  ! end subroutine multiplos_salvar
+contains    
 
   ! ************************************************************
   !! plotar_xy

@@ -228,8 +228,14 @@ contains
       qntdLinhas = qntdLinhas+1
     end do
     
-    ! captura as massas
     rewind(iu)
+    ! Captura o tamanho do passo
+    read(iu, *) h
+
+    ! Captura a gravidade
+    read(iu, *) G    
+    
+    ! captura as massas
     allocate(massas(qntdCorpos))
     read(iu, *) massas
 
