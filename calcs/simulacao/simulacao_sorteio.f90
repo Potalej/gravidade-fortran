@@ -5,9 +5,10 @@ module simulacao_sorteio
   use simulacao
   use condicoesArtigo
   use leitura
+  use arquivos
   implicit none
   private
-  public simular_sorteio
+  public simular_sorteio, sorteio_salvar
 
   ! Instanciamento da classe
   type(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
@@ -25,6 +26,12 @@ contains
     real(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
     ! Quantidade total de passos
     integer :: qntd_total_passos
+    CHARACTER(9) :: datahoje
+    CHARACTER(3) :: numero
+    CHARACTER(17) :: nome_arq
+    CHARACTER(13) :: nome_sorteio
+    INTEGER :: i = 1
+    LOGICAL :: arquivo_existe = .TRUE.
 
     ! Le o arquivo de configuracoes
     call configs % config(arquivo)
@@ -39,6 +46,37 @@ contains
        configs%int_posicoes, & ! Intervalo de posicoes
        configs%int_momentos, & ! Intervalo de momentos
        configs%int_massas)     ! Intervalo de massas
+
+    ! Gera o nome
+    call date_and_time(datahoje)
+
+    do while (arquivo_existe)
+      write(numero, '(I3.3)') i
+      i = i + 1
+
+      ! cria nome 
+      nome_sorteio = trim(datahoje)//"_"//trim(numero)
+      nome_arq = nome_sorteio // ".txt"
+
+      ! verifica se existe
+      inquire(file='presets/auto_vi/'//nome_arq, exist=arquivo_existe)
+    end do
+
+    ! Salva o preset gerado
+    CALL salvar_sorteio('presets/auto_vi/', nome_arq,  &
+      "Sorteio_"//nome_sorteio, &
+      configs % G,          &
+      massas,               &
+      posicoes,             &
+      momentos,             &
+      configs % t0,         &
+      configs % tf,         &
+      configs % timestep,   &
+      configs % integrador, &
+      configs % corretor,   &
+      configs % colisoes)
+
+    WRITE (*,*) "Preset salvo!"
 
     WRITE (*,*)
 
@@ -89,5 +127,62 @@ contains
     WRITE (*,*) '= Tempo ', configs%integrador, ': ', tf - t0
     WRITE (*,*) '= Tempor por passo: ', (tf-t0) / qntd_total_passos
   end subroutine rodar
+
+  subroutine sorteio_salvar (dir)
+    IMPLICIT NONE
+    CHARACTER(LEN=*) :: dir
+    REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
+    CHARACTER(9) :: datahoje
+    CHARACTER(3) :: numero
+    CHARACTER(13) :: nome_arq
+    INTEGER :: i = 1
+    LOGICAL :: arquivo_existe
+
+    ! em string
+    call date_and_time(datahoje)
+
+    ! Le o arquivo de configuracoes
+    call configs % config(dir)
+
+    WRITE (*,*)
+
+    ! Gera os valores
+    call gerar_condicionado(configs%G, &
+       configs%N, &
+       massas,    &
+       posicoes,  &
+       momentos,  &
+       configs%int_posicoes, & ! Intervalo de posicoes
+       configs%int_momentos, & ! Intervalo de momentos
+       configs%int_massas)     ! Intervalo de massas
+
+    ! Gera o nome
+    do while (arquivo_existe)
+      write(numero, '(I3.3)') i
+      i = i + 1
+
+      ! cria nome 
+      nome_arq = trim(datahoje)//"_"//trim(numero)
+
+      ! verifica se existe
+      inquire(file=trim(nome_arq), exist=arquivo_existe)
+    end do
+
+    ! Salva o preset gerado
+    CALL salvar_sorteio('presets/auto_vi/', nome_arq//".txt",  &
+      "Sorteio_"//nome_arq, &
+      configs % G,          &
+      massas,               &
+      posicoes,             &
+      momentos,             &
+      configs % t0,         &
+      configs % tf,         &
+      configs % timestep,   &
+      configs % integrador, &
+      configs % corretor,   &
+      configs % colisoes)
+
+    WRITE (*,*) "Preset salvo!"
+  end subroutine sorteio_salvar
 
 end module

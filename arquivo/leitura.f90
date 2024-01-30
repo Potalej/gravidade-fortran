@@ -58,6 +58,7 @@ contains
 
     OPEN(2,file=arquivo)
     READ(2,*) ! Comentario
+    READ(2,*) ! Modo
     
     ! Integrais primeiras
     READ(2,*) atributo, self % Etot
@@ -98,6 +99,12 @@ contains
     READ(2,*) atributo, self % t0 ! tempo inicial
     READ(2,*) atributo, self % tf ! tempo final
 
+    READ(2,*) ! Espaco
+    READ(2,*) ! Comentario  
+
+    READ(2,*) atributo, self % corretor ! uso do corretor
+    READ(2,*) atributo, self % colisoes ! uso de colisoes
+
     CLOSE(2)
 
     WRITE (*,*) '> Arquivo lido com sucesso!'
@@ -129,7 +136,8 @@ contains
 
     OPEN(2,file=arquivo)
     READ(2,*) ! Comentario ("Configs")
-    
+    READ(2,*) ! Modo
+
     READ(2,*) atributo, self % nome
     READ(2,*) atributo, self % integrador
     READ(2,*) atributo, self % timestep

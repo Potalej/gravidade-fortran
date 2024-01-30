@@ -31,9 +31,13 @@ program main
       CALL help()
       STOP
     
-    ! Usa um preset para gerar valores
+    ! Usa um preset para gerar valores e simular
     CASE ('-s', '--sorteio')
       CALL simular_sorteio(arq)
+
+    ! Usa um preset para gerar valores e salva-los, sem simular
+    CASE ('-sv', '--sorteio-salvar')
+      CALL sorteio_salvar(arq)
     
     ! Valores iniciais
     CASE ('-vi', '--valores-iniciais')

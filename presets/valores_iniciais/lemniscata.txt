@@ -1,4 +1,5 @@
 ! Configs
+modo vi
 nome "Lemniscata"
 integrador verlet
 timestep   0.001

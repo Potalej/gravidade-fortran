@@ -40,7 +40,7 @@ module arquivos
 
   implicit none
   private
-  public arquivo, ler_csv, criar_dir
+  public arquivo, ler_csv, criar_dir, salvar_sorteio
 
   ! classe de arquivo
   type :: arquivo
@@ -266,4 +266,78 @@ contains
     call SYSTEM("mkdir " // trim(dir))
 
   end subroutine criar_dir
+
+  ! Escreve um preset sorteado como um preset de valores iniciais
+  subroutine salvar_sorteio (dir, arquivo, nome, G, massas, R, P, t0, tf, timestep, metodo, corretor, colisoes)
+
+    IMPLICIT NONE
+    CHARACTER(LEN=*)      :: dir, arquivo, metodo, nome
+    CHARACTER(LEN=256)    :: dir_arquivo, num_arquivo
+    LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
+    REAL(pf)              :: G, t0, tf, timestep
+    REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
+    INTEGER               :: u=14, i, arq_i
+
+    ! Verifica se o diretorio desejado existe
+    inquire(file=trim(dir), exist=diretorio_existe)
+    if (.NOT. diretorio_existe) then
+      call criar_dir (dir)
+    end if
+
+    ! Agora verifica se o arquivo ja existe
+    dir_arquivo = dir // arquivo
+    inquire(file=dir_arquivo, exist=arquivo_existe)
+    if (arquivo_existe) then
+      arq_i = 1
+      DO WHILE (arquivo_existe)
+        WRITE(num_arquivo, '(I3.3)') arq_i
+        inquire(file=dir_arquivo//"_"//num_arquivo, exist=arquivo_existe)
+      END DO
+      dir_arquivo = dir_arquivo//"_"//num_arquivo
+    endif
+
+    ! Abre um arquivo
+    OPEN(newunit=u,file=dir_arquivo)
+
+    WRITE(u,'(*(g0,1x))') "! Configs"
+    WRITE(u,'(*(g0,1x))') "modo vi"
+    WRITE(u,'(*(g0,1x))') "nome ", nome
+    WRITE(u,'(*(g0,1x))') "integrador ", metodo
+    WRITE(u,'(*(g0,1x))') "timestep ", timestep
+    WRITE(u,'(*(g0,1x))') "passos ", floor((tf-t0)/timestep)
+    WRITE(u,'(*(g0,1x))') "t0 ", t0
+    WRITE(u,'(*(g0,1x))') "tf ", tf
+    WRITE(u,'(*(g0,1x))') "corretor ", corretor
+    WRITE(u,'(*(g0,1x))') "colisoes ", colisoes
+
+    WRITE(u,*)
+
+    WRITE(u,'(*(g0,1x))') "! Valores do problema"
+    WRITE(u,'(*(g0,1x))') "N ", size(massas)
+    WRITE(u,'(*(g0,1x))') "G ", G
+    
+    WRITE(u,*) 
+
+    WRITE(u,'(*(g0,1x))') "! Massas"
+    do i = 1, size(massas)
+      WRITE(u,'(*(g0,1x))') massas(i)
+    end do
+
+    WRITE(u,*)
+
+    WRITE(u,'(*(g0,1x))') "! Posicoes"
+    do i = 1, size(massas)
+      WRITE(u,'(*(g0,1x,","))') R(i,:) 
+    end do
+
+    WRITE(u,*)
+
+    WRITE(u,'(*(g0,1x))') "! Momentos"
+    do i = 1, size(massas)
+      WRITE(u,'(*(g0,1x,","))') P(i,:) 
+    end do
+
+    CLOSE(u)
+
+  end subroutine salvar_sorteio
 end module arquivos

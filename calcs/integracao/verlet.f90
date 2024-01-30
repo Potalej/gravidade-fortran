@@ -69,7 +69,7 @@ contains
     
     forcas(:,:) = 0
     
-    !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(MF, self, R) REDUCTION(+:forcas)
+    !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(self, R) REDUCTION(+:forcas)
       !$OMP DO
       do a = 2, self%N
         do b = 1, a-1
