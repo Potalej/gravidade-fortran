@@ -132,11 +132,12 @@ contains
     IMPLICIT NONE
     CHARACTER(LEN=*) :: dir
     REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
-    CHARACTER(9) :: datahoje
+    CHARACTER(8) :: datahoje
     CHARACTER(3) :: numero
-    CHARACTER(13) :: nome_arq
+    CHARACTER(16) :: nome_arq
+    CHARACTER(12) :: nome_sorteio
     INTEGER :: i = 1
-    LOGICAL :: arquivo_existe
+    LOGICAL :: arquivo_existe = .TRUE.
 
     ! em string
     call date_and_time(datahoje)
@@ -162,15 +163,18 @@ contains
       i = i + 1
 
       ! cria nome 
-      nome_arq = trim(datahoje)//"_"//trim(numero)
+      nome_sorteio = trim(datahoje)//"_"//trim(numero)
+      nome_arq = nome_sorteio // ".txt"
 
       ! verifica se existe
-      inquire(file=trim(nome_arq), exist=arquivo_existe)
+      inquire(file="./presets/auto_vi/"//nome_arq, exist=arquivo_existe)
     end do
 
+    print *, nome_arq
+
     ! Salva o preset gerado
-    CALL salvar_sorteio('presets/auto_vi/', nome_arq//".txt",  &
-      "Sorteio_"//nome_arq, &
+    CALL salvar_sorteio('presets/auto_vi/', nome_arq,  &
+      "Sorteio_"//nome_sorteio, &
       configs % G,          &
       massas,               &
       posicoes,             &

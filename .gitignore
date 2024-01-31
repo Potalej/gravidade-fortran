@@ -28,5 +28,8 @@ arquivostxt.f90
 # Resultaods de plots
 /plot/*
 
+# Presets gerados automaticamente
+presets/auto_vi
+
 # Outros
 /outros

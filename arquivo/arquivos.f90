@@ -73,7 +73,7 @@ contains
     logical :: existe
 
     ! para capturar a data
-    character(9) :: datahoje
+    character(8) :: datahoje
 
     ! Por padrao, existe
     existe = .true.
