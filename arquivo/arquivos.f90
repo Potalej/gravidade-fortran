@@ -75,6 +75,12 @@ contains
     ! para capturar a data
     character(8) :: datahoje
 
+    ! verifica se existe o diretorio padrao
+    inquire(file=trim(self % dir), exist=existe)
+    if (.NOT. existe) then
+      call criar_dir(trim(self % dir))
+    endif
+
     ! Por padrao, existe
     existe = .true.
  
@@ -258,20 +264,35 @@ contains
   end subroutine ler_csv
 
   ! Criacao de diretorio
-  subroutine criar_dir (dir)
+  subroutine criar_dir (dir, onde)
 
     IMPLICIT NONE
     CHARACTER(LEN=*) :: dir
+    CHARACTER(LEN=*),OPTIONAL :: onde
+    CHARACTER(LEN=len(dir)) :: res
+    CHARACTER(:), ALLOCATABLE :: comando
+    INTEGER :: i
+    res = dir
+    ! Remove o "./" se tiver
+    do i = 1, len(dir)
+      if (dir(i:i) == "/" .OR. dir(i:i) == ".") then
+        res(i:i+1) = " "
+      end if
+    end do
 
-    call SYSTEM("mkdir " // trim(dir))
+    ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
+    comando = "cd "//onde//" && mkdir "// trim(res)
+
+    WRITE (*,*) "Criando diretório:", trim(res)   
+    call SYSTEM(comando)
 
   end subroutine criar_dir
 
   ! Escreve um preset sorteado como um preset de valores iniciais
-  subroutine salvar_sorteio (dir, arquivo, nome, G, massas, R, P, t0, tf, timestep, metodo, corretor, colisoes)
+  subroutine salvar_sorteio (onde, subdir, arquivo, nome, G, massas, R, P, t0, tf, timestep, metodo, corretor, colisoes)
 
     IMPLICIT NONE
-    CHARACTER(LEN=*)      :: dir, arquivo, metodo, nome
+    CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
     CHARACTER(LEN=256)    :: dir_arquivo, num_arquivo
     LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
     REAL(pf)              :: G, t0, tf, timestep
@@ -279,21 +300,21 @@ contains
     INTEGER               :: u=14, i, arq_i
 
     ! Verifica se o diretorio desejado existe
-    inquire(file=trim(dir), exist=diretorio_existe)
+    inquire(file=onde//trim(subdir), exist=diretorio_existe)
     if (.NOT. diretorio_existe) then
-      call criar_dir (dir)
+      call criar_dir (subdir, onde)
     end if
 
     ! Agora verifica se o arquivo ja existe
-    dir_arquivo = dir // arquivo
-    inquire(file=dir_arquivo, exist=arquivo_existe)
+    dir_arquivo = TRIM(onde//subdir) // TRIM(arquivo)
+    inquire(file=TRIM(dir_arquivo), exist=arquivo_existe)
     if (arquivo_existe) then
       arq_i = 1
       DO WHILE (arquivo_existe)
         WRITE(num_arquivo, '(I3.3)') arq_i
-        inquire(file=dir_arquivo//"_"//num_arquivo, exist=arquivo_existe)
+        inquire(file=TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt", exist=arquivo_existe)
       END DO
-      dir_arquivo = dir_arquivo//"_"//num_arquivo
+      dir_arquivo = TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt"
     endif
 
     ! Abre um arquivo

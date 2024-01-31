@@ -4,8 +4,8 @@ SET(Open_BLAS_INCLUDE_SEARCH_PATHS
     /usr/include/openblas-base
     /usr/local/include
     /usr/local/include/openblas
-    /usr/local/include/openblas-base
     /opt/OpenBLAS/include
+    C:/users/Public/fortran-modules/openblas/include
     $ENV{OpenBLAS_HOME}
     $ENV{OpenBLAS_HOME}/include
 )
@@ -20,6 +20,7 @@ SET(Open_BLAS_LIB_SEARCH_PATHS
     /usr/local/lib
     /usr/local/lib64
     /opt/OpenBLAS/lib
+    C:/users/Public/fortran-modules/openblas/lib
     $ENV{OpenBLAS}cd
     $ENV{OpenBLAS}/lib
     $ENV{OpenBLAS_HOME}

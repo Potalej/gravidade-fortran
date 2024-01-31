@@ -63,7 +63,7 @@ contains
     end do
 
     ! Salva o preset gerado
-    CALL salvar_sorteio('presets/auto_vi/', nome_arq,  &
+    CALL salvar_sorteio('presets/', 'auto_vi/', nome_arq,  &
       "Sorteio_"//nome_sorteio, &
       configs % G,          &
       massas,               &
@@ -108,7 +108,7 @@ contains
     REAL(pf)              :: t0, tf
     INTEGER               :: qntd_total_passos
 
-    qntd_total_passos = configs%passos / configs%timestep
+    qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
     ! timer
     t0 = omp_get_wtime()
 
@@ -173,7 +173,7 @@ contains
     print *, nome_arq
 
     ! Salva o preset gerado
-    CALL salvar_sorteio('presets/auto_vi/', nome_arq,  &
+    CALL salvar_sorteio('presets/','auto_vi/', nome_arq,  &
       "Sorteio_"//nome_sorteio, &
       configs % G,          &
       massas,               &

@@ -17,6 +17,7 @@ module plot
   use, intrinsic :: iso_fortran_env, only: pf=>real64
 
   use arquivos
+  use OS
 contains    
 
   ! ************************************************************
@@ -78,25 +79,26 @@ contains
     ! Verifica se o diretorio de plots existe, senao cria
     inquire(file='./plot',exist=existe)
     if (.not. existe) then
-      call criar_dir('./plot')
+      call criar_dir('plot')
     end if
 
     ! Cria um nome para o diretorio a partir da data
     call nome_data('./plot/', novo_dir)
-    print *, novo_dir
-    path_comando = novo_dir // '/plot.txt'
+    print *, 'Novo dir:',novo_dir
+    path_comando = './plot/'//trim(novo_dir)//'/plot.txt'
     ! Cria o diretorio para os plots
-    call criar_dir(novo_dir)
+    call criar_dir(novo_dir, './plot/')
 
     ! Captura a escala da quantidade de corpos (10**x)
     escala = FLOOR(LOG10(FLOAT(size(R,2)))) + 1
     ! Aloca o espaco para o nome do arquivo
-    ALLOCATE(CHARACTER(24 + escala) :: data_dir)
+    ALLOCATE(CHARACTER(24+7 + escala) :: data_dir)
     ! ALLOCATE(CHARACTER(escala) :: i_int)
     print *, "N:", size(R,2)
     do i = 1, size(R,2) ! quantidade de corpos
       write(i_int,'(I4.4)') i      
-      data_dir = novo_dir // '/corpo_' // TRIM(i_int) // '.txt'
+      data_dir = './plot/'//TRIM(novo_dir) // '/corpo_' // TRIM(i_int) // '.txt'
+      WRITE(*,*) data_dir
       call write_xy_data(data_dir,size(R,1),R(:,i,absc), R(:,i,orde),ierror)
     end do
     call escrever_comando_GNU(path_comando, novo_dir, novo_dir)
@@ -121,10 +123,10 @@ contains
       WRITE (num, '(I3.3)') i
 
       ! Criacao do nome
-      nome = TRIM(dir // trim(data_hoje) // '_' // TRIM(num))
+      nome = TRIM(trim(data_hoje) // '_' // TRIM(num))
       
       ! Verifica se existe
-      inquire(file=nome,exist=existe)
+      inquire(file=dir//nome,exist=existe)
       
       i = i+1
     end do
@@ -135,14 +137,16 @@ contains
 
     IMPLICIT NONE
     CHARACTER(LEN=*) :: nome, titulo, dir
+    CHARACTER(LEN=3) :: cmd_ls
     INTEGER          :: u=13
 
+    CALL listdir(cmd_ls)
     OPEN(u,file=nome,status="new")
-    WRITE(u,*) 'set title "' // titulo // '"'
+    WRITE(u,*) 'set title "' // trim(titulo) // '"'
     WRITE(u,*) 'set xlabel "x"'
     WRITE(u,*) 'set ylabel "y"'
-    WRITE(u,*) 'FILES = system("ls '//dir//'/corpo_*.txt")'
-    WRITE(u,*) 'plot for [data in FILES] data u 1:2 w lines'
+    WRITE(u,*) 'FILES = system("cd plot/'//trim(dir)//" && "//trim(cmd_ls)//' corpo_*.txt /B")'
+    WRITE(u,*) 'plot for [data in FILES] "plot/'//trim(dir)//'/".data u 1:2 w lines'
     WRITE(u,*) 'pause -1'
     WRITE(u,*) 'q'
     CLOSE(U)

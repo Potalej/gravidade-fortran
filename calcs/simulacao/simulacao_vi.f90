@@ -56,7 +56,7 @@ contains
     REAL(pf)              :: t0, tf
     INTEGER               :: qntd_total_passos
 
-    qntd_total_passos = configs%passos / configs%timestep
+    qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
     ! timer
     t0 = omp_get_wtime()
 
