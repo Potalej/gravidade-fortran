@@ -26,25 +26,23 @@ contains
     ! Le o arquivo de configuracoes
     call configs % valores_iniciais(arquivo)
 
-    WRITE (*,*)
-
     ! Se o instante inicial for negativo, entao vai rodar ao contrario
     if (configs%t0 < 0) then
       if (configs%tf == 0) then
         ! Roda apenas o passado
-        WRITE (*,*) "Intervalo [", configs%t0, ",", configs%tf, "]"
+        WRITE (*,*) " * Intervalo [", configs%t0, ",", configs%tf, "]"
         call rodar(-configs%timestep,configs%massas,configs%R,configs%P)
       else if (configs%tf > 0) then
         ! Roda o passado e o futuro
-        WRITE (*,*) "Intervalo [", configs%t0, ",", 0, "]"
+        WRITE (*,*) " * Intervalo [", configs%t0, ",", 0, "]"
         call rodar(-configs%timestep,configs%massas,configs%R,configs%P)
-        WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
+        WRITE (*,*) " * Intervalo [", 0, ",", configs%tf, "]"
         call rodar(configs%timestep,configs%massas,configs%R,configs%P)
       end if
     ! Se for positivo, apenas roda normal
     else
       ! Roda apenas o futuro
-      WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
+      WRITE (*,*) " * Intervalo [", 0, ",", configs%tf, "]"
       call rodar(configs%timestep,configs%massas,configs%R,configs%P)
     end if
 
@@ -60,7 +58,7 @@ contains
     ! timer
     t0 = omp_get_wtime()
 
-    WRITE (*,*) 'Rodando com ', qntd_total_passos, ' passos'
+    WRITE (*,*)
 
     SELECT CASE (configs%integrador)
       CASE ("verlet")
@@ -72,8 +70,8 @@ contains
     END SELECT
 
     tf = omp_get_wtime()
-    WRITE (*,*) '= Tempo ', configs%integrador, ': ', tf - t0
-    WRITE (*,*) '= Tempor por passo: ', (tf-t0) / qntd_total_passos
+    WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
+    WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
   end subroutine rodar
 
 end module simulacao_vi

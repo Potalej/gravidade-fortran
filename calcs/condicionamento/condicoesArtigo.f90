@@ -87,15 +87,15 @@ contains
     real(pf), intent(inout) :: posicoes(N,3), momentos(N,3), massas(N)
 
     ! Gera massas
-    WRITE (*,*) '    i.   gerando massas'
+    WRITE (*,*) '    * gerando massas'
     massas = gerar_massas(N, int_massas(1), int_massas(2))
 
     ! Gera as posições
-    WRITE (*,*) '    ii.  gerando posicoes'
+    WRITE (*,*) '    * gerando posicoes'
     posicoes = gerar_vetores3d(N, int_posicoes(1), int_posicoes(2))
 
     ! Gera os momentos
-    WRITE (*,*) '    iii. gerando momentos'
+    WRITE (*,*) '    * gerando momentos'
     momentos = gerar_vetores3d(N, int_momentos(1), int_momentos(2))
 
   end subroutine gerarValores
@@ -213,26 +213,27 @@ contains
     real(pf), intent(inout) :: G
     real(pf), intent(inout), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
 
-    WRITE (*,*) "# GERACAO DAS CONDICOES INICIAIS"
+    WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS"
     
     ! Gera os valores
-    WRITE (*,*) '  > Gerando valores...'
+    WRITE (*,'(a)') '  > gerando valores...'
     allocate(massas (N))
     allocate(posicoes (N, 3))
     allocate(momentos (N, 3))
     call gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
 
     ! Condiciona
-    WRITE (*,*) '  > Condicionando...'
+    WRITE (*,'(a)') '  > condicionando...'
     call condicionar(G, massas, posicoes, momentos)
 
     ! Exibe as integrais primeiras do sistema
-    WRITE (*,*) '    -  H  =', energia_total(G,massas,posicoes,momentos) 
-    WRITE (*,*) '    - Rcm =', centro_massas(massas,posicoes) 
-    WRITE (*,*) '    -  P  =', momentoLinear_total(momentos) 
-    WRITE (*,*) '    -  J  =', angular_geral(posicoes,momentos) 
+    WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 
+    WRITE (*,*) '    * Rcm =', centro_massas(massas,posicoes) 
+    WRITE (*,*) '    * P   =', momentoLinear_total(momentos) 
+    WRITE (*,*) '    * J   =', angular_geral(posicoes,momentos) 
 
-    WRITE (*,*) '  > Condicoes iniciais geradas!'
+    WRITE (*,'(a)') '  > condicoes iniciais geradas!'
+    WRITE (*,*)
 
   end subroutine gerar_condicionado
 

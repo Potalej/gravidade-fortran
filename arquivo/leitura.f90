@@ -53,8 +53,8 @@ contains
     character(256), intent(inout) :: arquivo
     character(len=48)             :: atributo, valor
 
-    WRITE (*,*) "= Leitura do arquivo de presets"
-    WRITE (*,*) '> Lendo o arquivo "', TRIM(arquivo), '"...'
+    WRITE (*,'(a)') "LEITURA DE PRESET"
+    WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
     OPEN(2,file=arquivo)
     READ(2,*) ! Comentario
@@ -107,7 +107,8 @@ contains
 
     CLOSE(2)
 
-    WRITE (*,*) '> Arquivo lido com sucesso!'
+    WRITE (*,'(a)') '  > arquivo lido com sucesso!'
+    WRITE (*,*)
 
   end subroutine config
 
@@ -131,8 +132,8 @@ contains
     real(pf), dimension(3)        :: R, P
     integer                       :: a ! iterador
 
-    WRITE (*,*) "= Leitura do arquivo de valores iniciais"
-    WRITE (*,*) '> Lendo o arquivo "', TRIM(arquivo), '"...'
+    WRITE (*,'(a)') "LEITURA DE VALORES INICIAIS"
+    WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
     OPEN(2,file=arquivo)
     READ(2,*) ! Comentario ("Configs")
@@ -185,7 +186,8 @@ contains
 
     CLOSE(2)
 
-    WRITE (*,*) '> Arquivo lido com sucesso!'
+    WRITE (*,'(a)') '  > arquivo lido com sucesso!'
+    WRITE (*,*)
 
   end subroutine valores_iniciais
 end module

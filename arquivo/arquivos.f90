@@ -131,17 +131,22 @@ contains
     character(len=18)             :: nomearq
     logical                       :: existe ! para verificar se ja existe ou nao
 
+    WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
+
     ! cria formatacao
     call self % criarFormato(qntdCorpos, dimensao)
-    WRITE (*,*) 'Formato : ', self % formato
+    WRITE (*, '(a)') '  > formato : ' // self % formato
 
     ! criacao do nome do arquivo
     call self % nomeArquivo()
-    WRITE (*,*) 'Arquivo de saída: ', self % nomearq
+    WRITE (*,'(a)') '  > arquivo de saída: ' // self % nomearq
 
     ! agora cria o arquivo
     self % idarq = idarq
     open(idarq, file = self % nomearq, status='new')
+    WRITE (*,'(a)') '  > arquivo criado!'
+
+    WRITE(*,*)
 
   end subroutine criar
 
@@ -208,6 +213,9 @@ contains
     integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
     real(pf) :: t0, tf
 
+    WRITE(*, '(a)') "LER_CSV:"
+    WRITE(*, '(a)') "  > arquivo: " // trim(nome)
+
     open(newunit=iu,file=nome,status='old',action='read')
 
     ! Captura o tamanho do passo
@@ -249,9 +257,8 @@ contains
     allocate(R(qntdLinhas,qntdCorpos,3))
     allocate(P(qntdLinhas,qntdCorpos,3))
 
-    t0 = omp_get_wtime()
-
     ! captura as posicoes e momentos
+    t0 = omp_get_wtime()
     do i = 1, qntdLinhas-1
       read(iu,*) R(i,:,:),P(i,:,:)
     end do
@@ -259,7 +266,8 @@ contains
     
     close(iu)
 
-    WRITE (*,*) "TEMPO DE LEITURA: ", tf-t0
+    WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", tf-t0, "s"
+    WRITE (*,*)
 
   end subroutine ler_csv
 
@@ -283,7 +291,6 @@ contains
     ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
     comando = "cd "//onde//" && mkdir "// trim(res)
 
-    WRITE (*,*) "Criando diretório:", trim(res)   
     call SYSTEM(comando)
 
   end subroutine criar_dir
@@ -293,11 +300,14 @@ contains
 
     IMPLICIT NONE
     CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
-    CHARACTER(LEN=256)    :: dir_arquivo, num_arquivo
+    CHARACTER(LEN=256)    :: dir_arquivo 
+    CHARACTER(LEN=3)      :: num_arquivo
     LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
     REAL(pf)              :: G, t0, tf, timestep
     REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
-    INTEGER               :: u=14, i, arq_i
+    INTEGER               :: u, i, arq_i
+
+    WRITE(*,'(a)') 'SALVAR SORTEIO:'
 
     ! Verifica se o diretorio desejado existe
     inquire(file=onde//trim(subdir), exist=diretorio_existe)
@@ -316,6 +326,8 @@ contains
       END DO
       dir_arquivo = TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt"
     endif
+
+    WRITE(*,'(a)') '  > arquivo: ' // trim(dir_arquivo)
 
     ! Abre um arquivo
     OPEN(newunit=u,file=dir_arquivo)
@@ -359,6 +371,9 @@ contains
     end do
 
     CLOSE(u)
+
+    WRITE(*,'(a)') '  > arquivo salvo!'
+    WRITE(*,*)
 
   end subroutine salvar_sorteio
 end module arquivos

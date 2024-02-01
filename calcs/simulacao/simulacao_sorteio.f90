@@ -28,15 +28,13 @@ contains
     integer :: qntd_total_passos
     CHARACTER(9) :: datahoje
     CHARACTER(3) :: numero
-    CHARACTER(17) :: nome_arq
+    CHARACTER(16) :: nome_arq
     CHARACTER(13) :: nome_sorteio
     INTEGER :: i = 1
     LOGICAL :: arquivo_existe = .TRUE.
 
     ! Le o arquivo de configuracoes
     call configs % config(arquivo)
-
-    WRITE (*,*)
 
     call gerar_condicionado(configs%G, &
        configs%N, &
@@ -76,27 +74,23 @@ contains
       configs % corretor,   &
       configs % colisoes)
 
-    WRITE (*,*) "Preset salvo!"
-
-    WRITE (*,*)
-
     ! Se o instante inicial for negativo, entao vai rodar ao contrario
     if (configs%t0 < 0) then
       if (configs%tf == 0) then
         ! Roda apenas o passado
-        WRITE (*,*) "Intervalo [", configs%t0, ",", configs%tf, "]"
+        WRITE (*,*) " > Intervalo [", configs%t0, ",", configs%tf, "]"
         call rodar(-configs%timestep,massas,posicoes,momentos)
       else if (configs%tf > 0) then
         ! Roda o passado e o futuro
-        WRITE (*,*) "Intervalo [", configs%t0, ",", 0, "]"
+        WRITE (*,*) " > Intervalo [", configs%t0, ",", 0, "]"
         call rodar(-configs%timestep,massas,posicoes,momentos)
-        WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
+        WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
         call rodar(configs%timestep,massas,posicoes,momentos)
       end if
     ! Se for positivo, apenas roda normal
     else
       ! Roda apenas o futuro
-      WRITE (*,*) "Intervalo [", 0, ",", configs%tf, "]"
+      WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
       call rodar(configs%timestep,massas,posicoes,momentos)
     end if
 
@@ -109,10 +103,10 @@ contains
     INTEGER               :: qntd_total_passos
 
     qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
+    WRITE (*,*)
+
     ! timer
     t0 = omp_get_wtime()
-
-    WRITE (*,*) 'Rodando com ', qntd_total_passos, ' passos'
 
     SELECT CASE (configs%integrador)
       CASE ("verlet")
@@ -124,8 +118,8 @@ contains
     END SELECT
 
     tf = omp_get_wtime()
-    WRITE (*,*) '= Tempo ', configs%integrador, ': ', tf - t0
-    WRITE (*,*) '= Tempor por passo: ', (tf-t0) / qntd_total_passos
+    WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
+    WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
   end subroutine rodar
 
   subroutine sorteio_salvar (dir)
@@ -144,8 +138,6 @@ contains
 
     ! Le o arquivo de configuracoes
     call configs % config(dir)
-
-    WRITE (*,*)
 
     ! Gera os valores
     call gerar_condicionado(configs%G, &
@@ -170,8 +162,6 @@ contains
       inquire(file="./presets/auto_vi/"//nome_arq, exist=arquivo_existe)
     end do
 
-    print *, nome_arq
-
     ! Salva o preset gerado
     CALL salvar_sorteio('presets/','auto_vi/', nome_arq,  &
       "Sorteio_"//nome_sorteio, &
@@ -185,8 +175,6 @@ contains
       configs % integrador, &
       configs % corretor,   &
       configs % colisoes)
-
-    WRITE (*,*) "Preset salvo!"
   end subroutine sorteio_salvar
 
 end module

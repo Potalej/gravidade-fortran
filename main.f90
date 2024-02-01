@@ -65,13 +65,13 @@ contains
     WRITE (*,*) '   -h, --help'
     WRITE (*,*) '         Exibe a ajuda.'
     WRITE (*,*)
-    WRITE (*,*) '   -s, --sorteio' 
+    WRITE (*,*) '   (-s, --sorteio) [arquivo]' 
     WRITE (*,*) '         Utiliza um preset informado para gerar valores iniciais aleatorios'
     WRITE (*,*)
-    WRITE (*,*) '   -vi, --valores-iniciais' 
+    WRITE (*,*) '   (-vi, --valores-iniciais) [arquivo]' 
     WRITE (*,*) '         Utiliza os valores iniciais contidos em um arquivo informado para simular.'
     WRITE (*,*)
-    WRITE (*,*) '   -e, --exibir' 
+    WRITE (*,*) '   (-e, --exibir) [arquivo]' 
     WRITE (*,*) '         Gera um grafico com as trajetorias dos corpos no arquivo informado.'
     WRITE (*,*)
   end subroutine help

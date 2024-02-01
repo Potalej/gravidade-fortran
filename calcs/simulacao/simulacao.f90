@@ -118,14 +118,17 @@ contains
 
     real(pf) :: t0, tf, tempo_total = 0.0_pf
 
-    ! Instanciamento do integrador    
-    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
-
     ! Cria o arquivo onde sera salvo
     call Arq % criar(2, self % N, self % dim)
 
     ! Salva as infos de cabecalho
     call Arq % escrever_cabecalho(self % h, self % G, self % M)
+
+    ! Instanciamento do integrador
+    WRITE (*,'(a)') 'INTEGRACAO NUMERICA'
+    WRITE (*,*) ' > rodando com ', qntdPassos, ' passos'
+    WRITE (*, '(a)') '  > instanciando o metodo velocity-verlet'
+    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
     ! Condicoes iniciais
     R1 = self % R
@@ -134,6 +137,7 @@ contains
     call Arq % escrever((/R1, P1/))
 
     ! Roda
+    WRITE (*, '(a)') '  > iniciando simulacao...'
     do i = 1, qntdPassos
 
       ! timer
@@ -149,13 +153,13 @@ contains
       call Arq % escrever((/R1, P1/))
 
       if (mod(i, 500) == 0) then
-        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
-        WRITE (*,*) 'passo: ', i
+        WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1)
       end if
 
-    end do 
-
-    WRITE (*,*) "Tempo total:", tempo_total 
+    end do
+    
+    WRITE (*, '(a)') '  > simulacao encerrada!'
+    WRITE (*,*)
 
     call Arq % fechar()
 

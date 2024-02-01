@@ -84,7 +84,6 @@ contains
 
     ! Cria um nome para o diretorio a partir da data
     call nome_data('./plot/', novo_dir)
-    print *, 'Novo dir:',novo_dir
     path_comando = './plot/'//trim(novo_dir)//'/plot.txt'
     ! Cria o diretorio para os plots
     call criar_dir(novo_dir, './plot/')
@@ -94,11 +93,9 @@ contains
     ! Aloca o espaco para o nome do arquivo
     ALLOCATE(CHARACTER(24+7 + escala) :: data_dir)
     ! ALLOCATE(CHARACTER(escala) :: i_int)
-    print *, "N:", size(R,2)
     do i = 1, size(R,2) ! quantidade de corpos
       write(i_int,'(I4.4)') i      
       data_dir = './plot/'//TRIM(novo_dir) // '/corpo_' // TRIM(i_int) // '.txt'
-      WRITE(*,*) data_dir
       call write_xy_data(data_dir,size(R,1),R(:,i,absc), R(:,i,orde),ierror)
     end do
     call escrever_comando_GNU(path_comando, novo_dir, novo_dir)
