@@ -3,8 +3,7 @@ module simulacao
   use OMP_LIB
 
   ! Auxiliares
-  use hamiltoniano
-  use angular
+  use mecanica
   use auxiliares
   use arquivos
   ! Metodos de integracao numerica
@@ -94,7 +93,7 @@ contains
     self % E0 = energia_total(G, self % M, self % R, self % P)
 
     ! Salva o momento angular inicial
-    self % J0 = angular_geral(self % R, self % P)
+    self % J0 = momento_angular_total(self % R, self % P)
 
     ! Salva o centro de massas inicial
     self % Rcm = centro_massas(self % M, self % R)

@@ -2,13 +2,13 @@
 !! PLOT 
 !
 ! Objetivos:
-!   Este arquivo utiliza da biblioteca GNUFOR para plotar alguns
-!   graficos simples, tendo em vista confirmar visualmente os
-!   calculos e os scripts antes de tentar rodar simulacoes mais
-!   pesadas.
+!   Este arquivo utiliza da biblioteca MATPLOTLIB do Python para 
+!   plotar alguns graficos simples, tendo em vista confirmar 
+!   visualmente os calculos e os scripts antes de tentar rodar 
+!   simulacoes mais pesadas.
 ! 
 ! Modificado:
-!   19 de janeiro de 2023
+!   02 de fevereiro de 2024
 ! 
 ! Autoria:
 !   oap
@@ -17,35 +17,51 @@ module plot
   use, intrinsic :: iso_fortran_env, only: pf=>real64
 
   use arquivos
-  use OS
 contains    
 
   ! ************************************************************
-  !! plotar_xy
+  !! salvar_dados_xy
   !
   ! Objetivos:
-  !   Plotar graficos 2d, informados a dimensao dos arrays e os
-  !   valores dos eixos.
+  !   Salva valores X e Y em coluna em um arquivo .TXT
   !
   ! Modificado:
-  !   22 de janeiro de 2023
+  !   02 de fevereiro de 2024
   !
   ! Autoria:
   !   oap
   ! 
-  subroutine plotar_xy (dim,x,y)
+  subroutine salvar_dados_xy (arquivo,dim,x,y)
 
-    implicit none
-    INTEGER (kind=4) ierror
-    INTEGER  :: dim            
+    IMPLICIT NONE
+    CHARACTER (LEN=*) :: arquivo
+    INTEGER (kind=4) u
+    INTEGER (kind=4) ios
+    INTEGER (kind=4) i
+    INTEGER  :: dim
     REAL(pf) :: x(dim), y(dim)
 
-    ! TODO: Adicionar tratamento de erros com o ierror
-    call write_xy_data('data_temp.txt',size(x,1),x,y,ierror)
-    call write_xy_plot('comando_temp.txt','data_temp.txt',ierror)
-    call run_gnuplot('comando_temp.txt')
+    CALL capturar_unidade(u)
 
-  end subroutine plotar_xy
+    IF (u == 0) THEN
+      WRITE(*, '(a)') 'PLOTAR_XY - ERRO FATAL!'
+      WRITE(*, '(a)') '  Nao foi possivel encontrar uma unidade de FORTRAN vazia.'
+    END IF
+
+    OPEN( unit=u, file=arquivo, status='replace', iostat=ios )
+
+    IF (ios /= 0) THEN
+      WRITE(*, '(a)') 'PLOTAR_XY - ERRO FATAL!'
+      WRITE(*, '(a)') '  Nao foi possivel abrir o arquivo de saida.'
+    END IF
+
+    DO i=1, dim
+      WRITE(u, *) x(i), y(i)
+    END DO
+
+    CLOSE(unit=u)
+
+  end subroutine salvar_dados_xy
 
   ! ************************************************************
   !! plotar_trajetorias
@@ -64,8 +80,8 @@ contains
   ! 
   subroutine plotar_trajetorias (R, absc, orde)
 
-    implicit none
-    INTEGER :: absc, orde
+    IMPLICIT NONE
+    INTEGER                   :: absc, orde
     REAL(pf),INTENT(INOUT)    :: R(:,:,:)
     INTEGER                   :: i, escala
     INTEGER (kind=4) ierror
@@ -84,7 +100,6 @@ contains
 
     ! Cria um nome para o diretorio a partir da data
     call nome_data('./plot/', novo_dir)
-    path_comando = './plot/'//trim(novo_dir)//'/plot.txt'
     ! Cria o diretorio para os plots
     call criar_dir(novo_dir, './plot/')
 
@@ -92,14 +107,14 @@ contains
     escala = FLOOR(LOG10(FLOAT(size(R,2)))) + 1
     ! Aloca o espaco para o nome do arquivo
     ALLOCATE(CHARACTER(24+7 + escala) :: data_dir)
-    ! ALLOCATE(CHARACTER(escala) :: i_int)
     do i = 1, size(R,2) ! quantidade de corpos
-      write(i_int,'(I4.4)') i      
+      WRITE(i_int,'(I4.4)') i      
       data_dir = './plot/'//TRIM(novo_dir) // '/corpo_' // TRIM(i_int) // '.txt'
-      call write_xy_data(data_dir,size(R,1),R(:,i,absc), R(:,i,orde),ierror)
+      CALL salvar_dados_xy(data_dir, size(R,1), R(:,i,absc), R(:,i,orde))
     end do
-    call escrever_comando_GNU(path_comando, novo_dir, novo_dir)
-    call run_gnuplot(path_comando)
+    
+    ! Plota
+    CALL rodar_plot(novo_dir)
 
   end subroutine plotar_trajetorias
 
@@ -129,25 +144,5 @@ contains
     end do
 
   end subroutine nome_data
-  
-  subroutine escrever_comando_GNU (nome,titulo,dir)
-
-    IMPLICIT NONE
-    CHARACTER(LEN=*) :: nome, titulo, dir
-    CHARACTER(LEN=3) :: cmd_ls
-    INTEGER          :: u=13
-
-    CALL listdir(cmd_ls)
-    OPEN(u,file=nome,status="new")
-    WRITE(u,*) 'set title "' // trim(titulo) // '"'
-    WRITE(u,*) 'set xlabel "x"'
-    WRITE(u,*) 'set ylabel "y"'
-    WRITE(u,*) 'FILES = system("cd plot/'//trim(dir)//" && "//trim(cmd_ls)//' corpo_*.txt /B")'
-    WRITE(u,*) 'plot for [data in FILES] "plot/'//trim(dir)//'/".data u 1:2 w lines'
-    WRITE(u,*) 'pause -1'
-    WRITE(u,*) 'q'
-    CLOSE(U)
-
-  end subroutine escrever_comando_GNU
 
 end module plot

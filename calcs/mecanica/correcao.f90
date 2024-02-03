@@ -49,9 +49,8 @@
 
 module correcao
   use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use hamiltoniano
   use auxiliares
-  use angular
+  use mecanica
 
   implicit none
   external dgesv
@@ -127,7 +126,7 @@ contains
     Gx(1) = energia_total(G, massas, posicoes, momentos)
 
     ! momento angular
-    J = angular_geral(posicoes, momentos)
+    J = momento_angular_total(posicoes, momentos)
     Gx(2) = J(1)
     Gx(3) = J(2)
     Gx(4) = J(3)

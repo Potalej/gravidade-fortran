@@ -7,8 +7,6 @@
 module rkf45
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   use rungekutta
-  use hamiltoniano
-  use angular
   use correcao
   use colisao
   use integrador

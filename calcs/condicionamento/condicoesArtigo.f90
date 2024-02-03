@@ -32,8 +32,7 @@
 
 module condicoesArtigo
   use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use angular
-  use hamiltoniano
+  use mecanica
   use auxiliares
 
   implicit none
@@ -109,7 +108,7 @@ contains
     real(pf)                :: momentoAngular_total(3), vetorRotacao(3), tensorInercia(3,3)
 
     ! Calcula o momento angular total
-    momentoAngular_total = angular_geral (posicoes,momentos)
+    momentoAngular_total = momento_angular_total (posicoes,momentos)
 
     ! Calcular o tensor de inercia
     tensorInercia = tensor_inercia_geral(massas, posicoes)
@@ -230,7 +229,7 @@ contains
     WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 
     WRITE (*,*) '    * Rcm =', centro_massas(massas,posicoes) 
     WRITE (*,*) '    * P   =', momentoLinear_total(momentos) 
-    WRITE (*,*) '    * J   =', angular_geral(posicoes,momentos) 
+    WRITE (*,*) '    * J   =', momento_angular_total(posicoes,momentos) 
 
     WRITE (*,'(a)') '  > condicoes iniciais geradas!'
     WRITE (*,*)

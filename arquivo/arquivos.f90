@@ -32,15 +32,13 @@
 
 module arquivos
   use, intrinsic :: iso_fortran_env, only: pf=>real64
-  ! pacote de strings
-  use strings
 
   ! OPENMP
   use OMP_LIB
 
   implicit none
   private
-  public arquivo, ler_csv, criar_dir, salvar_sorteio
+  public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade
 
   ! classe de arquivo
   type :: arquivo
@@ -376,4 +374,87 @@ contains
     WRITE(*,*)
 
   end subroutine salvar_sorteio
+
+   ! para remover espacos vazios
+  function espacosVazios (valor)
+
+    implicit none
+    integer, intent(in)           :: valor
+    character(7)                  :: valor_str
+    character(:), allocatable     :: valor_str_parcial, espacosVazios
+    integer                       :: i = 1
+
+    ! transforma o valor em string
+    write(valor_str, '(I7)') valor
+
+    ! alinha a esquerda para facilitar
+    valor_str = adjustl(valor_str)
+
+    ! onde ficara salvo
+    valor_str_parcial = ""
+    
+    ! elimina os caracteres vazios
+    do while (.true.)
+      if (valor_str(i:i).eq." ") then
+        i = 1
+        exit
+      else
+        valor_str_parcial = valor_str_parcial // valor_str(i:i)
+        i = i + 1
+      end if     
+    end do
+
+    ! aloca a string para poder salvar
+    allocate( character(len_trim(valor_str_parcial)) :: espacosVazios)
+    ! enfim, salva
+    espacosVazios = trim(valor_str_parcial)
+
+  end function espacosVazios
+
+  !*****************************************************************************
+  !
+  !! Retorna uma unidade FORTRAN que esteja livre
+  !
+  !  Objetivos:
+  !
+  !    Uma unidade de FORTRAN "livre" eh um inteiro entre 1 e 99 que nao esta
+  !    associado a nenhum dispositivo I/O, e eh utilizado para abrir arquivos.
+  !    Se a unidade eh nula, entao nao ha nenhuma unidade FORTRAN livre.
+  !    
+  !    Os numeros 5, 6 e 9 sao reservados, entao nunca sao retornados.
+  !    
+  !    O codigo foi baseado na biblioteca GNUFOR de John Burkardt.
+  !
+  !  Modificado:
+  !
+  !    02 de fevereiro de 2024
+  !
+  !  Autoria:
+  !
+  !    oap
+  !
+  !  Parametros:
+  !
+  !    Output, integer ( kind = 4 ) IUNIT, o numero de unidade livre.
+  !
+  subroutine capturar_unidade ( iunit )
+    IMPLICIT NONE
+    INTEGER ( kind = 4 ) i
+    INTEGER ( kind = 4 ) ios
+    INTEGER ( kind = 4 ) iunit
+    LOGICAL lopen
+    iunit = 0
+    DO i = 1, 99
+      IF (i /= 5 .and. i /= 6 .and. i /= 9) THEN
+        INQUIRE ( unit = i, opened = lopen, iostat = ios )
+        IF ( ios == 0 ) THEN
+          IF ( .not. lopen ) THEN
+            iunit = i
+            RETURN
+          END IF
+        END IF
+      END IF
+    END DO
+    RETURN
+  end
 end module arquivos

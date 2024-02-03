@@ -3,8 +3,7 @@
 
 module analise
   use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use angular
-  use hamiltoniano
+  use mecanica
   use auxiliares
 
   implicit none
@@ -19,7 +18,7 @@ contains
     implicit none
     real(pf), intent(in) :: G, massas(:), posicoes(:,:), momentos(:,:)
 
-    WRITE (*,*) 'Momento angular total: ', angular_geral(posicoes, momentos)
+    WRITE (*,*) 'Momento angular total: ', momento_angular_total(posicoes, momentos)
     WRITE (*,*) 'Energia total: ', energia_total(G, massas, posicoes, momentos)
     WRITE (*,*) 'Centro de massas: ', centro_massas(massas, posicoes)
     WRITE (*,*) 'Momento linear total: ', momentoLinear_total(momentos)

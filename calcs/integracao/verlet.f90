@@ -9,7 +9,6 @@ module verlet
   use correcao
   use colisao
   use integrador
-  use hamiltoniano
 
   implicit none
   private
