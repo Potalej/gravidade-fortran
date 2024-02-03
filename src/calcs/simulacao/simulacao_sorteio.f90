@@ -57,11 +57,11 @@ contains
       nome_arq = nome_sorteio // ".txt"
 
       ! verifica se existe
-      inquire(file='presets/auto_vi/'//nome_arq, exist=arquivo_existe)
+      inquire(file='out/auto_vi/'//nome_arq, exist=arquivo_existe)
     end do
 
     ! Salva o preset gerado
-    CALL salvar_sorteio('presets/', 'auto_vi/', nome_arq,  &
+    CALL salvar_sorteio('out/', 'auto_vi/', nome_arq,  &
       "Sorteio_"//nome_sorteio, &
       configs % G,          &
       massas,               &
@@ -159,11 +159,11 @@ contains
       nome_arq = nome_sorteio // ".txt"
 
       ! verifica se existe
-      inquire(file="./presets/auto_vi/"//nome_arq, exist=arquivo_existe)
+      inquire(file="./out/auto_vi/"//nome_arq, exist=arquivo_existe)
     end do
 
     ! Salva o preset gerado
-    CALL salvar_sorteio('presets/','auto_vi/', nome_arq,  &
+    CALL salvar_sorteio('out/','auto_vi/', nome_arq,  &
       "Sorteio_"//nome_sorteio, &
       configs % G,          &
       massas,               &

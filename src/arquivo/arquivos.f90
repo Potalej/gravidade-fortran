@@ -50,7 +50,7 @@ module arquivos
   ! extensão
   character(4) :: extensao = '.csv'
   ! diretório padrão (fora da pasta build)
-  character(7) :: dir = "./data/"
+  character(11) :: dir = "./out/data/"
   
   contains
     procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho

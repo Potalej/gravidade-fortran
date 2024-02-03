@@ -22,13 +22,13 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -ffast-math -f
 add_executable(gravidade
   "main.f90"
 
-  "./calcs/simulacao/simulacao_sorteio.f90"
-  "./calcs/simulacao/simulacao_vi.f90"
-  "./calcs/simulacao/simulacao.f90"
+  "./src/calcs/simulacao/simulacao_sorteio.f90"
+  "./src/calcs/simulacao/simulacao_vi.f90"
+  "./src/calcs/simulacao/simulacao.f90"
 
-  "./arquivo/leitura.f90"
-  "./arquivo/arquivos.f90"
-  "./arquivo/plot.f90"
+  "./src/arquivo/leitura.f90"
+  "./src/arquivo/arquivos.f90"
+  "./src/arquivo/plot.f90"
 )
 
 # ----------------------------------------------------------------------------
@@ -43,10 +43,10 @@ find_package(OpenBLAS REQUIRED)
 
 # Mecanica
 add_library(mecanica 
-  "./calcs/mecanica.f90" 
-  "./calcs/auxiliares/auxiliares.f90" 
-  "./calcs/mecanica/correcao.f90" 
-  "./calcs/mecanica/colisao.f90" 
+  "./src/calcs/mecanica.f90" 
+  "./src/calcs/auxiliares/auxiliares.f90" 
+  "./src/calcs/mecanica/correcao.f90" 
+  "./src/calcs/mecanica/colisao.f90" 
 )
 target_link_libraries(mecanica
   ${OpenBLAS_LIB} # utilizada no corretor
@@ -54,7 +54,7 @@ target_link_libraries(mecanica
 
 # Condicionamento de valores iniciais
 add_library(condicionamento
-  "./calcs/condicionamento/condicoesArtigo.f90"  
+  "./src/calcs/condicionamento/condicoesArtigo.f90"  
 )
 target_link_libraries(condicionamento
   mecanica
@@ -62,11 +62,11 @@ target_link_libraries(condicionamento
 
 # Metodos de integracao
 add_library(integracao 
-  "./calcs/integracao/integrador.f90" 
-  "./calcs/integracao/verlet.f90" 
-  "./calcs/integracao/rungekutta.f90" 
-  "./calcs/integracao/rungekutta4.f90" 
-  "./calcs/integracao/rkf45.f90" 
+  "./src/calcs/integracao/integrador.f90" 
+  "./src/calcs/integracao/verlet.f90" 
+  "./src/calcs/integracao/rungekutta.f90" 
+  "./src/calcs/integracao/rungekutta4.f90" 
+  "./src/calcs/integracao/rkf45.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes
@@ -76,10 +76,10 @@ target_link_libraries(integracao
 # Alguns recursos dependem do sistema operacional, entao precisam ser
 # filtrados antes da inclusao no programa.
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  add_library(os "./os/linux.f90")
+  add_library(os "./src/os/linux.f90")
 
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  add_library(os "./os/windows.f90")
+  add_library(os "./src/os/windows.f90")
 endif()
 
 # ----------------------------------------------------------------------------
@@ -112,7 +112,7 @@ IF(PYTHON)
   ENDIF()
 
   add_library(python_lib 
-    "./libs/python.f90"
+    "./src/libs/python.f90"
   )
   message(STATUS "Python localizado.")
 ELSE()

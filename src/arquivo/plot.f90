@@ -85,7 +85,7 @@ contains
     REAL(pf),INTENT(INOUT)    :: R(:,:,:)
     INTEGER                   :: i, escala
     INTEGER (kind=4) ierror
-    CHARACTER                 :: dir = 'data_temp_'
+    CHARACTER(11)              :: dir = './out/plot/'
     CHARACTER(19)             :: novo_dir
     CHARACTER(28)             :: path_comando
     CHARACTER(4)              :: i_int
@@ -93,23 +93,24 @@ contains
     LOGICAL                   :: existe=.true.
 
     ! Verifica se o diretorio de plots existe, senao cria
-    inquire(file='./plot',exist=existe)
+    inquire(file=dir,exist=existe)
     if (.not. existe) then
-      call criar_dir('plot')
+      call criar_dir('plot','out')
     end if
 
     ! Cria um nome para o diretorio a partir da data
-    call nome_data('./plot/', novo_dir)
+    call nome_data(dir, novo_dir)
     ! Cria o diretorio para os plots
-    call criar_dir(novo_dir, './plot/')
+    call criar_dir(novo_dir,dir)
 
     ! Captura a escala da quantidade de corpos (10**x)
     escala = FLOOR(LOG10(FLOAT(size(R,2)))) + 1
     ! Aloca o espaco para o nome do arquivo
-    ALLOCATE(CHARACTER(24+7 + escala) :: data_dir)
+    ALLOCATE(CHARACTER(41 + escala) :: data_dir)
     do i = 1, size(R,2) ! quantidade de corpos
       WRITE(i_int,'(I4.4)') i      
-      data_dir = './plot/'//TRIM(novo_dir) // '/corpo_' // TRIM(i_int) // '.txt'
+      data_dir = dir//TRIM(novo_dir) // '/corpo_' // TRIM(i_int) // '.txt'
+      WRITE(*,*) data_dir
       CALL salvar_dados_xy(data_dir, size(R,1), R(:,i,absc), R(:,i,orde))
     end do
     

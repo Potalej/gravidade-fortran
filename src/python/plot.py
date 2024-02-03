@@ -4,7 +4,7 @@ from sys import argv
 from os import listdir
 
 diretorio = argv[1] # Diretorio passado como parametro
-diretorio_completo = f'./plot/{diretorio}'
+diretorio_completo = f'out/plot/{diretorio}'
 arquivos_corpos = listdir(diretorio_completo) # Captura os arquivos no diretorio
 
 for arquivo in arquivos_corpos:
