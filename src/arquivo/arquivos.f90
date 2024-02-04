@@ -38,7 +38,7 @@ module arquivos
 
   implicit none
   private
-  public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade
+  public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
 
   ! classe de arquivo
   type :: arquivo
@@ -53,11 +53,44 @@ module arquivos
   character(11) :: dir = "./out/data/"
   
   contains
-    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho
-
+    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
+                 diretorio_data
   end type
 
 contains
+
+  subroutine diretorio_out ()
+    implicit none
+    logical :: existe = .true.
+    ! verifica se existe o diretorio out
+    inquire(file="./out", exist=existe)
+    if (.NOT. existe) then
+      call criar_dir("./out")
+    endif
+  end subroutine diretorio_out
+
+  subroutine diretorio_data (self)
+    implicit none
+    class(arquivo), intent(inout) :: self
+    logical :: existe = .true.
+    call diretorio_out()
+    ! verifica se existe o diretorio padrao
+    inquire(file=trim(self % dir), exist=existe)
+    if (.NOT. existe) then
+      call criar_dir(trim(self % dir))
+    endif
+  end subroutine diretorio_data
+
+  subroutine diretorio_data (self)
+    implicit none
+    class(arquivo), intent(inout) :: self
+    logical :: existe = .true.
+    ! verifica se existe o diretorio padrao
+    inquire(file=trim(self % dir), exist=existe)
+    if (.NOT. existe) then
+      call criar_dir(trim(self % dir))
+    endif
+  end subroutine diretorio_data
 
   ! para criacao do nome do arquivo
   subroutine nomeArquivo (self)
@@ -74,10 +107,7 @@ contains
     character(8) :: datahoje
 
     ! verifica se existe o diretorio padrao
-    inquire(file=trim(self % dir), exist=existe)
-    if (.NOT. existe) then
-      call criar_dir(trim(self % dir))
-    endif
+    call diretorio_data()
 
     ! Por padrao, existe
     existe = .true.

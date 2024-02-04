@@ -93,6 +93,7 @@ contains
     LOGICAL                   :: existe=.true.
 
     ! Verifica se o diretorio de plots existe, senao cria
+    call diretorio_out()
     inquire(file=dir,exist=existe)
     if (.not. existe) then
       call criar_dir('plot','out')

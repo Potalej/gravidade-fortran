@@ -49,6 +49,8 @@ contains
     ! Gera o nome
     call date_and_time(datahoje)
 
+    call diretorio_out()
+
     do while (arquivo_existe)
       write(numero, '(I3.3)') i
       i = i + 1
