@@ -35,9 +35,7 @@ module condicoesArtigo
   use mecanica
   use auxiliares
 
-  implicit none
-  private
-  public condicionar, zerar_momentoAngular, zerar_energiaTotal, zerar_centroMassas, zerar_momentoLinear, gerar_condicionado
+  IMPLICIT NONE
 
 contains
 
@@ -124,29 +122,32 @@ contains
 
   end subroutine zerar_momentoAngular
 
-  ! Zerando a energia total
-  subroutine zerar_energiaTotal (G, massas, posicoes, momentos)
+  ! Condicionando a energia total
+  subroutine condicionar_energiaTotal (H, G, massas, posicoes, momentos)
+    ! Outra forma de H>0 seria somente aplicar o fator ((H-EP)/EC)**0.5
 
     implicit none
-    real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
-    real(pf)               :: EP, EC, fator, H2
+    real(pf), intent(inout) :: H, G, posicoes(:,:), momentos(:,:), massas(:)
+    real(pf)                :: EP, EC, fator
 
     ! Calcula as energias
     EP = energia_potencial(G, massas, posicoes)
     EC = energia_cinetica(massas, momentos)
 
-    ! Calcula o fator
+    ! Calcula o fator para zerar
     fator = (-EP/EC)**0.5
-
+      
     ! Aplica sobre os momentos
     momentos = fator * momentos
 
-    ! Se quiser gerar com energia negativa faz uma homotetia
-    ! H2 = -60.0_pf
-    ! fator = EP / (EP + H2)
-    ! posicoes = fator * posicoes
+    ! Se nao for zero, aplica homotetia nas posicoes
+    IF (H .NE. 0) THEN
+      fator = 1/(H/EP + 1)
+      PRINT *, fator
+      posicoes = fator * posicoes
+    END IF
 
-  end subroutine zerar_energiaTotal
+  end subroutine condicionar_energiaTotal
 
   ! Zerando o centro de massas
   subroutine zerar_centroMassas (massas, posicoes)
@@ -181,10 +182,11 @@ contains
   end subroutine
 
   ! Condiciona vetores ja existentes
-  subroutine condicionar (G, massas, posicoes, momentos)
+  subroutine condicionar (G, massas, posicoes, momentos, H)
     
     implicit none
     real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
+    REAL(pf) :: H
 
     ! Zera o centro de massas
     call zerar_centroMassas(massas, posicoes)
@@ -196,20 +198,17 @@ contains
     call zerar_momentoAngular(massas, posicoes, momentos)
 
     ! Zera a energia total
-    call zerar_energiaTotal(G, massas, posicoes, momentos)
-
-    ! Zera novamente o momento angular 
-    call zerar_momentoAngular(massas, posicoes, momentos)
+    call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
     
   end subroutine condicionar
 
   ! Gerar valores aleatorios condicionados
-  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H)
 
     implicit none
     integer, intent(in)     :: N
     real(pf), dimension(2), intent(in) :: int_posicoes, int_momentos, int_massas
-    real(pf), intent(inout) :: G
+    real(pf), intent(inout) :: G, H
     real(pf), intent(inout), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
 
     WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS"
@@ -223,7 +222,7 @@ contains
 
     ! Condiciona
     WRITE (*,'(a)') '  > condicionando...'
-    call condicionar(G, massas, posicoes, momentos)
+    call condicionar(G, massas, posicoes, momentos, H)
 
     ! Exibe as integrais primeiras do sistema
     WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 

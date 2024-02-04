@@ -37,6 +37,10 @@ add_executable(gravidade
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(OpenBLAS REQUIRED)
 
+IF (NOT OpenBLAS_LIB)
+  message(FATAL_ERROR "OpenBLAS nao encontrado!!!")
+ENDIF()
+
 # ----------------------------------------------------------------------------
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
@@ -58,6 +62,7 @@ add_library(condicionamento
 )
 target_link_libraries(condicionamento
   mecanica
+  ${OpenBLAS_LIB}
 )
 
 # Metodos de integracao

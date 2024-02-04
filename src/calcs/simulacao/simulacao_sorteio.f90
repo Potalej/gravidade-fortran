@@ -43,7 +43,8 @@ contains
        momentos,  &
        configs%int_posicoes, & ! Intervalo de posicoes
        configs%int_momentos, & ! Intervalo de momentos
-       configs%int_massas)     ! Intervalo de massas
+       configs%int_massas,   & ! Intervalo de massas 
+       configs%Etot)     ! Energia total
 
     ! Gera o nome
     call date_and_time(datahoje)
@@ -147,7 +148,8 @@ contains
        momentos,  &
        configs%int_posicoes, & ! Intervalo de posicoes
        configs%int_momentos, & ! Intervalo de momentos
-       configs%int_massas)     ! Intervalo de massas
+       configs%int_massas,   & ! Intervalo de massas 
+       configs%Etot)     ! Energia total
 
     ! Gera o nome
     do while (arquivo_existe)

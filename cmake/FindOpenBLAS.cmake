@@ -1,16 +1,28 @@
 SET(Open_BLAS_INCLUDE_SEARCH_PATHS
+    # Linux
     /usr/include
     /usr/include/openblas
     /usr/include/openblas-base
     /usr/local/include
     /usr/local/include/openblas
     /opt/OpenBLAS/include
-    C:/users/Public/fortran-modules/openblas/include
+    # MinGW (padrao)
+    C:/MinGW/include
+    C:/MinGW/include/openblas
+    # MSYS2 (padrao)
+    C:/msys64/usr/include
+    C:/msys64/usr/include/openblas
+    # MSYS2 + MINGW64 (padrao)
+    C:/msys64/mingw64/usr/include
+    C:/msys64/mingw64/usr/include/openblas
+    
+    # Ambiente (PATH)
     $ENV{OpenBLAS_HOME}
     $ENV{OpenBLAS_HOME}/include
 )
 
 SET(Open_BLAS_LIB_SEARCH_PATHS
+    # Linux
     /lib/
     /lib/openblas-base
     /lib64/
@@ -20,7 +32,17 @@ SET(Open_BLAS_LIB_SEARCH_PATHS
     /usr/local/lib
     /usr/local/lib64
     /opt/OpenBLAS/lib
-    C:/users/Public/fortran-modules/openblas/lib
+    # MinGW (padrao)
+    C:/MinGW/lib
+    C:/MinGW/lib/openblas
+    # MSYS2 (padrao)
+    C:/msys64/usr/lib
+    C:/msys64/usr/lib/openblas
+    # MSYS2 + MINGW64 (padrao)
+    C:/msys64/mingw64/usr/lib
+    C:/msys64/mingw64/usr/lib/openblas
+
+    # Ambiente (PATH)
     $ENV{OpenBLAS}cd
     $ENV{OpenBLAS}/lib
     $ENV{OpenBLAS_HOME}

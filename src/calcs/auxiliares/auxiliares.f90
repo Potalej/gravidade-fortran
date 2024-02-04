@@ -33,6 +33,7 @@
 module auxiliares
   use, intrinsic :: iso_fortran_env, only: pf=>real64
   implicit none
+  external dgesv
   private
   public produto_vetorial, tensor_inercia_geral, sistema_linear3, centro_massas, momentoLinear_total
 
@@ -101,26 +102,23 @@ contains
 
   end function tensor_inercia_geral
 
-  ! resolve um sistema de 3 equacoes lineares usando o metodo de Cramer
+  ! resolve um sistema de 3 equacoes lineares usando o dgesv
   function sistema_linear3 (A, b)
 
-    implicit none
-    real(pf), dimension(3,3), intent(inout) :: A
-    real(pf), dimension(3), intent(in)   :: b
-    real(pf), dimension(3)               :: sistema_linear3
-    real(pf)                             :: detA, c=10**3
+    IMPLICIT NONE
+    REAL(pf) :: A(3,3), b(3)
+    REAL(pf) :: sistema_linear3(3)
+    INTEGER  :: PIVOS(3), INFO
 
-    A = A*(1/c)
+    CALL dgesv(3,1,A,3,PIVOS,b,3,INFO)
 
-    ! calcula a determinante de A
-    detA = determinante(A) * (c**3)
-    A = A*c
-
-    ! aplica o metodo
-    sistema_linear3(1) = determinante((/b, A(2,:), A(3,:)/))/detA
-    sistema_linear3(2) = determinante((/A(1,:), b , A(3,:)/))/detA
-    sistema_linear3(3) = determinante((/A(1,:), A(2,:), b/))/detA
-
+    IF (INFO == 0) THEN
+      sistema_linear3 = b
+    ELSE IF (INFO < 0) THEN
+      WRITE (*, '(a)') 'O ', -INFO, '-ÉSIMO PARAMETRO TEM UM VALOR ILEGAL'
+    ELSE
+      WRITE (*, '(a)') 'MATRIZ SINGULAR! SEM SOLUCAO'
+    END IF
   end function
 
   ! centro de massas
@@ -147,7 +145,7 @@ contains
     real(pf), intent(in)   :: momentos(:,:)
     real(pf), dimension(3) :: momentoLinear_total
     integer            :: a
-
+    momentoLinear_total = 0.0_pf
     do a = 1, size(momentos,1)
       momentoLinear_total = momentoLinear_total + momentos(a,:)
     end do
