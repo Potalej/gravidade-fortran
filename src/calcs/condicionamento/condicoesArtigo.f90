@@ -97,13 +97,13 @@ contains
 
   end subroutine gerarValores
 
-  ! Zerando o momento angular
-  subroutine zerar_momentoAngular (massas, posicoes, momentos)
+  ! Condicionando o momento angular
+  subroutine condicionar_momentoAngular (J, massas, posicoes, momentos)
     
     implicit none
     real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), massas(:)
     integer                 :: a
-    real(pf)                :: momentoAngular_total(3), vetorRotacao(3), tensorInercia(3,3)
+    real(pf)                :: momentoAngular_total(3), vetorRotacao(3), tensorInercia(3,3), J(3)
 
     ! Calcula o momento angular total
     momentoAngular_total = momento_angular_total (posicoes,momentos)
@@ -112,7 +112,7 @@ contains
     tensorInercia = tensor_inercia_geral(massas, posicoes)
 
     ! Calcula o vetor de rotacao (resolve sistema linear)
-    vetorRotacao = sistema_linear3 (tensorInercia, - momentoAngular_total)
+    vetorRotacao = sistema_linear3 (tensorInercia, - momentoAngular_total + J)
 
     ! Percorre os corpos
     do a = 1, size(posicoes,1)
@@ -120,7 +120,7 @@ contains
       momentos(a,:) = momentos(a,:) + massas(a) * produto_vetorial(posicoes(a,:), vetorRotacao)
     end do
 
-  end subroutine zerar_momentoAngular
+  end subroutine condicionar_momentoAngular
 
   ! Condicionando a energia total
   subroutine condicionar_energiaTotal (H, G, massas, posicoes, momentos)
@@ -164,51 +164,79 @@ contains
 
   end subroutine zerar_centroMassas
 
-  ! Zerando o momento linear total
-  subroutine zerar_momentoLinear (massas, momentos)
+  ! Condicionando o momento linear total
+  subroutine condicionar_momentoLinear (P, massas, momentos)
 
     implicit none
     real(pf), intent(inout) :: massas(:), momentos(:,:)
+    real(pf)                :: P(3)
     real(pf), dimension(3)  :: pcm ! analogo ao rcm
     integer                 :: a
 
     ! Usa o mesmo metodo porque a ideia eh exatamente igual
-    pcm = momentoLinear_total(momentos) / sum(massas)
+    pcm = (momentoLinear_total(momentos) - P)/ sum(massas)
     ! Substitui
     do a = 1, size(massas)
       momentos(a,:) = momentos(a,:) - massas(a)*pcm
     end do
 
-  end subroutine
+  end subroutine condicionar_momentoLinear
 
   ! Condiciona vetores ja existentes
-  subroutine condicionar (G, massas, posicoes, momentos, H)
+  subroutine condicionar (G, massas, posicoes, momentos, H, J, P)
     
     implicit none
     real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
-    REAL(pf) :: H
+    REAL(pf) :: H, J(3), P(3)
 
     ! Zera o centro de massas
     call zerar_centroMassas(massas, posicoes)
-    
-    ! Zera o momento linear
-    call zerar_momentoLinear(massas, momentos)
+        
+    ! O momento angular e a energia total sao os mais sensiveis
+    ! Por isso, o processo eh repetido tres vezes
+    ! O momento linear eh afetado pelo momento angular, entao precisa
+    ! ser repetido tambem
 
-    ! Zera o momento angular
-    call zerar_momentoAngular(massas, posicoes, momentos)
+    ! Condiciona o momento linear
+    call condicionar_momentoLinear(P, massas, momentos)
 
-    ! Zera a energia total
+    ! Condiciona o momento angular
+    call condicionar_momentoAngular(J, massas, posicoes, momentos)
+
+    ! Condiciona a energia total
+    call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
+
+    !
+
+    ! Condiciona o momento linear
+    call condicionar_momentoLinear(P, massas, momentos)
+
+    ! Condiciona o momento angular
+    call condicionar_momentoAngular(J, massas, posicoes, momentos)
+
+    ! Condiciona a energia total
+    call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
+
+    !
+
+    ! Condiciona o momento linear
+    call condicionar_momentoLinear(P, massas, momentos)
+
+    ! Condiciona o momento angular
+    call condicionar_momentoAngular(J, massas, posicoes, momentos)
+
+    ! Condiciona a energia total
     call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
     
   end subroutine condicionar
 
   ! Gerar valores aleatorios condicionados
-  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H)
+  subroutine gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H, J, P)
 
     implicit none
     integer, intent(in)     :: N
     real(pf), dimension(2), intent(in) :: int_posicoes, int_momentos, int_massas
-    real(pf), intent(inout) :: G, H
+    real(pf), intent(inout) :: G, H, J(3), P(3)
     real(pf), intent(inout), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
 
     WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS"
@@ -222,7 +250,7 @@ contains
 
     ! Condiciona
     WRITE (*,'(a)') '  > condicionando...'
-    call condicionar(G, massas, posicoes, momentos, H)
+    call condicionar(G, massas, posicoes, momentos, H, J, P)
 
     ! Exibe as integrais primeiras do sistema
     WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 

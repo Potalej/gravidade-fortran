@@ -44,10 +44,14 @@ contains
        configs%int_posicoes, & ! Intervalo de posicoes
        configs%int_momentos, & ! Intervalo de momentos
        configs%int_massas,   & ! Intervalo de massas 
-       configs%Etot)     ! Energia total
+       configs%Etot,         & ! Energia total
+       configs%Jtot,         & ! Momento angular total
+       configs%Ptot )          ! Momento angular total
 
     ! Gera o nome
     call date_and_time(datahoje)
+
+    call diretorio_out()
 
     do while (arquivo_existe)
       write(numero, '(I3.3)') i
@@ -149,7 +153,9 @@ contains
        configs%int_posicoes, & ! Intervalo de posicoes
        configs%int_momentos, & ! Intervalo de momentos
        configs%int_massas,   & ! Intervalo de massas 
-       configs%Etot)     ! Energia total
+       configs%Etot,         & ! Energia total
+       configs%Jtot,         & ! Momento angular total
+       configs%Ptot )          ! Momento angular total
 
     ! Gera o nome
     do while (arquivo_existe)

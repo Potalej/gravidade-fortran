@@ -64,7 +64,6 @@ contains
     READ(2,*) atributo, self % Etot
     READ(2,*) atributo, self % Jtot
     READ(2,*) atributo, self % Ptot
-    READ(2,*) atributo, self % Rcm
 
     READ(2,*) ! Espaco
     READ(2,*) ! Comentario
