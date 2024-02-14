@@ -143,7 +143,6 @@ contains
     ! Se nao for zero, aplica homotetia nas posicoes
     IF (H .NE. 0) THEN
       fator = 1/(H/EP + 1)
-      PRINT *, fator
       posicoes = fator * posicoes
     END IF
 
@@ -188,46 +187,51 @@ contains
     implicit none
     real(pf), intent(inout) :: G, posicoes(:,:), momentos(:,:), massas(:)
     REAL(pf) :: H, J(3), P(3)
+    REAL(pf) :: erro_0, erro_1, ENERGIA, LINEAR(3), ANGULAR(3) ! Para medir a taxa de erro
+    INTEGER :: i = 0
 
     ! Zera o centro de massas
     call zerar_centroMassas(massas, posicoes)
         
-    ! O momento angular e a energia total sao os mais sensiveis
-    ! Por isso, o processo eh repetido tres vezes
-    ! O momento linear eh afetado pelo momento angular, entao precisa
-    ! ser repetido tambem
-
     ! Condiciona o momento linear
     call condicionar_momentoLinear(P, massas, momentos)
 
     ! Condiciona o momento angular
     call condicionar_momentoAngular(J, massas, posicoes, momentos)
 
-    ! Condiciona a energia total
+    ! ! Condiciona a energia total
     call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
 
-    !
+    ! Calculo dos erros
+    ENERGIA = energia_total(G,massas,posicoes,momentos) - H
+    LINEAR = momentoLinear_total(momentos) - P
+    ANGULAR = momento_angular_total(posicoes,momentos) - J
+    erro_1 = NORM2((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
 
-    ! Condiciona o momento linear
-    call condicionar_momentoLinear(P, massas, momentos)
+    IF (erro_1 >= 0.0005) THEN
+      erro_0 = 10.0
+      
+      DO WHILE (ABS(erro_0 - erro_1) >= 0.0005 .AND. i <= 10)
+        i = i + 1
+        erro_0 = erro_1
 
-    ! Condiciona o momento angular
-    call condicionar_momentoAngular(J, massas, posicoes, momentos)
+        ! Condiciona o momento linear
+        call condicionar_momentoLinear(P, massas, momentos)
 
-    ! Condiciona a energia total
-    call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
+        ! Condiciona o momento angular
+        call condicionar_momentoAngular(J, massas, posicoes, momentos)
 
-    !
+        ! ! Condiciona a energia total
+        call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
 
-    ! Condiciona o momento linear
-    call condicionar_momentoLinear(P, massas, momentos)
-
-    ! Condiciona o momento angular
-    call condicionar_momentoAngular(J, massas, posicoes, momentos)
-
-    ! Condiciona a energia total
-    call condicionar_energiaTotal(H, G, massas, posicoes, momentos)
-    
+        ! Calculo dos erros
+        ENERGIA = energia_total(G,massas,posicoes,momentos) - H
+        LINEAR = momentoLinear_total(momentos) - P
+        ANGULAR = momento_angular_total(posicoes,momentos) - J
+        erro_1 = NORM2((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
+      END DO
+    END IF
+    WRITE (*,*) ' > condicionamento aplicado ', i, ' vezes para obter o erro ', erro_1
   end subroutine condicionar
 
   ! Gerar valores aleatorios condicionados

@@ -39,7 +39,6 @@ module arquivos
   implicit none
   private
   public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
-  public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
 
   ! classe de arquivo
   type :: arquivo
@@ -54,8 +53,6 @@ module arquivos
   character(11) :: dir = "./out/data/"
   
   contains
-    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
-                 diretorio_data
     procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
                  diretorio_data
   end type

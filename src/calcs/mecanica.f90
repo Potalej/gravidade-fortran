@@ -85,7 +85,7 @@ FUNCTION energia_cinetica (m, P)
   INTEGER  :: i
   energia_cinetica=0.0_pf
   DO i=1, SIZE(m)
-    energia_cinetica = energia_cinetica + NORM2(P(i,:)**2/(2*m(i)))
+    energia_cinetica = energia_cinetica + NORM2(P(i,:))**2/(2*m(i))
   END DO
 END FUNCTION energia_cinetica
 
