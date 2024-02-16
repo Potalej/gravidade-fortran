@@ -158,7 +158,7 @@ contains
       FSomas_ant = resultado(3,:,:)
 
       if (self%corrigir) then
-        call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
+        call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
       end if
 
     end do

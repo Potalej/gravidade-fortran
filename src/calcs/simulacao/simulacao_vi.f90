@@ -62,8 +62,8 @@ contains
 
     SELECT CASE (configs%integrador)
       CASE ("verlet")
-        Sim_verlet % corrigir = .FALSE.
-        Sim_verlet % colidir  = .FALSE.
+        Sim_verlet % corrigir = configs%corretor
+        Sim_verlet % colidir  = configs%colisoes
         call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos)
         call Sim_verlet%rodar_verlet(qntd_total_passos)
       ! Adicionar outros casos posteriormente

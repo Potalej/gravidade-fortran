@@ -208,10 +208,10 @@ contains
     ANGULAR = momento_angular_total(posicoes,momentos) - J
     erro_1 = NORM2((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
 
-    IF (erro_1 >= 0.0005) THEN
-      erro_0 = 10.0
+    IF (erro_1 >= 0.00005) THEN
+      erro_0 = ABS(erro_1) + 1.0 ! Para entrar no loop abaixo
       
-      DO WHILE (ABS(erro_0 - erro_1) >= 0.0005 .AND. i <= 10)
+      DO WHILE (ABS(erro_0 - erro_1) >= 0.00005 .AND. i <= 10)
         i = i + 1
         erro_0 = erro_1
 

@@ -60,7 +60,7 @@ module correcao
 contains
 
   ! aplica a correcao
-  subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu)
+  subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
     implicit none
     real(pf), intent(in) :: G, massas(:)
     real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
@@ -68,6 +68,7 @@ contains
     integer :: pivos(4)
     real(pf) :: JJt(4, 4), vetG(4), minimo_lagrange
     logical, intent(inout) :: corrigiu
+    REAL(pf) :: H, J(3)
 
     N = size(massas)
     
@@ -75,12 +76,13 @@ contains
     JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
 
     ! vetor G
-    vetG = Gx(G, massas, posicoes, momentos, N)
+    vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
 
     ! resolve o sistema
     call dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
 
-    if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) then
+    ! if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) then
+    if (INFO == 0) then
       ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
       ! multiplicadores de Lagrange precisam ser nao negativos
       ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,

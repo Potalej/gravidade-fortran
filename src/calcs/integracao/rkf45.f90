@@ -165,7 +165,7 @@ contains
       P1 = resultado(2,:,:)
 
       ! aplica a correcao geral
-      call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
+      call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
 
       if (.NOT. corrigiu) then
         call verificar_e_colidir (self % m, R1, P1)
