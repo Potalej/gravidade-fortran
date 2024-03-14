@@ -47,6 +47,10 @@ program main
     CASE ('-e', '--exibir')
       CALL rodar_exibir(arq)
 
+    ! Para visualizar informacoes
+    CASE ('-d', '--dados')
+      CALL rodar_dados(arq)
+
     ! Default
     CASE default
       WRITE (*,*) 'Entrada vazia!!'
@@ -102,5 +106,18 @@ contains
     call plotar_trajetorias(R,1,2)
 
   end subroutine rodar_exibir
+
+  subroutine rodar_dados (dir)
+    IMPLICIT NONE
+    CHARACTER(len=*) :: dir
+    real(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
+    real(pf) :: G, h
+
+    ! Abre o arquivo salvo para leitura
+    call ler_csv(dir, h, G, massas, R, P)
+    
+    ! Exibe as trajetorias
+    call plotar_trajetorias(R,1,2)
+  end subroutine
 
 end program

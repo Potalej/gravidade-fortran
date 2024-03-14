@@ -115,12 +115,12 @@ contains
   end function metodo
 
   ! Aplicacao do metodo (para aplicar varias vezes)
-  subroutine aplicarNVezes (self, R, P, passos, E0, J0)
+  subroutine aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
 
     implicit none
     class (integracao_verlet), intent(inout) :: self
     real(pf), dimension(self%N, self%dim), intent(inout) :: R, P
-    integer, intent(in) :: passos
+    integer, intent(in) :: passos_antes_salvar
     real(pf), intent(in) :: E0
     real(pf), dimension(3), intent(in) :: J0
     ! Para cada passo
@@ -141,7 +141,7 @@ contains
     FSomas_ant = self%forcas(R)
 
     ! Integrando
-    do i = 1, passos
+    do i = 1, passos_antes_salvar
       ! Aplica o metodo
       resultado = self % metodo(R1, P1, FSomas_ant)
 
@@ -149,9 +149,6 @@ contains
       if (self % colidir .AND. .NOT. corrigiu) then
         call verificar_e_colidir(self % m, R1, P1)
       end if
-
-      ! Et_aprox = energia_total_aproximada(1, self%h, self%G, self%m, R1, P1, resultado(1,:,:), resultado(2,:,:))
-      ! WRITE (*,*) 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)  
 
       R1 = resultado(1,:,:)
       P1 = resultado(2,:,:)
@@ -162,12 +159,6 @@ contains
       end if
 
     end do
-
-    ! Et_aprox = energia_total_aproximada(passos, self%h, self%G, self%m, R, P, R1, P1)
-    ! WRITE (*,*) 'Energia aprox: ', Et_aprox, ' | E = ', energia_total(self%G, self%m, R1, P1)
-    ! if (ABS(Et_aprox) > 0.0001_pf) then
-    !   call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu)
-    ! end if
 
     R = R1
     P = P1

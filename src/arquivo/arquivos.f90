@@ -313,7 +313,7 @@ contains
   end subroutine criar_dir
 
   ! Escreve um preset sorteado como um preset de valores iniciais
-  subroutine salvar_sorteio (onde, subdir, arquivo, nome, G, massas, R, P, t0, tf, timestep, metodo, corretor, colisoes)
+  subroutine salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,metodo,corretor,colisoes,passos_antes_salvar)
 
     IMPLICIT NONE
     CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
@@ -322,6 +322,7 @@ contains
     LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
     REAL(pf)              :: G, t0, tf, timestep
     REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
+    INTEGER               :: passos_antes_salvar
     INTEGER               :: u, i, arq_i
 
     WRITE(*,'(a)') 'SALVAR SORTEIO:'
@@ -354,7 +355,7 @@ contains
     WRITE(u,'(*(g0,1x))') "nome ", nome
     WRITE(u,'(*(g0,1x))') "integrador ", metodo
     WRITE(u,'(*(g0,1x))') "timestep ", timestep
-    WRITE(u,'(*(g0,1x))') "passos ", floor((tf-t0)/timestep)
+    WRITE(u,'(*(g0,1x))') "passos_antes_salvar ", passos_antes_salvar
     WRITE(u,'(*(g0,1x))') "t0 ", t0
     WRITE(u,'(*(g0,1x))') "tf ", tf
     WRITE(u,'(*(g0,1x))') "corretor ", corretor

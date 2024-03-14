@@ -71,7 +71,6 @@ add_library(integracao
   "./src/calcs/integracao/verlet.f90" 
   "./src/calcs/integracao/rungekutta.f90" 
   "./src/calcs/integracao/rungekutta4.f90" 
-  "./src/calcs/integracao/rkf45.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes

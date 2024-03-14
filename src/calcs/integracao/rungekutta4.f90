@@ -96,14 +96,13 @@ contains
 
   end function metodo
 
-
   ! Aplicador do metodo com correcao (para aplicar varias vezes)
-  subroutine aplicarNVezes (self, R, P, passos, E0, J0)
+  subroutine aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
 
     implicit none
     class (integracao_rk4), intent(inout)                    :: self
     real(pf), dimension(self % N, self % dim), intent(inout) :: R, P
-    integer, intent(in)                               :: passos
+    integer, intent(in)                                   :: passos_antes_salvar
     real(pf), intent(in)                                  :: E0
     real(pf), dimension(3), intent(in)                    :: J0
     ! para cada passo
@@ -116,7 +115,7 @@ contains
     R1 = R
     P1 = P
 
-    do i = 1, passos
+    do i = 1, passos_antes_salvar
       ! calcula as forcas
       F = self % baseRK % forcas (R1)
       ! aplicada o metodo

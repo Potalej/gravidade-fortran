@@ -8,7 +8,6 @@ module simulacao
   use arquivos
   ! Metodos de integracao numerica
   use rungekutta4
-  use rkf45
   use verlet
 
   implicit none
@@ -19,9 +18,8 @@ module simulacao
   type :: simular
   
     !> N: Quantidade de corpos
-    !> passos: Quantidade de passos por integracao
     !> dim: Dimensao do problema
-    integer :: N, passos, dim = 3
+    integer :: N, dim = 3, passos_antes_salvar
 
     !> h: Tamanho do passo de integracao
     !> G: Constante de gravitacao universal
@@ -46,24 +44,22 @@ module simulacao
     type(arquivo) :: Arq
 
     contains
-      procedure :: Iniciar, rodar_verlet, rodar_rk4, rodar_rkf45
+      procedure :: Iniciar, rodar_verlet, rodar_rk4
   end type
 
 contains
   
   ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, G, M, R0, P0, h, passos)
+  subroutine Iniciar (self, G, M, R0, P0, h, passos_antes_salvar)
 
     class(simular), intent(inout) :: self
 
     real(pf), allocatable :: M(:), R0(:,:), P0(:,:)
     real(pf) :: G, h
-    integer :: passos
-    integer :: a, i
-    
-    ! Salva a quantidade de passos
-    self % passos = passos
+    integer :: a, i, passos_antes_salvar
 
+    self % passos_antes_salvar = passos_antes_salvar
+    
     ! Salva o tamanho dos passos
     self % h = h
 
@@ -143,7 +139,7 @@ contains
       t0 = omp_get_wtime()
 
       ! Integracao
-      call integrador % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
+      call integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
 
       ! timer
       tf = omp_get_wtime()
@@ -186,8 +182,8 @@ contains
     ! Cria o arquivo onde ficara salvo
     call Arq % criar(1, self % N, self % dim)
 
-    ! Salva as massas
-    call Arq % escrever_massas(self % M)
+    ! Salva as infos de cabecalho
+    call Arq % escrever_cabecalho(self % h, self % G, self % M)
 
     ! Condicoes iniciais
     R1 = self % R
@@ -198,7 +194,7 @@ contains
     ! Roda
     do i = 1, qntdPassos
 
-      call integrador % aplicarNVezes(R1, P1, self % passos, self % E0, self % J0)
+      call integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
 
       call Arq % escrever((/R1, P1/))
 
@@ -212,57 +208,5 @@ contains
     call Arq % fechar()
 
   end subroutine rodar_rk4
-
-  ! Simulacao com o metodo de Runge-Kutta-Fehlberg (RKF45)
-  subroutine rodar_rkf45 (self, qntdPassos)
-
-    implicit none
-    class(simular), intent(inout) :: self
-    integer, intent(in) :: qntdPassos
-    ! Iterador e variavel de tempo que sera o nome do arquivo
-    integer :: i, t
-    ! Integrador
-    type(integracao_rkf45) :: integrador
-    ! Escritor de arquivos
-    type(arquivo) :: Arq
-    
-    real(pf), dimension(2, self % N, self % dim) :: resultado
-    real(pf), dimension(self % N, self % dim) :: R1, P1
-
-    ! Instanciamento do integrador    
-    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
-
-    ! Cria o arquivo onde ficara salvo
-    call Arq % criar(1, self % N, self % dim)
-
-    ! Salva as massas
-    call Arq % escrever_massas(self % M)
-
-    ! Condicoes iniciais
-    R1 = self % R
-    P1 = self % P
-
-    call Arq % escrever((/R1, P1/))
-
-    ! Roda  
-    do i = 1, qntdPassos
-
-      ! Calcula a quantidade de passos com base no tamanho do h
-      self % passos = self % passos * integrador % h / self % h
-
-      call integrador % aplicarNVezesControleAutomatico(R1, P1, self % passos, self%E0, self%J0, 1.5_pf*self % h)
-
-      call Arq % escrever((/R1, P1/))
-
-      if (mod(i, 500) == 0) then
-        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
-        WRITE (*,*) 'passo: ', i
-      end if
-
-    end do
-
-    call Arq % fechar()
-
-  end subroutine rodar_rkf45
 
 end module simulacao

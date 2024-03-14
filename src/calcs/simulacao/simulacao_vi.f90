@@ -64,9 +64,13 @@ contains
       CASE ("verlet")
         Sim_verlet % corrigir = configs%corretor
         Sim_verlet % colidir  = configs%colisoes
-        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos)
+        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
         call Sim_verlet%rodar_verlet(qntd_total_passos)
-      ! Adicionar outros casos posteriormente
+      CASE ("rk4")
+        Sim_rk4 % corrigir = configs%corretor
+        Sim_rk4 % colidir  = configs%colisoes
+        call Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+        call Sim_rk4%rodar_rk4(qntd_total_passos)
     END SELECT
 
     tf = omp_get_wtime()

@@ -27,8 +27,8 @@ module leitura
     CHARACTER(10) :: integrador
     ! Timestep
     REAL(pf) :: timestep
-    ! Quantidade de passos
-    INTEGER :: passos
+    ! Quantidade de passos antes de salvar
+    INTEGER :: passos_antes_salvar
     ! Quantidade de corpos
     INTEGER :: N
     ! Intervalo de integracao
@@ -90,7 +90,6 @@ contains
     ! Integracao
     READ(2,*) atributo, self % integrador
     READ(2,*) atributo, self % timestep
-    READ(2,*) atributo, self % passos
 
     READ(2,*) ! Espaco
     READ(2,*) ! Comentario  
@@ -141,7 +140,7 @@ contains
     READ(2,*) atributo, self % nome
     READ(2,*) atributo, self % integrador
     READ(2,*) atributo, self % timestep
-    READ(2,*) atributo, self % passos
+    READ(2,*) atributo, self % passos_antes_salvar
     READ(2,*) atributo, self % t0 ! tempo inicial
     READ(2,*) atributo, self % tf ! tempo final
     READ(2,*) atributo, self % corretor

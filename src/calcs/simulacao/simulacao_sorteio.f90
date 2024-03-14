@@ -26,10 +26,10 @@ contains
     real(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
     ! Quantidade total de passos
     integer :: qntd_total_passos
-    CHARACTER(9) :: datahoje
+    CHARACTER(8) :: datahoje
     CHARACTER(3) :: numero
     CHARACTER(16) :: nome_arq
-    CHARACTER(13) :: nome_sorteio
+    CHARACTER(12) :: nome_sorteio
     INTEGER :: i = 1
     LOGICAL :: arquivo_existe = .TRUE.
 
@@ -77,7 +77,8 @@ contains
       configs % timestep,   &
       configs % integrador, &
       configs % corretor,   &
-      configs % colisoes)
+      configs % colisoes,   &
+      configs % passos_antes_salvar)
 
     ! Se o instante inicial for negativo, entao vai rodar ao contrario
     if (configs%t0 < 0) then
@@ -115,11 +116,15 @@ contains
 
     SELECT CASE (configs%integrador)
       CASE ("verlet")
-        Sim_verlet % corrigir = .FALSE.
-        Sim_verlet % colidir  = .FALSE.
-        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos)
+        Sim_verlet % corrigir = configs%corretor
+        Sim_verlet % colidir  = configs%colisoes
+        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
         call Sim_verlet%rodar_verlet(qntd_total_passos)
-      ! Adicionar outros casos posteriormente
+      CASE ("rk4")
+        Sim_rk4 % corrigir = configs%corretor
+        Sim_rk4 % colidir  = configs%colisoes
+        call Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+        call Sim_rk4%rodar_rk4(qntd_total_passos)
     END SELECT
 
     tf = omp_get_wtime()
@@ -182,7 +187,8 @@ contains
       configs % timestep,   &
       configs % integrador, &
       configs % corretor,   &
-      configs % colisoes)
+      configs % colisoes,   &
+      configs % passos_antes_salvar)
   end subroutine sorteio_salvar
 
 end module
