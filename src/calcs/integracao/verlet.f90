@@ -1,168 +1,220 @@
-! Integracao via metodo de Verlet
-! 
-! Aqui consta a lasse de integracao numerica via metodo de Verlet (simpletico)
+! ************************************************************
+!! METODO NUMERICO: Velocity-Verlet
 !
+! Objetivos:
+!   Aplicacao do metodo simpletico de Velocity-Verlet.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+MODULE verlet
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
+  USE correcao
+  USE colisao
+  USE integrador
 
-module verlet
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use OMP_LIB
-  use correcao
-  use colisao
-  use integrador
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC integracao_verlet
 
-  implicit none
-  private
-  public integracao_verlet
+  TYPE, EXTENDS(integracao) :: integracao_verlet
 
-  type, extends(integracao) :: integracao_verlet
+    CONTAINS
+      PROCEDURE :: Iniciar, metodo, aplicarNVezes, Forcas
 
-    contains
-      procedure :: Iniciar, metodo, aplicarNVezes, Forcas
-
-  end type
+  END TYPE
   
-contains
+CONTAINS
 
-  ! Construtor da classe
-  subroutine Iniciar (self, massas, G, h, corrigir, colidir)
-    implicit none
-    class(integracao_verlet), intent(inout) :: self
-    real(pf), allocatable :: massas(:)
-    real(pf)              :: G, h
-    logical,intent(in) :: corrigir, colidir
-    integer :: a, i
+! ************************************************************
+!! Construtor da classe
+!
+! Objetivos:
+!   Define o principal, salvando os valores e inicializando o
+!   metodo.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
+  IMPLICIT NONE
+  class(integracao_verlet), INTENT(INOUT) :: self
+  REAL(pf), allocatable :: massas(:)
+  REAL(pf)              :: G, h
+  LOGICAL,INTENT(IN) :: corrigir, colidir
+  INTEGER :: a, i
 
-    ! Quantidade de particulas
-    self % N = size(massas)
-    ! Massas
-    allocate(self % m (self % N))
-    self % m = massas
+  ! Quantidade de particulas
+  self % N = SIZE(massas)
+  ! Massas
+  ALLOCATE(self % m (self % N))
+  self % m = massas
 
-    ! gravidade
-    self % G = G
-    ! Passo
-    self % h = h
+  ! gravidade
+  self % G = G
+  ! Passo
+  self % h = h
 
-    ! Se vai ou nao corrigir
-    self % corrigir = corrigir
+  ! Se vai ou nao corrigir
+  self % corrigir = corrigir
 
-    ! Se vai ou nao colidir
-    self % colidir = colidir  
+  ! Se vai ou nao colidir
+  self % colidir = colidir  
 
-    ! Alocando variaveis de correcao
-    allocate(self%grads(4, 6*self%N))
-    allocate(self%gradsT(6*self%N,4))
-    allocate(self%vetorCorrecao(1:6*self%N))
+  ! Alocando variaveis de correcao
+  ALLOCATE(self%grads(4, 6*self%N))
+  ALLOCATE(self%gradsT(6*self%N,4))
+  ALLOCATE(self%vetorCorrecao(1:6*self%N))
 
-  end subroutine Iniciar
+END SUBROUTINE Iniciar
 
-  ! Calculo das forcas
-  function forcas (self, R)
-    implicit none
-    class(integracao_verlet), intent(in) :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R
-    real(pf), dimension(self % dim) :: Fab, dif
-    integer :: a, b, thread, threads, qntdPorThread
-    real(pf) :: distancia
-    real(pf), dimension(self % N, self % dim) :: forcas
-    
-    forcas(:,:) = 0
-    
-    !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(self, R) REDUCTION(+:forcas)
-      !$OMP DO
-      do a = 2, self%N
-        do b = 1, a-1
-          ! distancia entre os corpos
-          distancia = norm2(R(b,:) - R(a,:))**3
-          ! forca entre os corpos a e b
-          Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
-          
-          ! Adiciona na matriz
-          forcas(a,:) = forcas(a,:) - Fab
-          forcas(b,:) = forcas(b,:) + Fab
-        end do
-      end do
-      !$OMP END DO
-    !$OMP END PARALLEL
+! ************************************************************
+!! Forcas
+!
+! Objetivos:
+!   Calculo das forcas.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION forcas (self, R)
+  IMPLICIT NONE
+  class(integracao_verlet), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
+  REAL(pf), DIMENSION(self % dim) :: Fab, dif
+  INTEGER :: a, b, thread, threads, qntdPorThread
+  REAL(pf) :: distancia
+  REAL(pf), DIMENSION(self % N, self % dim) :: forcas
+  
+  forcas(:,:) = 0
+  
+  !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(self, R) REDUCTION(+:forcas)
+    !$OMP DO
+    do a = 2, self%N
+      do b = 1, a-1
+        ! distancia entre os corpos
+        distancia = norm2(R(b,:) - R(a,:))**3
+        ! forca entre os corpos a e b
+        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+        
+        ! Adiciona na matriz
+        forcas(a,:) = forcas(a,:) - Fab
+        forcas(b,:) = forcas(b,:) + Fab
+      END do
+    END do
+    !$OMP END DO
+  !$OMP END PARALLEL
 
-  end function forcas
+END FUNCTION forcas
 
-  ! Metodo em si
-  function metodo (self, R, P, FSomas_ant)
+! ************************************************************
+!! Metodo numerico
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo (self, R, P, FSomas_ant)
 
-    implicit none
-    class(integracao_verlet), intent(in) :: self
-    real(pf), dimension(self%N, self%dim), intent(in) :: R, P, FSomas_ant
-    real(pf), dimension(self%N, self%dim) :: R1, P1, FSomas_prox
-    real(pf), dimension(3, self%N, self%dim) :: metodo
-    integer :: a
+  IMPLICIT NONE
+  class(integracao_verlet), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  INTEGER :: a
 
-    ! Integrando as posicoes
-    do a = 1, self % N
-      R1(a,:) = R(a,:) + self % h * P(a,:) / self % m(a) + 0.5*(self%h**2)*FSomas_ant(a,:)/self%m(a)
-    end do
+  ! Integrando as posicoes
+  DO a = 1, self % N
+    R1(a,:) = R(a,:) + self % h * P(a,:) / self % m(a) + 0.5*(self%h**2)*FSomas_ant(a,:)/self%m(a)
+  END DO
 
-    ! Calcula as novas forcas
-    FSomas_prox = self%forcas(R1)
+  ! Calcula as novas forcas
+  FSomas_prox = self%forcas(R1)
 
-    ! Integrando as velocidades
-    P1 = P + 0.5*self%h*(FSomas_ant + FSomas_prox)
+  ! Integrando as velocidades
+  P1 = P + 0.5*self%h*(FSomas_ant + FSomas_prox)
 
-    metodo(1,:,:) = R1
-    metodo(2,:,:) = P1
-    metodo(3,:,:) = FSomas_prox
+  metodo(1,:,:) = R1
+  metodo(2,:,:) = P1
+  metodo(3,:,:) = FSomas_prox
 
-  end function metodo
+END FUNCTION metodo
 
-  ! Aplicacao do metodo (para aplicar varias vezes)
-  subroutine aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
+! ************************************************************
+!! Aplicacao iterada do metodo
+!
+! Objetivos:
+!   Aplica o metodo iterativamente N vezes.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
 
-    implicit none
-    class (integracao_verlet), intent(inout) :: self
-    real(pf), dimension(self%N, self%dim), intent(inout) :: R, P
-    integer, intent(in) :: passos_antes_salvar
-    real(pf), intent(in) :: E0
-    real(pf), dimension(3), intent(in) :: J0
-    ! Para cada passo
-    integer :: i
-    ! para verificar se corrigiu
-    logical :: corrigiu = .FALSE.
-    ! Para as forcas e passos pos-integracao
-    real(pf), dimension(self%N, self%dim) :: R1, P1, FSomas_ant
-    real(pf), dimension(3, self%N, self%dim) :: resultado
-    ! Energia total aproximada
-    real(pf) :: Et_aprox
+  IMPLICIT NONE
+  class (integracao_verlet), INTENT(INOUT) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
+  INTEGER, INTENT(IN) :: passos_antes_salvar
+  REAL(pf), INTENT(IN) :: E0
+  REAL(pf), DIMENSION(3), INTENT(IN) :: J0
+  ! Para cada passo
+  INTEGER :: i
+  ! para verificar se corrigiu
+  LOGICAL :: corrigiu = .FALSE.
+  ! Para as forcas e passos pos-integracao
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_ant
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: resultado
+  ! Energia total aproximada
+  REAL(pf) :: Et_aprox
 
-    ! Salvando as primeiras posicoes e momentos
-    R1 = R
-    P1 = P
+  ! Salvando as primeiras posicoes e momentos
+  R1 = R
+  P1 = P
 
-    ! Calcula as forcas
-    FSomas_ant = self%forcas(R)
+  ! Calcula as forcas
+  FSomas_ant = self%forcas(R)
 
-    ! Integrando
-    do i = 1, passos_antes_salvar
-      ! Aplica o metodo
-      resultado = self % metodo(R1, P1, FSomas_ant)
+  ! Integrando
+  DO i = 1, passos_antes_salvar
+    ! Aplica o metodo
+    resultado = self % metodo(R1, P1, FSomas_ant)
 
-      ! se tiver colisoes, aplica
-      if (self % colidir .AND. .NOT. corrigiu) then
-        call verificar_e_colidir(self % m, R1, P1)
-      end if
+    ! se tiver colisoes, aplica
+    IF (self % colidir .AND. .NOT. corrigiu) THEN
+      CALL verificar_e_colidir(self % m, R1, P1)
+    ENDIF
 
-      R1 = resultado(1,:,:)
-      P1 = resultado(2,:,:)
-      FSomas_ant = resultado(3,:,:)
+    R1 = resultado(1,:,:)
+    P1 = resultado(2,:,:)
+    FSomas_ant = resultado(3,:,:)
 
-      if (self%corrigir) then
-        call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
-      end if
+    IF (self%corrigir) THEN
+      CALL corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+    ENDIF
 
-    end do
+  END DO
 
-    R = R1
-    P = P1
+  R = R1
+  P = P1
 
-  end subroutine aplicarNVezes
+END SUBROUTINE aplicarNVezes
 
-end module verlet
+END MODULE verlet

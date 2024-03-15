@@ -1,28 +1,34 @@
-! Leitura de arquivos
+! *****************************************************************
+!! LEITURA DE ARQUIVOS
 !
-! Para facilitar a leitura e analise de arquivos, esta classe contem alguns
-! metodos "ajudadores" e outros prontos para uso.
+! Objetivos:
+!   Para facilitar a leitura e analise de arquivos, esta classe contem
+!   alguns metodos "ajudadores" e outros prontos para uso.
+! 
+! Modificado:
+!   15 de marco de 2024
+! 
+! Autoria:
+!   oap
 !
-! = function config (self, arquivo)
-! Faz a leitura de um arquivo de presets para o sorteio de condicoes iniciais.
-module leitura
+MODULE leitura
 
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
 
-  implicit none
-  private
-  public preset_config
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC preset_config
 
   ! Classe para leitura
-  type :: preset_config
+  TYPE :: preset_config
     
     ! Integrais primeiras
     REAL(pf) :: Etot
-    REAL(pf), dimension(3) :: Jtot, Ptot, Rcm
+    REAL(pf), DIMENSION(3) :: Jtot, Ptot, Rcm
     ! Constantes
     REAL(pf) :: G
     ! Intervalos para geracao
-    REAL(pf), dimension(2) :: int_massas, int_posicoes, int_momentos
+    REAL(pf), DIMENSION(2) :: int_massas, int_posicoes, int_momentos
     ! Integrador numerico
     CHARACTER(10) :: integrador
     ! Timestep
@@ -41,151 +47,188 @@ module leitura
     ! Nome do problema de valores iniciais
     CHARACTER(50)         :: nome 
 
+    CONTAINS
+      PROCEDURE :: config, tratamento, valores_iniciais
+  END TYPE
 
-    contains
-      procedure :: config, tratamento, valores_iniciais
-  end type
+CONTAINS
 
-contains
+! ************************************************************
+!! Leitura de preset
+!
+! Objetivos:
+!   Le um preset de condicoes iniciais para geracao (sorteio).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE config (self, arquivo)
+  CLASS(preset_config),  INTENT(INOUT) :: self
+  CHARACTER(256), INTENT(INOUT) :: arquivo
+  CHARACTER(len=48)             :: atributo, valor
 
-  subroutine config (self, arquivo)
-    class(preset_config),  intent(inout) :: self
-    character(256), intent(inout) :: arquivo
-    character(len=48)             :: atributo, valor
+  WRITE (*,'(a)') "LEITURA DE PRESET"
+  WRITE (*,'(a)') '  > lENDo o arquivo "' // TRIM(arquivo) // '"'
 
-    WRITE (*,'(a)') "LEITURA DE PRESET"
-    WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
+  OPEN(2,file=arquivo)
+  READ(2,*) ! Comentario
+  READ(2,*) ! Modo
+  
+  ! Integrais primeiras
+  READ(2,*) atributo, self % Etot
+  READ(2,*) atributo, self % Jtot
+  READ(2,*) atributo, self % Ptot
 
-    OPEN(2,file=arquivo)
-    READ(2,*) ! Comentario
-    READ(2,*) ! Modo
-    
-    ! Integrais primeiras
-    READ(2,*) atributo, self % Etot
-    READ(2,*) atributo, self % Jtot
-    READ(2,*) atributo, self % Ptot
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Constantes
+  READ(2,*) atributo, self % G
 
-    ! Constantes
-    READ(2,*) atributo, self % G
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  READ(2,*) atributo, self % N
 
-    READ(2,*) atributo, self % N
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Intervalos para geracao
+  READ(2,*) atributo, self % int_massas
+  READ(2,*) atributo, self % int_posicoes
+  READ(2,*) atributo, self % int_momentos
 
-    ! Intervalos para geracao
-    READ(2,*) atributo, self % int_massas
-    READ(2,*) atributo, self % int_posicoes
-    READ(2,*) atributo, self % int_momentos
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario  
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario  
+  ! Integracao
+  READ(2,*) atributo, self % integrador
+  READ(2,*) atributo, self % timestep
 
-    ! Integracao
-    READ(2,*) atributo, self % integrador
-    READ(2,*) atributo, self % timestep
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario  
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario  
+  READ(2,*) atributo, self % t0 ! tempo inicial
+  READ(2,*) atributo, self % tf ! tempo final
 
-    READ(2,*) atributo, self % t0 ! tempo inicial
-    READ(2,*) atributo, self % tf ! tempo final
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario  
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario  
+  READ(2,*) atributo, self % corretor ! uso do corretor
+  READ(2,*) atributo, self % colisoes ! uso de colisoes
 
-    READ(2,*) atributo, self % corretor ! uso do corretor
-    READ(2,*) atributo, self % colisoes ! uso de colisoes
+  CLOSE(2)
 
-    CLOSE(2)
+  WRITE (*,'(a)') '  > arquivo lido com sucesso!'
+  WRITE (*,*)
 
-    WRITE (*,'(a)') '  > arquivo lido com sucesso!'
-    WRITE (*,*)
+END SUBROUTINE config
 
-  end subroutine config
+! ************************************************************
+!! Tratamento dos dados.
+!
+! Objetivos:
+!   Tratamento dos dados. Por enquanto, so verifica se o zero
+!   esta contido, para padronizacao.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE tratamento (self)
+  CLASS(preset_config),  INTENT(INOUT) :: self
 
-  subroutine tratamento (self)
-    class(preset_config),  intent(inout) :: self
+  ! Se o tempo inicial for negativo e o final tambem, entao tem erro
+  IF (self%t0 < 0 .AND. self%tf < 0) THEN
+    ERROR STOP "O intervalo de tempo deve conter o zero!"
+  ! Idem se o tempo inicial for positivo
+  ELSE IF (self%t0 > 0) THEN
+    ERROR STOP "O intervalo de tempo deve conter o zero!"
+  ENDIF
 
-    ! Se o tempo inicial for negativo e o final tambem, entao tem erro
-    if (self%t0 < 0 .AND. self%tf < 0) then
-      ERROR STOP "O intervalo de tempo deve conter o zero!"
-    ! Idem se o tempo inicial for positivo
-    else if (self%t0 > 0) then
-      ERROR STOP "O intervalo de tempo deve conter o zero!"
-    end if
+END SUBROUTINE tratamento
 
-  end subroutine tratamento
+! ************************************************************
+!! Leitura de arquivo de valores iniciais
+!
+! Objetivos:
+!   Faz a leitura de um arquivo com preset de valores iniciais,
+!   ou seja, com valores de posicao e velocidades prontos.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE valores_iniciais (self, arquivo)
+  CLASS(preset_config),  INTENT(INOUT) :: self
+  CHARACTER(256), INTENT(INOUT) :: arquivo
+  CHARACTER(len=48)             :: atributo, valor
+  REAL(pf), DIMENSION(3)        :: R, P
+  INTEGER                       :: a ! iterador
 
-  subroutine valores_iniciais (self, arquivo)
-    class(preset_config),  intent(inout) :: self
-    character(256), intent(inout) :: arquivo
-    character(len=48)             :: atributo, valor
-    real(pf), dimension(3)        :: R, P
-    integer                       :: a ! iterador
+  WRITE (*,'(a)') "LEITURA DE VALORES INICIAIS"
+  WRITE (*,'(a)') '  > lENDo o arquivo "' // TRIM(arquivo) // '"'
 
-    WRITE (*,'(a)') "LEITURA DE VALORES INICIAIS"
-    WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
+  OPEN(2,file=arquivo)
+  READ(2,*) ! Comentario ("Configs")
+  READ(2,*) ! Modo
 
-    OPEN(2,file=arquivo)
-    READ(2,*) ! Comentario ("Configs")
-    READ(2,*) ! Modo
+  READ(2,*) atributo, self % nome
+  READ(2,*) atributo, self % integrador
+  READ(2,*) atributo, self % timestep
+  READ(2,*) atributo, self % passos_antes_salvar
+  READ(2,*) atributo, self % t0 ! tempo inicial
+  READ(2,*) atributo, self % tf ! tempo final
+  READ(2,*) atributo, self % corretor
+  READ(2,*) atributo, self % colisoes 
 
-    READ(2,*) atributo, self % nome
-    READ(2,*) atributo, self % integrador
-    READ(2,*) atributo, self % timestep
-    READ(2,*) atributo, self % passos_antes_salvar
-    READ(2,*) atributo, self % t0 ! tempo inicial
-    READ(2,*) atributo, self % tf ! tempo final
-    READ(2,*) atributo, self % corretor
-    READ(2,*) atributo, self % colisoes 
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Constantes
+  READ(2,*) atributo, self % N
+  READ(2,*) atributo, self % G
 
-    ! Constantes
-    READ(2,*) atributo, self % N
-    READ(2,*) atributo, self % G
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Aloca os espacos na memoria
+  ALLOCATE(self%massas(self%N))
+  ALLOCATE(self%R(self%N,3))
+  ALLOCATE(self%P(self%N,3))
 
-    ! Aloca os espacos na memoria
-    allocate(self%massas(self%N))
-    allocate(self%R(self%N,3))
-    allocate(self%P(self%N,3))
+  ! Leitura das massas
+  DO a = 1, self%N
+    READ(2,*) self%massas(a)
+  END DO
 
-    ! Leitura das massas
-    do a = 1, self%N
-      READ(2,*) self%massas(a)
-    end do
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Leitura das posicoes
+  DO a = 1, self%N
+    READ(2,*) self%R(a,:)
+  END DO
 
-    ! Leitura das posicoes
-    do a = 1, self%N
-      READ(2,*) self%R(a,:)
-    end do
+  READ(2,*) ! Espaco
+  READ(2,*) ! Comentario
 
-    READ(2,*) ! Espaco
-    READ(2,*) ! Comentario
+  ! Leitura dos momentos lineares
+  DO a = 1, self%N
+    READ(2,*) self%P(a,:)
+  END DO
 
-    ! Leitura dos momentos lineares
-    do a = 1, self%N
-      READ(2,*) self%P(a,:)
-    end do
+  CLOSE(2)
 
-    CLOSE(2)
+  WRITE (*,'(a)') '  > arquivo lido com sucesso!'
+  WRITE (*,*)
 
-    WRITE (*,'(a)') '  > arquivo lido com sucesso!'
-    WRITE (*,*)
-
-  end subroutine valores_iniciais
-end module
+END SUBROUTINE valores_iniciais
+END MODULE leitura

@@ -1,4 +1,5 @@
-! Correcao
+! ************************************************************
+!! CORRECAO
 !
 ! Calculo da correcao numerica via matriz jacobiana e utilizando
 ! das propriedades simpleticas do espaco de fases do sistema
@@ -6,353 +7,513 @@
 ! 
 ! Funcoes
 ! 
-! = subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu)
+! = SUBROUTINE corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu)
 ! Funcao central, que aplica a correcao conforme descrito.
 ! 
-! = function Gx (G, massas, posicoes, momentos, N)
+! = FUNCTION Gx (G, massas, posicoes, momentos, N)
 ! Vetor de estados. Contem as dez integrais de movimento no momento pre-correcao.
 ! 
-! = function matriz_normal (G, massas, posicoes, momentos, N, grads)
+! = FUNCTION matriz_normal (G, massas, posicoes, momentos, N, grads)
 ! Matriz dada pelo produto interno dos gradientes de cada integral de movimento.
 ! Trata-se de uma matriz 4x4.
 ! 
-! = function gradiente_energia (G, massas, Rs, Ps, N)
+! = FUNCTION gradiente_energia (G, massas, Rs, Ps, N)
 ! Calcula o gradiente da energia total do sistema. 
 ! 
-! = function gradiente_angularX (posicoes, momentos, N)
+! = FUNCTION gradiente_angularX (posicoes, momentos, N)
 ! Calcula o gradiente do componente X do momento angular.
 ! 
-! = function gradiente_angularY (posicoes, momentos, N)
+! = FUNCTION gradiente_angularY (posicoes, momentos, N)
 ! Calcula o gradiente do componente Y do momento angular.
 ! 
-! = function gradiente_angularZ (posicoes, momentos, N)
+! = FUNCTION gradiente_angularZ (posicoes, momentos, N)
 ! Calcula o gradiente do componente Z do momento angular.
 ! 
-! = function gradiente_linearX (N)
+! = FUNCTION gradiente_linearX (N)
 ! Gradiente do componente X do momento linear total do sistema.
 ! 
-! = function gradiente_linearY (N)
+! = FUNCTION gradiente_linearY (N)
 ! Gradiente do componente Y do momento linear total do sistema.
 ! 
-! = function gradiente_linearZ (N)
+! = FUNCTION gradiente_linearZ (N)
 ! Gradiente do componente Z do momento linear total do sistema.
 ! 
-! = function gradiente_centroMassasX (massas, N)
+! = FUNCTION gradiente_centroMassasX (massas, N)
 ! Gradiente do componente X do centro de massas.
 ! 
-! = function gradiente_centroMassasY (massas, N)
+! = FUNCTION gradiente_centroMassasY (massas, N)
 ! Gradiente do componente Y do centro de massas.
 ! 
-! = function gradiente_centroMassasZ (massas, N)
+! = FUNCTION gradiente_centroMassasZ (massas, N)
 ! Gradiente do componente Z do centro de massas.
 ! 
+! 
+! Modificado:
+!   15 de marco de 2024
+! 
+! Autoria:
+!   oap
+! 
+MODULE correcao
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE auxiliares
+  USE mecanica
 
-module correcao
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use auxiliares
-  use mecanica
+  IMPLICIT NONE
+  EXTERNAL dgesv
+  PRIVATE
+  PUBLIC corrigir
 
-  implicit none
-  external dgesv
-  private
-  public corrigir
+CONTAINS
 
-contains
+! ************************************************************
+!! Aplicacao
+!
+! Objetivos:
+!   Aplicacao da correcao numerica.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
+  IMPLICIT NONE
+  REAL(pf), INTENT(IN) :: G, massas(:)
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
+  INTEGER  :: N, a, INFO, b
+  INTEGER :: pivos(4)
+  REAL(pf) :: JJt(4, 4), vetG(4), minimo_lagrange
+  LOGICAL, INTENT(INOUT) :: corrigiu
+  REAL(pf) :: H, J(3)
 
-  ! aplica a correcao
-  subroutine corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
-    implicit none
-    real(pf), intent(in) :: G, massas(:)
-    real(pf), intent(inout) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
-    integer  :: N, a, INFO, b
-    integer :: pivos(4)
-    real(pf) :: JJt(4, 4), vetG(4), minimo_lagrange
-    logical, intent(inout) :: corrigiu
-    REAL(pf) :: H, J(3)
-
-    N = size(massas)
-    
-    ! calcula a mariz normal
-    JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
-
-    ! vetor G
-    vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
-
-    ! resolve o sistema
-    call dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
-
-    ! if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) then
-    if (INFO == 0) then
-      ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
-      ! multiplicadores de Lagrange precisam ser nao negativos
-      ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,
-      ! esta mais proximo do 0 ou do -1. Se for do 0, levarei em conta.
-      ! minimo_lagrange = minval(vetorCorrecao)
-      ! se for maior, entao corrige
-      corrigiu = .TRUE.
-      ! aplica a correcao
-      do a = 1, 4
-        grads(a,:) = vetG(a)*grads(a,:)
-      end do
-      gradsT = transpose(grads)
-
-      do a = 1, 6*N
-        vetorCorrecao(a) = sum(gradsT(a,:))
-      end do
-
-      ! aplica a correcao
-      do a = 1, N
-        posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
-        posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
-        posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
-        momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
-        momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
-        momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
-      end do
-      ! else
-      !   corrigiu = .FALSE.
-      !   WRITE (*,*) 'nao corrigiu pq ', minimo_lagrange
-      ! end if
-
-    end if
-
-  end subroutine corrigir
-
-  ! calcula o lado direito (G(x))
-  function Gx (G, massas, posicoes, momentos, N)
-    implicit none
-    integer  :: N
-    real(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), Gx(4), J(3), Rcm(3), P(3)
-
-    ! energia total
-    Gx(1) = energia_total(G, massas, posicoes, momentos)
-
-    ! momento angular
-    J = momento_angular_total(posicoes, momentos)
-    Gx(2) = J(1)
-    Gx(3) = J(2)
-    Gx(4) = J(3)
-
-    Gx = - Gx
+  N = SIZE(massas)
   
-  end function Gx
+  ! calcula a mariz normal
+  JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
 
-  ! matriz normal
-  function matriz_normal (G, massas, posicoes, momentos, N, grads)
+  ! vetor G
+  vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
 
-    implicit none
-    integer  :: N, gi, gj
-    real(pf) :: G, massas(N), posicoes(N,3), momentos(N,3)
-    real(pf),intent(inout) :: grads(4, 6*N)
-    real(pf) :: matriz_normal(4,4)
+  ! resolve o sistema
+  CALL dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
 
-    grads(1,:)=gradiente_energia(G, massas, posicoes, momentos, N)
-    grads(2,:)=gradiente_angularX(posicoes, momentos, N)
-    grads(3,:)=gradiente_angularY(posicoes, momentos, N)
-    grads(4,:)=gradiente_angularZ(posicoes, momentos, N)
+  ! if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) THEN
+  IF (INFO == 0) THEN
+    ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
+    ! multiplicadores de Lagrange precisam ser nao negativos
+    ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,
+    ! esta mais proximo do 0 ou do -1. Se for do 0, levarei em conta.
+    ! minimo_lagrange = minval(vetorCorrecao)
+    ! se for maior, entao corrige
+    corrigiu = .TRUE.
+    ! aplica a correcao
+    DO a = 1, 4
+      grads(a,:) = vetG(a)*grads(a,:)
+    END DO
+    gradsT = transpose(grads)
 
-    do gi = 1, 4
-      do gj = 1, 4
-        matriz_normal(gi, gj) = DOT_PRODUCT(grads(gi,:), grads(gj,:))
-      end do
-    end do
+    DO a = 1, 6*N
+      vetorCorrecao(a) = sum(gradsT(a,:))
+    END DO
 
-  end function matriz_normal
+    ! aplica a correcao
+    DO a = 1, N
+      posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
+      posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
+      posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
+      momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
+      momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
+      momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
+    END do
+    ! ELSE
+    !   corrigiu = .FALSE.
+    !   WRITE (*,*) 'nao corrigiu pq ', minimo_lagrange
+    ! ENDIF
 
-  ! gradiente da energia
-  function gradiente_energia (G, massas, Rs, Ps, N)
+  ENDIF
 
-    implicit none
-    integer  :: N, a, b
-    real(pf) :: distancia3, distancia(3)
-    real(pf) :: G, massas(N), Rs(N,3), Ps(N,3), gradiente_energia(1:6*N)
+END SUBROUTINE corrigir
 
-    gradiente_energia(:) = 0.0_pf
+! ************************************************************
+!! Vetor de estado
+!
+! Objetivos:
+!   Calcula o vetor de estados (i.e., vetor com cada integral
+!   primeira)
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION Gx (G, massas, posicoes, momentos, N)
+  IMPLICIT NONE
+  INTEGER  :: N
+  REAL(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), Gx(4), J(3), Rcm(3), P(3)
 
-    do a = 1, N
-      gradiente_energia(6*a-2) = Ps(a,1)/massas(a)
-      gradiente_energia(6*a-1) = Ps(a,2)/massas(a)
-      gradiente_energia(6*a-0) = Ps(a,3)/massas(a)
-      
-      do b = 1, N
-        if (b /= a) then
-          distancia = Rs(b,:)-Rs(a,:)
-          distancia3 = norm2(distancia)**3
-          distancia = (massas(b)/distancia3) * distancia
+  ! energia total
+  Gx(1) = energia_total(G, massas, posicoes, momentos)
 
-          gradiente_energia(6*a-5) = gradiente_energia(6*a-5)+distancia(1)
-          gradiente_energia(6*a-4) = gradiente_energia(6*a-4)+distancia(2)
-          gradiente_energia(6*a-3) = gradiente_energia(6*a-3)+distancia(3)
-        end if
-      end do
+  ! momento angular
+  J = momento_angular_total(posicoes, momentos)
+  Gx(2) = J(1)
+  Gx(3) = J(2)
+  Gx(4) = J(3)
 
-      gradiente_energia(6*a-5) = gradiente_energia(6*a-5) * (-G*massas(a))
-      gradiente_energia(6*a-4) = gradiente_energia(6*a-4) * (-G*massas(a))
-      gradiente_energia(6*a-3) = gradiente_energia(6*a-3) * (-G*massas(a))
-    end do
+  Gx = - Gx
+
+END FUNCTION Gx
+
+! ************************************************************
+!! Matriz normal
+!
+! Objetivos:
+!   Calcula a matriz produto dos jacobianos (uma matriz normal)
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION matriz_normal (G, massas, posicoes, momentos, N, grads)
+
+  IMPLICIT NONE
+  INTEGER  :: N, gi, gj
+  REAL(pf) :: G, massas(N), posicoes(N,3), momentos(N,3)
+  REAL(pf),INTENT(INOUT) :: grads(4, 6*N)
+  REAL(pf) :: matriz_normal(4,4)
+
+  grads(1,:)=gradiente_energia(G, massas, posicoes, momentos, N)
+  grads(2,:)=gradiente_angularX(posicoes, momentos, N)
+  grads(3,:)=gradiente_angularY(posicoes, momentos, N)
+  grads(4,:)=gradiente_angularZ(posicoes, momentos, N)
+
+  DO gi = 1, 4
+    DO gj = 1, 4
+      matriz_normal(gi, gj) = DOT_PRODUCT(grads(gi,:), grads(gj,:))
+    END DO
+  END DO
+
+END FUNCTION matriz_normal
+
+! ************************************************************
+!! Gradiente: energia total
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) da energia
+!   total.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_energia (G, massas, Rs, Ps, N)
+
+  IMPLICIT NONE
+  INTEGER  :: N, a, b
+  REAL(pf) :: distancia3, distancia(3)
+  REAL(pf) :: G, massas(N), Rs(N,3), Ps(N,3), gradiente_energia(1:6*N)
+
+  gradiente_energia(:) = 0.0_pf
+
+  DO a = 1, N
+    gradiente_energia(6*a-2) = Ps(a,1)/massas(a)
+    gradiente_energia(6*a-1) = Ps(a,2)/massas(a)
+    gradiente_energia(6*a-0) = Ps(a,3)/massas(a)
     
-  end function gradiente_energia
+    DO b = 1, N
+      IF (b /= a) THEN
+        distancia = Rs(b,:)-Rs(a,:)
+        distancia3 = norm2(distancia)**3
+        distancia = (massas(b)/distancia3) * distancia
 
-  ! gradiente do momento angular (em X)
-  function gradiente_angularX (posicoes, momentos, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: gradiente_angularX(6*N), posicoes(N,3), momentos(N,3)
+        gradiente_energia(6*a-5) = gradiente_energia(6*a-5)+distancia(1)
+        gradiente_energia(6*a-4) = gradiente_energia(6*a-4)+distancia(2)
+        gradiente_energia(6*a-3) = gradiente_energia(6*a-3)+distancia(3)
+      ENDIF
+    END DO
 
-    do a = 1, N
-      gradiente_angularX(6*a-5) = 0
-      gradiente_angularX(6*a-4) = momentos(a,3)
-      gradiente_angularX(6*a-3) = - momentos(a,2)
-      gradiente_angularX(6*a-2) = 0
-      gradiente_angularX(6*a-1) = - posicoes(a,3)
-      gradiente_angularX(6*a-0) = posicoes(a,2)
-    end do
+    gradiente_energia(6*a-5) = gradiente_energia(6*a-5) * (-G*massas(a))
+    gradiente_energia(6*a-4) = gradiente_energia(6*a-4) * (-G*massas(a))
+    gradiente_energia(6*a-3) = gradiente_energia(6*a-3) * (-G*massas(a))
+  END DO
+  
+END FUNCTION gradiente_energia
 
-  end function gradiente_angularX
+! ************************************************************
+!! Gradiente: momento angular (x)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   angular total (x).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_angularX (posicoes, momentos, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: gradiente_angularX(6*N), posicoes(N,3), momentos(N,3)
 
-  ! gradiente do momento angular (em Y)
-  function gradiente_angularY (posicoes, momentos, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: posicoes(N,3), momentos(N,3), gradiente_angularY(6*N)
+  DO a = 1, N
+    gradiente_angularX(6*a-5) = 0
+    gradiente_angularX(6*a-4) = momentos(a,3)
+    gradiente_angularX(6*a-3) = - momentos(a,2)
+    gradiente_angularX(6*a-2) = 0
+    gradiente_angularX(6*a-1) = - posicoes(a,3)
+    gradiente_angularX(6*a-0) = posicoes(a,2)
+  END DO
 
-    do a = 1, N
-      gradiente_angularY(6*a-5) = - momentos(a,3)
-      gradiente_angularY(6*a-4) = 0
-      gradiente_angularY(6*a-3) = momentos(a,1)
-      gradiente_angularY(6*a-2) = posicoes(a,3)
-      gradiente_angularY(6*a-1) = 0
-      gradiente_angularY(6*a-0) = - posicoes(a,1)
-    end do
+END FUNCTION gradiente_angularX
 
-  end function gradiente_angularY
+! ************************************************************
+!! Gradiente: momento angular (y)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   angular total (y).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_angularY (posicoes, momentos, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: posicoes(N,3), momentos(N,3), gradiente_angularY(6*N)
 
-  ! gradiente do momento angular (em Z)
-  function gradiente_angularZ (posicoes, momentos, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: posicoes(N,3), momentos(N,3), gradiente_angularZ(6*N)
+  DO a = 1, N
+    gradiente_angularY(6*a-5) = - momentos(a,3)
+    gradiente_angularY(6*a-4) = 0
+    gradiente_angularY(6*a-3) = momentos(a,1)
+    gradiente_angularY(6*a-2) = posicoes(a,3)
+    gradiente_angularY(6*a-1) = 0
+    gradiente_angularY(6*a-0) = - posicoes(a,1)
+  END DO
 
-    do a = 1, N
-      gradiente_angularZ(6*a-5) = momentos(a,2)
-      gradiente_angularZ(6*a-4) = - momentos(a,1)
-      gradiente_angularZ(6*a-3) = 0
-      gradiente_angularZ(6*a-2) = - posicoes(a,2)
-      gradiente_angularZ(6*a-1) = posicoes(a,1)
-      gradiente_angularZ(6*a-0) = 0
-    end do
+END FUNCTION gradiente_angularY
 
-  end function gradiente_angularZ
+! ************************************************************
+!! Gradiente: momento angular (z)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   angular total (z).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_angularZ (posicoes, momentos, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: posicoes(N,3), momentos(N,3), gradiente_angularZ(6*N)
 
-  ! gradiente do momento linear (em X)
-  function gradiente_linearX (N)
-    implicit none
-    integer :: N, a
-    real(pf) :: gradiente_linearX(6*N)
+  DO a = 1, N
+    gradiente_angularZ(6*a-5) = momentos(a,2)
+    gradiente_angularZ(6*a-4) = - momentos(a,1)
+    gradiente_angularZ(6*a-3) = 0
+    gradiente_angularZ(6*a-2) = - posicoes(a,2)
+    gradiente_angularZ(6*a-1) = posicoes(a,1)
+    gradiente_angularZ(6*a-0) = 0
+  END DO
 
-    do a = 1, N
-      gradiente_linearX(6*a-5) = 0.0_pf
-      gradiente_linearX(6*a-4) = 0.0_pf
-      gradiente_linearX(6*a-3) = 0.0_pf
-      gradiente_linearX(6*a-2) = 1.0_pf
-      gradiente_linearX(6*a-1) = 0.0_pf
-      gradiente_linearX(6*a-0) = 0.0_pf
-    end do
+END FUNCTION gradiente_angularZ
 
-  end function gradiente_linearX
+! ************************************************************
+!! Gradiente: momento linear (x)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   linear total (x).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_linearX (N)
+  IMPLICIT NONE
+  INTEGER :: N, a
+  REAL(pf) :: gradiente_linearX(6*N)
 
-  ! gradiente do momento linear (em Y)
-  function gradiente_linearY (N)
-    implicit none
-    integer :: N, a
-    real(pf) :: gradiente_linearY(6*N)
+  DO a = 1, N
+    gradiente_linearX(6*a-5) = 0.0_pf
+    gradiente_linearX(6*a-4) = 0.0_pf
+    gradiente_linearX(6*a-3) = 0.0_pf
+    gradiente_linearX(6*a-2) = 1.0_pf
+    gradiente_linearX(6*a-1) = 0.0_pf
+    gradiente_linearX(6*a-0) = 0.0_pf
+  END DO
 
-    do a = 1, N
-      gradiente_linearY(6*a-5) = 0.0_pf
-      gradiente_linearY(6*a-4) = 0.0_pf
-      gradiente_linearY(6*a-3) = 0.0_pf
-      gradiente_linearY(6*a-2) = 0.0_pf
-      gradiente_linearY(6*a-1) = 1.0_pf
-      gradiente_linearY(6*a-0) = 0.0_pf
-    end do
+END FUNCTION gradiente_linearX
 
-  end function gradiente_linearY
+! ************************************************************
+!! Gradiente: momento linear (y)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   linear total (y).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_linearY (N)
+  IMPLICIT NONE
+  INTEGER :: N, a
+  REAL(pf) :: gradiente_linearY(6*N)
 
-  ! gradiente do momento linear (em Z)
-  function gradiente_linearZ (N)
-    implicit none
-    integer :: N, a
-    real(pf) :: gradiente_linearZ(6*N)
+  DO a = 1, N
+    gradiente_linearY(6*a-5) = 0.0_pf
+    gradiente_linearY(6*a-4) = 0.0_pf
+    gradiente_linearY(6*a-3) = 0.0_pf
+    gradiente_linearY(6*a-2) = 0.0_pf
+    gradiente_linearY(6*a-1) = 1.0_pf
+    gradiente_linearY(6*a-0) = 0.0_pf
+  END DO
 
-    do a = 1, N
-      gradiente_linearZ(6*a-5) = 0.0_pf
-      gradiente_linearZ(6*a-4) = 0.0_pf
-      gradiente_linearZ(6*a-3) = 0.0_pf
-      gradiente_linearZ(6*a-2) = 0.0_pf
-      gradiente_linearZ(6*a-1) = 0.0_pf
-      gradiente_linearZ(6*a-0) = 1.0_pf
-    end do
+END FUNCTION gradiente_linearY
 
-  end function gradiente_linearZ
+! ************************************************************
+!! Gradiente: momento linear (z)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do momento
+!   linear total (z).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_linearZ (N)
+  IMPLICIT NONE
+  INTEGER :: N, a
+  REAL(pf) :: gradiente_linearZ(6*N)
 
-  ! gradiente do centro de massas (em X)
-  function gradiente_centroMassasX (massas, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: M
-    real(pf) :: massas(N), gradiente_centroMassasX(6*N)
+  DO a = 1, N
+    gradiente_linearZ(6*a-5) = 0.0_pf
+    gradiente_linearZ(6*a-4) = 0.0_pf
+    gradiente_linearZ(6*a-3) = 0.0_pf
+    gradiente_linearZ(6*a-2) = 0.0_pf
+    gradiente_linearZ(6*a-1) = 0.0_pf
+    gradiente_linearZ(6*a-0) = 1.0_pf
+  END DO
 
-    M = sum(massas)
+END FUNCTION gradiente_linearZ
 
-    do a = 1, N
-      gradiente_centroMassasX(6*a-5) = massas(a)/M
-      gradiente_centroMassasX(6*a-4) = 0.0_pf
-      gradiente_centroMassasX(6*a-3) = 0.0_pf
-      gradiente_centroMassasX(6*a-2) = 0.0_pf
-      gradiente_centroMassasX(6*a-1) = 0.0_pf
-      gradiente_centroMassasX(6*a-0) = 0.0_pf
-    end do
+! ************************************************************
+!! Gradiente: centro de massas (x)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do centro
+!   de massas (x).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_centroMassasX (massas, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: M
+  REAL(pf) :: massas(N), gradiente_centroMassasX(6*N)
 
-  end function gradiente_centroMassasX
+  M = sum(massas)
 
-  ! gradiente do centro de massas (em Y)
-  function gradiente_centroMassasY (massas, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: M
-    real(pf) :: massas(N), gradiente_centroMassasY(6*N)
+  DO a = 1, N
+    gradiente_centroMassasX(6*a-5) = massas(a)/M
+    gradiente_centroMassasX(6*a-4) = 0.0_pf
+    gradiente_centroMassasX(6*a-3) = 0.0_pf
+    gradiente_centroMassasX(6*a-2) = 0.0_pf
+    gradiente_centroMassasX(6*a-1) = 0.0_pf
+    gradiente_centroMassasX(6*a-0) = 0.0_pf
+  END DO
 
-    M = sum(massas)
+END FUNCTION gradiente_centroMassasX
 
-    do a = 1, N
-      gradiente_centroMassasY(6*a-5) = 0.0_pf
-      gradiente_centroMassasY(6*a-4) = massas(a)/M
-      gradiente_centroMassasY(6*a-3) = 0.0_pf
-      gradiente_centroMassasY(6*a-2) = 0.0_pf
-      gradiente_centroMassasY(6*a-1) = 0.0_pf
-      gradiente_centroMassasY(6*a-0) = 0.0_pf
-    end do
+! ************************************************************
+!! Gradiente: centro de massas (y)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do centro
+!   de massas (y).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_centroMassasY (massas, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: M
+  REAL(pf) :: massas(N), gradiente_centroMassasY(6*N)
 
-  end function gradiente_centroMassasY
+  M = sum(massas)
 
-  ! gradiente do centro de massas (em Z)
-  function gradiente_centroMassasZ (massas, N)
-    implicit none
-    integer  :: N, a
-    real(pf) :: M
-    real(pf) :: massas(N), gradiente_centroMassasZ(6*N)
+  DO a = 1, N
+    gradiente_centroMassasY(6*a-5) = 0.0_pf
+    gradiente_centroMassasY(6*a-4) = massas(a)/M
+    gradiente_centroMassasY(6*a-3) = 0.0_pf
+    gradiente_centroMassasY(6*a-2) = 0.0_pf
+    gradiente_centroMassasY(6*a-1) = 0.0_pf
+    gradiente_centroMassasY(6*a-0) = 0.0_pf
+  END DO
 
-    M = sum(massas)
+END FUNCTION gradiente_centroMassasY
 
-    do a = 1, N
-      gradiente_centroMassasZ(6*a-5) = 0.0_pf
-      gradiente_centroMassasZ(6*a-4) = 0.0_pf
-      gradiente_centroMassasZ(6*a-3) = massas(a)/M
-      gradiente_centroMassasZ(6*a-2) = 0.0_pf
-      gradiente_centroMassasZ(6*a-1) = 0.0_pf
-      gradiente_centroMassasZ(6*a-0) = 0.0_pf
-    end do
+! ************************************************************
+!! Gradiente: centro de massas (z)
+!
+! Objetivos:
+!   Vetores de derivadas parciais (vetor gradiente) do centro
+!   de massas (z).
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION gradiente_centroMassasZ (massas, N)
+  IMPLICIT NONE
+  INTEGER  :: N, a
+  REAL(pf) :: M
+  REAL(pf) :: massas(N), gradiente_centroMassasZ(6*N)
 
-  end function gradiente_centroMassasZ
+  M = SUM(massas)
 
-end module correcao
+  DO a = 1, N
+    gradiente_centroMassasZ(6*a-5) = 0.0_pf
+    gradiente_centroMassasZ(6*a-4) = 0.0_pf
+    gradiente_centroMassasZ(6*a-3) = massas(a)/M
+    gradiente_centroMassasZ(6*a-2) = 0.0_pf
+    gradiente_centroMassasZ(6*a-1) = 0.0_pf
+    gradiente_centroMassasZ(6*a-0) = 0.0_pf
+  END DO
+
+END FUNCTION gradiente_centroMassasZ
+
+END MODULE correcao

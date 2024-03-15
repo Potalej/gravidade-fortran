@@ -48,7 +48,7 @@ ENDIF()
 # Mecanica
 add_library(mecanica 
   "./src/calcs/mecanica.f90" 
-  "./src/calcs/auxiliares/auxiliares.f90" 
+  "./src/calcs/auxiliares.f90" 
   "./src/calcs/mecanica/correcao.f90" 
   "./src/calcs/mecanica/colisao.f90" 
 )
@@ -58,7 +58,7 @@ target_link_libraries(mecanica
 
 # Condicionamento de valores iniciais
 add_library(condicionamento
-  "./src/calcs/condicionamento/condicoesArtigo.f90"  
+  "./src/calcs/condicionamento/condicoesIniciais.f90"  
 )
 target_link_libraries(condicionamento
   mecanica
@@ -77,14 +77,14 @@ target_link_libraries(integracao
 )
 
 # Utilitarios de OS
-# Alguns recursos dependem do sistema operacional, entao precisam ser
+# Alguns recursos depENDem do sistema operacional, entao precisam ser
 # filtrados antes da inclusao no programa.
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   add_library(os "./src/os/linux.f90")
 
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   add_library(os "./src/os/windows.f90")
-endif()
+ENDIF()
 
 # ----------------------------------------------------------------------------
 # Procura pelo Python
@@ -111,7 +111,7 @@ IF(PYTHON)
     )
 
     IF(NOT EXIT_MATPLOTLIB EQUAL 0)
-      message(FATAL_ERROR "A dependencia 'matplotlib' nao foi encontrada e houve um erro em sua instalacao. Nao sera possivel criar graficos.")
+      message(FATAL_ERROR "A depENDencia 'matplotlib' nao foi encontrada e houve um erro em sua instalacao. Nao sera possivel criar graficos.")
     ENDIF()
   ENDIF()
 

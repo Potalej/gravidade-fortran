@@ -1,81 +1,116 @@
-module simulacao_vi
+! ************************************************************
+!! SIMULACAO: VALORES INICIAIS (VI)
+!
+! Objetivos:
+!   Simulacoes a partir diretamente de valores iniciais.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+MODULE simulacao_vi
 
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use OMP_LIB
-  use simulacao
-  use leitura
-  implicit none
-  private
-  public simular_vi
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
+  USE simulacao
+  USE leitura
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC simular_vi
 
   ! Instanciamento da classe
-  type(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
-  type(preset_config) :: configs
+  TYPE(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
+  TYPE(preset_config) :: configs
 
-contains
+CONTAINS
 
-  ! Metodo principal da classe
-  subroutine simular_vi (arquivo)
-    character(LEN=*), intent(inout) :: arquivo
+! ************************************************************
+!! Metodo principal
+!
+! Objetivos:
+!   Faz a simulacao.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE simular_vi (arquivo)
+  CHARACTER(LEN=*), INTENT(INOUT) :: arquivo
 
-    ! Tempo de execucao
-    real :: t0, tf
-    ! Quantidade total de passos
-    integer :: qntd_total_passos
+  ! Tempo de execucao
+  REAL :: t0, tf
+  ! Quantidade total de passos
+  INTEGER :: qntd_total_passos
 
-    ! Le o arquivo de configuracoes
-    call configs % valores_iniciais(arquivo)
+  ! Le o arquivo de configuracoes
+  CALL configs % valores_iniciais(arquivo)
 
-    ! Se o instante inicial for negativo, entao vai rodar ao contrario
-    if (configs%t0 < 0) then
-      if (configs%tf == 0) then
-        ! Roda apenas o passado
-        WRITE (*,*) " * Intervalo [", configs%t0, ",", configs%tf, "]"
-        call rodar(-configs%timestep,configs%massas,configs%R,configs%P)
-      else if (configs%tf > 0) then
-        ! Roda o passado e o futuro
-        WRITE (*,*) " * Intervalo [", configs%t0, ",", 0, "]"
-        call rodar(-configs%timestep,configs%massas,configs%R,configs%P)
-        WRITE (*,*) " * Intervalo [", 0, ",", configs%tf, "]"
-        call rodar(configs%timestep,configs%massas,configs%R,configs%P)
-      end if
-    ! Se for positivo, apenas roda normal
-    else
-      ! Roda apenas o futuro
+  ! Se o instante inicial for negativo, entao vai rodar ao contrario
+  IF (configs%t0 < 0) THEN
+    IF (configs%tf == 0) THEN
+      ! Roda apenas o passado
+      WRITE (*,*) " * Intervalo [", configs%t0, ",", configs%tf, "]"
+      CALL rodar(-configs%timestep,configs%massas,configs%R,configs%P)
+    ELSE IF (configs%tf > 0) THEN
+      ! Roda o passado e o futuro
+      WRITE (*,*) " * Intervalo [", configs%t0, ",", 0, "]"
+      CALL rodar(-configs%timestep,configs%massas,configs%R,configs%P)
       WRITE (*,*) " * Intervalo [", 0, ",", configs%tf, "]"
-      call rodar(configs%timestep,configs%massas,configs%R,configs%P)
-    end if
+      CALL rodar(configs%timestep,configs%massas,configs%R,configs%P)
+    ENDIF
+  ! Se for positivo, apenas roda normal
+  ELSE
+    ! Roda apenas o futuro
+    WRITE (*,*) " * Intervalo [", 0, ",", configs%tf, "]"
+    CALL rodar(configs%timestep,configs%massas,configs%R,configs%P)
+  ENDIF
 
-  end subroutine simular_vi
+END SUBROUTINE simular_vi
 
-  subroutine rodar (timestep, massas, posicoes, momentos)
-    REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
-    REAL(pf), intent(in)  :: timestep
-    REAL(pf)              :: t0, tf
-    INTEGER               :: qntd_total_passos
+! ************************************************************
+!! Roda simulacao
+!
+! Objetivos:
+!   Roda uma simulacao com as condicoes informadas.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE rodar (timestep, massas, posicoes, momentos)
+  REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf), INTENT(IN)  :: timestep
+  REAL(pf)              :: t0, tf
+  INTEGER               :: qntd_total_passos
 
-    qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
-    ! timer
-    t0 = omp_get_wtime()
+  qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
+  ! timer
+  t0 = omp_get_wtime()
 
-    WRITE (*,*)
+  WRITE (*,*)
 
-    SELECT CASE (configs%integrador)
-      CASE ("verlet")
-        Sim_verlet % corrigir = configs%corretor
-        Sim_verlet % colidir  = configs%colisoes
-        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
-        call Sim_verlet%rodar_verlet(qntd_total_passos)
-      CASE ("rk4")
-        Sim_rk4 % corrigir = configs%corretor
-        Sim_rk4 % colidir  = configs%colisoes
-        call Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
-        call Sim_rk4%rodar_rk4(qntd_total_passos)
-    END SELECT
+  SELECT CASE (configs%integrador)
+    CASE ("verlet")
+      Sim_verlet % corrigir = configs%corretor
+      Sim_verlet % colidir  = configs%colisoes
+      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      CALL Sim_verlet%rodar_verlet(qntd_total_passos)
+    CASE ("rk4")
+      Sim_rk4 % corrigir = configs%corretor
+      Sim_rk4 % colidir  = configs%colisoes
+      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      CALL Sim_rk4%rodar_rk4(qntd_total_passos)
+  END SELECT
 
-    tf = omp_get_wtime()
-    WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
-    WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
-  end subroutine rodar
+  tf = omp_get_wtime()
+  WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
+  WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
+END SUBROUTINE rodar
 
-end module simulacao_vi
+END MODULE simulacao_vi

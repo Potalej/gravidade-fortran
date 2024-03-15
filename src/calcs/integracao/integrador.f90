@@ -1,33 +1,44 @@
-! Estrutura basica de um integrador
-! As configuracoes gerais da integracao devem vir aqui
+! ************************************************************
+!! INTEGRADOR NUMERICO
+!
+! Objetivos:
+!   Estrutura basica de um integrador numerico. As configuracoes
+!   gerais de um metodo devem vir aqui, como tamanho de passo,
+!   dimensao, massas, se corrige ou nao, se colide ou nao, etc.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+MODULE integrador
 
-module integrador
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC integracao
 
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  implicit none
-  private
-  public integracao
-
-  type :: integracao
+  TYPE :: integracao
     ! m: Massas
-    real(pf), allocatable :: m(:)
+    REAL(pf), ALLOCATABLE :: m(:)
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
-    real(pf) :: h, G
+    REAL(pf) :: h, G
 
     ! dim: Dimensao do problema
     ! N: Quantidade de partículas
-    integer :: dim = 3, N
+    INTEGER :: dim = 3, N
 
     ! Se vai ou nao corrigir
-    logical :: corrigir = .FALSE.
+    LOGICAL :: corrigir = .FALSE.
 
     ! Se vai ou nao colidir
-    logical :: colidir = .FALSE.
+    LOGICAL :: colidir = .FALSE.
 
     ! vetores para aplicar a correcao
-    real(pf), allocatable :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
-  end type integracao
+    REAL(pf), ALLOCATABLE :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
+  END type integracao
 
-end module integrador
+END MODULE integrador

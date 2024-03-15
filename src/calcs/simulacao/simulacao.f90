@@ -1,31 +1,43 @@
-module simulacao
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use OMP_LIB
+! ************************************************************
+!! SIMULACAO: GERAL
+!
+! Objetivos:
+!   Arquivo base para fazer simulacoes.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+MODULE simulacao
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
 
   ! Auxiliares
-  use mecanica
-  use auxiliares
-  use arquivos
+  USE mecanica
+  USE auxiliares
+  USE arquivos
   ! Metodos de integracao numerica
-  use rungekutta4
-  use verlet
+  USE rungekutta4
+  USE verlet
 
-  implicit none
-  private
-  public simular
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC simular
 
   ! Classe de simulacao
-  type :: simular
+  TYPE :: simular
   
     !> N: Quantidade de corpos
     !> dim: Dimensao do problema
-    integer :: N, dim = 3, passos_antes_salvar
+    INTEGER :: N, dim = 3, passos_antes_salvar
 
     !> h: Tamanho do passo de integracao
     !> G: Constante de gravitacao universal
     !> E0: Energia total inicial
     !> mtot: Massa total do sistema
-    real(pf) :: h, G, E0, mtot
+    REAL(pf) :: h, G, E0, mtot
     
     !> M: Massas do sistema
     !> R: Posicoes das particulas
@@ -33,180 +45,213 @@ module simulacao
     !> Jtot: Momento angular total do sistema
     !> Ptot: Momento linear total do sistema
     !> Rcm: Centro de massas do sistema
-    real(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:), Rcm(:)
+    REAL(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:), Rcm(:)
     
-    real(pf), dimension(3) :: J0
+    REAL(pf), DIMENSION(3) :: J0
 
     ! Configuracoes
-    logical :: corrigir=.FALSE., colidir=.FALSE.
+    LOGICAL :: corrigir=.FALSE., colidir=.FALSE.
 
     !> Arquivo
-    type(arquivo) :: Arq
+    TYPE(arquivo) :: Arq
 
-    contains
-      procedure :: Iniciar, rodar_verlet, rodar_rk4
-  end type
+    CONTAINS
+      PROCEDURE :: Iniciar, rodar_verlet, rodar_rk4
+  END TYPE
 
-contains
+CONTAINS
   
-  ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, G, M, R0, P0, h, passos_antes_salvar)
+! ************************************************************
+!! Metodo principal
+!
+! Objetivos:
+!   Faz a simulacao.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE Iniciar (self, G, M, R0, P0, h, passos_antes_salvar)
 
-    class(simular), intent(inout) :: self
+  CLASS(simular), INTENT(INOUT) :: self
 
-    real(pf), allocatable :: M(:), R0(:,:), P0(:,:)
-    real(pf) :: G, h
-    integer :: a, i, passos_antes_salvar
+  REAL(pf), allocatable :: M(:), R0(:,:), P0(:,:)
+  REAL(pf) :: G, h
+  INTEGER :: a, i, passos_antes_salvar
 
-    self % passos_antes_salvar = passos_antes_salvar
-    
-    ! Salva o tamanho dos passos
-    self % h = h
+  self % passos_antes_salvar = passos_antes_salvar
+  
+  ! Salva o tamanho dos passos
+  self % h = h
 
-    ! Salva a gravidade
-    self % G = G
+  ! Salva a gravidade
+  self % G = G
 
-    ! Salva as massas
-    self % M = M  
-    
-    ! Quantidade corpos no sistema
-    self % N = size(M)
+  ! Salva as massas
+  self % M = M  
+  
+  ! Quantidade corpos no sistema
+  self % N = SIZE(M)
 
-    ! Massa total do sistema
-    self % mtot = sum(self % M)
+  ! Massa total do sistema
+  self % mtot = SUM(self % M)
 
-    ! Salva as posicoes e os momentos
-    self % R = R0
-    self % P = P0
+  ! Salva as posicoes e os momentos
+  self % R = R0
+  self % P = P0
 
-    ! Salva a dimensao
-    self % dim = size(R0,2)
+  ! Salva a dimensao
+  self % dim = SIZE(R0,2)
 
-    ! Salva momento linear total inicial
-    self % Ptot = momentoLinear_total(self % P)
+  ! Salva momento linear total inicial
+  self % Ptot = momentoLinear_total(self % P)
 
-    ! Salva a energia inicial
-    self % E0 = energia_total(G, self % M, self % R, self % P)
+  ! Salva a energia inicial
+  self % E0 = energia_total(G, self % M, self % R, self % P)
 
-    ! Salva o momento angular inicial
-    self % J0 = momento_angular_total(self % R, self % P)
+  ! Salva o momento angular inicial
+  self % J0 = momento_angular_total(self % R, self % P)
 
-    ! Salva o centro de massas inicial
-    self % Rcm = centro_massas(self % M, self % R)
+  ! Salva o centro de massas inicial
+  self % Rcm = centro_massas(self % M, self % R)
 
-  end subroutine
+END SUBROUTINE Iniciar
 
-  ! Simulacao com o metodo Velocity Verlet (Simpletico)
-  subroutine rodar_verlet (self, qntdPassos)
-    implicit none
-    class(simular), intent(inout) :: self
-    integer, intent(in) :: qntdPassos
-    ! iterador e variavel de tempo que sera o nome do arquivo
-    integer :: i, t
-    ! Integrador
-    type(integracao_verlet) :: integrador
-    ! Escritor de arquivos
-    type(arquivo) :: Arq
-    
-    real(pf), dimension(2, self % N, self % dim) :: resultado
-    real(pf), dimension(self % N, self % dim) :: R1, P1
+! ************************************************************
+!! Roda simulacao com Verlet
+!
+! Objetivos:
+!   Roda uma simulacao com o metodo Velocity-Verlet.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE rodar_verlet (self, qntdPassos)
+  IMPLICIT NONE
+  class(simular), INTENT(INOUT) :: self
+  INTEGER, INTENT(IN) :: qntdPassos
+  ! iterador e variavel de tempo que sera o nome do arquivo
+  INTEGER :: i, t
+  ! Integrador
+  TYPE(integracao_verlet) :: integrador
+  ! Escritor de arquivos
+  TYPE(arquivo) :: Arq
+  
+  REAL(pf), DIMENSION(2, self % N, self % dim) :: resultado
+  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
 
-    real(pf) :: t0, tf, tempo_total = 0.0_pf
+  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
 
-    ! Cria o arquivo onde sera salvo
-    call Arq % criar(2, self % N, self % dim)
+  ! Cria o arquivo onde sera salvo
+  CALL Arq % criar(2, self % N, self % dim)
 
-    ! Salva as infos de cabecalho
-    call Arq % escrever_cabecalho(self % h, self % G, self % M)
+  ! Salva as infos de cabecalho
+  CALL Arq % escrever_cabecalho(self % h, self % G, self % M)
 
-    ! Instanciamento do integrador
-    WRITE (*,'(a)') 'INTEGRACAO NUMERICA'
-    WRITE (*,*) ' > rodando com ', qntdPassos, ' passos'
-    WRITE (*, '(a)') '  > instanciando o metodo velocity-verlet'
-    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+  ! Instanciamento do integrador
+  WRITE (*,'(a)') 'INTEGRACAO NUMERICA'
+  WRITE (*,*) ' > rodando com ', qntdPassos, ' passos'
+  WRITE (*, '(a)') '  > instanciando o metodo velocity-verlet'
+  CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
-    ! Condicoes iniciais
-    R1 = self % R
-    P1 = self % P
+  ! Condicoes iniciais
+  R1 = self % R
+  P1 = self % P
 
-    call Arq % escrever((/R1, P1/))
+  CALL Arq % escrever((/R1, P1/))
 
-    ! Roda
-    WRITE (*, '(a)') '  > iniciando simulacao...'
-    do i = 1, qntdPassos
+  ! Roda
+  WRITE (*, '(a)') '  > iniciando simulacao...'
+  DO i = 1, qntdPassos
 
-      ! timer
-      t0 = omp_get_wtime()
+    ! timer
+    t0 = omp_get_wtime()
 
-      ! Integracao
-      call integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    ! Integracao
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
 
-      ! timer
-      tf = omp_get_wtime()
-      tempo_total = tempo_total + tf - t0
+    ! timer
+    tf = omp_get_wtime()
+    tempo_total = tempo_total + tf - t0
 
-      call Arq % escrever((/R1, P1/))
+    CALL Arq % escrever((/R1, P1/))
 
-      if (mod(i, 500) == 0) then
-        WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1)
-      end if
+    IF (mod(i, 500) == 0) THEN
+      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1)
+    ENDIF
 
-    end do
-    
-    WRITE (*, '(a)') '  > simulacao encerrada!'
-    WRITE (*,*)
+  END do
+  
+  WRITE (*, '(a)') '  > simulacao encerrada!'
+  WRITE (*,*)
 
-    call Arq % fechar()
+  CALL Arq % fechar()
 
-  end subroutine rodar_verlet
+END SUBROUTINE rodar_verlet
 
-  ! Simulacao com o metodo de Runge-Kutta de ordem 4 (RK4)
-  subroutine rodar_rk4 (self, qntdPassos)
+! ************************************************************
+!! Roda simulacao com RK4
+!
+! Objetivos:
+!   Roda uma simulacao com o metodo de Runge-Kutta de ordem 4.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE rodar_rk4 (self, qntdPassos)
 
-    implicit none
-    class(simular), intent(inout) :: self
-    integer, intent(in) :: qntdPassos
-    ! Iterador e variavel de tempo que sera o nome do arquivo
-    integer :: i, t
-    ! Integrador
-    type(integracao_rk4) :: integrador
-    ! Escritor de arquivos
-    type(arquivo) :: Arq
-    
-    real(pf), dimension(2, self % N, self % dim) :: resultado
-    real(pf), dimension(self % N, self % dim) :: R1, P1
+  IMPLICIT NONE
+  class(simular), INTENT(INOUT) :: self
+  INTEGER, INTENT(IN) :: qntdPassos
+  ! Iterador e variavel de tempo que sera o nome do arquivo
+  INTEGER :: i, t
+  ! Integrador
+  TYPE(integracao_rk4) :: integrador
+  ! Escritor de arquivos
+  TYPE(arquivo) :: Arq
+  
+  REAL(pf), DIMENSION(2, self % N, self % dim) :: resultado
+  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
 
-    ! Instanciamento do integrador    
-    call integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+  ! Instanciamento do integrador    
+  CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
-    ! Cria o arquivo onde ficara salvo
-    call Arq % criar(1, self % N, self % dim)
+  ! Cria o arquivo onde ficara salvo
+  CALL Arq % criar(1, self % N, self % dim)
 
-    ! Salva as infos de cabecalho
-    call Arq % escrever_cabecalho(self % h, self % G, self % M)
+  ! Salva as infos de cabecalho
+  CALL Arq % escrever_cabecalho(self % h, self % G, self % M)
 
-    ! Condicoes iniciais
-    R1 = self % R
-    P1 = self % P
+  ! Condicoes iniciais
+  R1 = self % R
+  P1 = self % P
 
-    call Arq % escrever((/R1, P1/))
+  CALL Arq % escrever((/R1, P1/))
 
-    ! Roda
-    do i = 1, qntdPassos
+  ! Roda
+  DO i = 1, qntdPassos
 
-      call integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
 
-      call Arq % escrever((/R1, P1/))
+    CALL Arq % escrever((/R1, P1/))
 
-      if (mod(i, 500) == 0) then
-        WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
-        WRITE (*,*) 'passo: ', i
-      end if
+    IF (mod(i, 500) == 0) THEN
+      WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
+      WRITE (*,*) 'passo: ', i
+    ENDIF
 
-    end do 
+  END DO 
 
-    call Arq % fechar()
+  CALL Arq % fechar()
 
-  end subroutine rodar_rk4
+END SUBROUTINE rodar_rk4
 
-end module simulacao
+END module simulacao

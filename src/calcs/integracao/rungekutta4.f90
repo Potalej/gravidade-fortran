@@ -1,145 +1,186 @@
-! Integracao
+! ************************************************************
+!! METODO NUMERICO RK4
+!
+! Objetivos:
+!   Aplicacao do metodo de Runge-Kutta de Quarta Ordem em Quatro
+!   Estagios (RK4 ou RK44)
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
 ! 
-! Aqui consta a classe de integracao numerica via metodo de Runge-Kutta de 
-! ordem 4.
-! 
+MODULE rungekutta4
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE rungekutta
+  USE correcao
+  USE colisao
+  USE integrador
 
-module rungekutta4
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use rungekutta
-  use correcao
-  use colisao
-  use integrador
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC integracao_rk4
 
-  implicit none
-  private
-  public integracao_rk4
-
-  type, extends(integracao) :: integracao_rk4
+  TYPE, EXTENDS(integracao) :: integracao_rk4
     
     ! Base do Runge-Kutta
-    type(RK) :: baseRK
+    TYPE(RK) :: baseRK
     ! Modulos adicionais
-    contains
-      procedure :: Iniciar, metodo, aplicarNVezes
+    CONTAINS
+      PROCEDURE :: Iniciar, metodo, aplicarNVezes
 
-  end type integracao_rk4
+  END TYPE integracao_rk4
 
-contains
+CONTAINS
 
-  ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, massas, G, h, corrigir, colidir)
-    implicit none
-    class(integracao_rk4), intent(inout) :: self
-    logical,intent(in) :: corrigir, colidir
-    real(pf), allocatable :: massas(:)
-    real(pf)              :: G, h
-    integer :: a, i
+! ************************************************************
+!! Construtor da classe
+!
+! Objetivos:
+!   Define o principal, salvando os valores e inicializando o
+!   metodo.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
+  IMPLICIT NONE
+  CLASS(integracao_rk4), INTENT(INOUT) :: self
+  LOGICAL,INTENT(IN) :: corrigir, colidir
+  REAL(pf), allocatable :: massas(:)
+  REAL(pf)              :: G, h
+  INTEGER :: a, i
 
-    ! quantidade de partículas
-    self % N = size(massas)
-    ! massas
-    allocate(self % m (self % N))
-    self % m = massas
+  ! quantidade de partículas
+  self % N = SIZE(massas)
+  ! massas
+  ALLOCATE(self % m (self % N))
+  self % m = massas
 
-    ! gravidade
-    self % G = G
-    ! passo
-    self % h = h
+  ! gravidade
+  self % G = G
+  ! passo
+  self % h = h
 
-    ! Se vai ou nao corrigir
-    self % corrigir = corrigir
+  ! Se vai ou nao corrigir
+  self % corrigir = corrigir
 
-    ! Se vai ou nao colidir
-    self % colidir = colidir
+  ! Se vai ou nao colidir
+  self % colidir = colidir
 
-    ! alocando variaveis de correcao
-    allocate(self%grads(10, 6*self%N))
-    allocate(self%gradsT(6*self%N,10))
-    allocate(self%vetorCorrecao(1:6*self%N))
+  ! alocando variaveis de correcao
+  ALLOCATE(self%grads(10, 6*self%N))
+  ALLOCATE(self%gradsT(6*self%N,10))
+  ALLOCATE(self%vetorCorrecao(1:6*self%N))
+  
+  ! Inicia o base do RK 
+  CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h)
+
+END SUBROUTINE Iniciar
+
+
+! ************************************************************
+!! Metodo numerico
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo (self, R, P, FSomas)
+
+  IMPLICIT NONE
+  class(integracao_rk4), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R, P, FSomas
+  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
+  REAL(pf), DIMENSION(2, self % N, self % dim) :: metodo
+
+  ! componentes da integracao (kappas)
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1, k2, k3, k4, fator
+
+  ! faz a integracao sobre as equacoes x'
+  k1 = P * self % baseRK % massasInvertidas
+  k2 = k1 * self % baseRK % massasInvertidas
+  k3 = k2 * self % baseRK % massasInvertidas
+  k4 = k3 * self % baseRK % massasInvertidas
+
+  ! fator para integracao
+  fator = (self % h / 6) * (6*k1 + 3*self % h*k2 + self % h**2 * k3 + 0.25 * self % h**3 * k4)
+
+  ! integra as posicoes
+  R1 = R + fator
+
+  ! integra os momentos
+  P1 = P + self % h * FSomas
+
+  metodo(1,:,:) = R1
+  metodo(2,:,:) = P1
+
+END FUNCTION metodo
+
+! ************************************************************
+!! Aplicacao iterada do metodo
+!
+! Objetivos:
+!   Aplica o metodo iterativamente N vezes.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
+
+  IMPLICIT NONE
+  class (integracao_rk4), INTENT(INOUT)                    :: self
+  REAL(pf), DIMENSION(self % N, self % dim), INTENT(INOUT) :: R, P
+  INTEGER, INTENT(IN)                                   :: passos_antes_salvar
+  REAL(pf), INTENT(IN)                                  :: E0
+  REAL(pf), DIMENSION(3), INTENT(IN)                    :: J0
+  ! para cada passo
+  INTEGER :: i, qntd = 10
+  ! para verificar se corrigiu
+  LOGICAL :: corrigiu = .FALSE.
+  ! para as forcas e passos pos-integracao
+  REAL(pf), DIMENSION (self % N, self % dim) :: F, R1, P1
+  REAL(pf), DIMENSION (2, self % N, self % dim) :: resultado  
+  R1 = R
+  P1 = P
+
+  DO i = 1, passos_antes_salvar
+    ! calcula as forcas
+    F = self % baseRK % forcas (R1)
+    ! aplicada o metodo
+    resultado = self % metodo (R1, P1, F)
     
-    ! Inicia o base do RK 
-    call self % baseRK % Iniciar(self % n, self % m, self % G, self % h)
+    R1 = resultado(1,:,:)
+    P1 = resultado(2,:,:)
 
-  end subroutine Iniciar
+    ! aplica a correcao geral, se solicitado
+    IF (self % corrigir) THEN
+      CALL corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+    ENDIF
 
+    ! se tiver colisoes, aplica
+    IF (self % colidir .AND. .NOT. corrigiu) THEN
+      CALL verificar_e_colidir(self % m, R1, P1)
+    ENDIF
 
-  ! Método em si
-  function metodo (self, R, P, FSomas)
+  END DO
 
-    implicit none
-    class(integracao_rk4), intent(in) :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R, P, FSomas
-    real(pf), dimension(self % N, self % dim) :: R1, P1
-    real(pf), dimension(2, self % N, self % dim) :: metodo
+  R = R1
+  P = P1
 
-    ! componentes da integracao (kappas)
-    real(pf), dimension(self % N, self % dim) :: k1, k2, k3, k4, fator
-
-    ! faz a integracao sobre as equacoes x'
-    k1 = P * self % baseRK % massasInvertidas
-    k2 = k1 * self % baseRK % massasInvertidas
-    k3 = k2 * self % baseRK % massasInvertidas
-    k4 = k3 * self % baseRK % massasInvertidas
-
-    ! fator para integracao
-    fator = (self % h / 6) * (6*k1 + 3*self % h*k2 + self % h**2 * k3 + 0.25 * self % h**3 * k4)
-
-    ! integra as posicoes
-    R1 = R + fator
-
-    ! integra os momentos
-    P1 = P + self % h * FSomas
-
-    metodo(1,:,:) = R1
-    metodo(2,:,:) = P1
-
-  end function metodo
-
-  ! Aplicador do metodo com correcao (para aplicar varias vezes)
-  subroutine aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
-
-    implicit none
-    class (integracao_rk4), intent(inout)                    :: self
-    real(pf), dimension(self % N, self % dim), intent(inout) :: R, P
-    integer, intent(in)                                   :: passos_antes_salvar
-    real(pf), intent(in)                                  :: E0
-    real(pf), dimension(3), intent(in)                    :: J0
-    ! para cada passo
-    integer :: i, qntd = 10
-    ! para verificar se corrigiu
-    logical :: corrigiu = .FALSE.
-    ! para as forcas e passos pos-integracao
-    real(pf), dimension (self % N, self % dim) :: F, R1, P1
-    real(pf), dimension (2, self % N, self % dim) :: resultado  
-    R1 = R
-    P1 = P
-
-    do i = 1, passos_antes_salvar
-      ! calcula as forcas
-      F = self % baseRK % forcas (R1)
-      ! aplicada o metodo
-      resultado = self % metodo (R1, P1, F)
-      
-      R1 = resultado(1,:,:)
-      P1 = resultado(2,:,:)
-
-      ! aplica a correcao geral, se solicitado
-      if (self % corrigir) then
-        call corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
-      end if
-
-      ! se tiver colisoes, aplica
-      if (self % colidir .AND. .NOT. corrigiu) then
-        call verificar_e_colidir(self % m, R1, P1)
-      end if
-
-    end do
-
-    R = R1
-    P = P1
-
-  end subroutine aplicarNVezes
+END SUBROUTINE aplicarNVezes
 
 
-end module rungekutta4
+END module rungekutta4

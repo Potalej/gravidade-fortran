@@ -1,194 +1,242 @@
-module simulacao_sorteio
+! ************************************************************
+!! SIMULACAO: SORTEIO
+!
+! Objetivos:
+!   Simulacoes a partir do sorteio de valores iniciais.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+MODULE simulacao_sorteio
 
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use OMP_LIB
-  use simulacao
-  use condicoesArtigo
-  use leitura
-  use arquivos
-  implicit none
-  private
-  public simular_sorteio, sorteio_salvar
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
+  USE simulacao
+  USE condicoesIniciais
+  USE leitura
+  USE arquivos
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC simular_sorteio, sorteio_salvar
 
   ! Instanciamento da classe
-  type(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
-  type(preset_config) :: configs
+  TYPE(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
+  TYPE(preset_config) :: configs
 
-contains
+CONTAINS
 
-  ! Metodo principal da classe
-  subroutine simular_sorteio (arquivo)
-    character(256), intent(inout) :: arquivo
+! ************************************************************
+!! Metodo principal
+!
+! Objetivos:
+!   Aplica o sorteio e faz a simulacao.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE simular_sorteio (arquivo)
+  CHARACTER(256), INTENT(INOUT) :: arquivo
 
-    ! Tempo de execucao
-    real :: t0, tf
-    ! Vetores
-    real(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
-    ! Quantidade total de passos
-    integer :: qntd_total_passos
-    CHARACTER(8) :: datahoje
-    CHARACTER(3) :: numero
-    CHARACTER(16) :: nome_arq
-    CHARACTER(12) :: nome_sorteio
-    INTEGER :: i = 1
-    LOGICAL :: arquivo_existe = .TRUE.
+  ! Tempo de execucao
+  REAL :: t0, tf
+  ! Vetores
+  REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  ! Quantidade total de passos
+  INTEGER :: qntd_total_passos
+  CHARACTER(8) :: datahoje
+  CHARACTER(3) :: numero
+  CHARACTER(16) :: nome_arq
+  CHARACTER(12) :: nome_sorteio
+  INTEGER :: i = 1
+  LOGICAL :: arquivo_existe = .TRUE.
 
-    ! Le o arquivo de configuracoes
-    call configs % config(arquivo)
+  ! Le o arquivo de configuracoes
+  CALL configs % config(arquivo)
 
-    call gerar_condicionado(configs%G, &
-       configs%N, &
-       massas,    &
-       posicoes,  &
-       momentos,  &
-       configs%int_posicoes, & ! Intervalo de posicoes
-       configs%int_momentos, & ! Intervalo de momentos
-       configs%int_massas,   & ! Intervalo de massas 
-       configs%Etot,         & ! Energia total
-       configs%Jtot,         & ! Momento angular total
-       configs%Ptot )          ! Momento angular total
+  CALL gerar_condicionado(configs%G, &
+      configs%N, &
+      massas,    &
+      posicoes,  &
+      momentos,  &
+      configs%int_posicoes, & ! Intervalo de posicoes
+      configs%int_momentos, & ! Intervalo de momentos
+      configs%int_massas,   & ! Intervalo de massas 
+      configs%Etot,         & ! Energia total
+      configs%Jtot,         & ! Momento angular total
+      configs%Ptot )          ! Momento angular total
 
-    ! Gera o nome
-    call date_and_time(datahoje)
+  ! Gera o nome
+  CALL DATE_AND_TIME(datahoje)
 
-    call diretorio_out()
+  CALL diretorio_out()
 
-    do while (arquivo_existe)
-      write(numero, '(I3.3)') i
-      i = i + 1
+  DO WHILE (arquivo_existe)
+    WRITE(numero, '(I3.3)') i
+    i = i + 1
 
-      ! cria nome 
-      nome_sorteio = trim(datahoje)//"_"//trim(numero)
-      nome_arq = nome_sorteio // ".txt"
+    ! cria nome 
+    nome_sorteio = TRIM(datahoje)//"_"//TRIM(numero)
+    nome_arq = nome_sorteio // ".txt"
 
-      ! verifica se existe
-      inquire(file='out/auto_vi/'//nome_arq, exist=arquivo_existe)
-    end do
+    ! verifica se existe
+    INQUIRE(file='out/auto_vi/'//nome_arq, exist=arquivo_existe)
+  END DO
 
-    ! Salva o preset gerado
-    CALL salvar_sorteio('out/', 'auto_vi/', nome_arq,  &
-      "Sorteio_"//nome_sorteio, &
-      configs % G,          &
-      massas,               &
-      posicoes,             &
-      momentos,             &
-      configs % t0,         &
-      configs % tf,         &
-      configs % timestep,   &
-      configs % integrador, &
-      configs % corretor,   &
-      configs % colisoes,   &
-      configs % passos_antes_salvar)
+  ! Salva o preset gerado
+  CALL salvar_sorteio('out/', 'auto_vi/', nome_arq,  &
+    "Sorteio_"//nome_sorteio, &
+    configs % G,          &
+    massas,               &
+    posicoes,             &
+    momentos,             &
+    configs % t0,         &
+    configs % tf,         &
+    configs % timestep,   &
+    configs % integrador, &
+    configs % corretor,   &
+    configs % colisoes,   &
+    configs % passos_antes_salvar)
 
-    ! Se o instante inicial for negativo, entao vai rodar ao contrario
-    if (configs%t0 < 0) then
-      if (configs%tf == 0) then
-        ! Roda apenas o passado
-        WRITE (*,*) " > Intervalo [", configs%t0, ",", configs%tf, "]"
-        call rodar(-configs%timestep,massas,posicoes,momentos)
-      else if (configs%tf > 0) then
-        ! Roda o passado e o futuro
-        WRITE (*,*) " > Intervalo [", configs%t0, ",", 0, "]"
-        call rodar(-configs%timestep,massas,posicoes,momentos)
-        WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-        call rodar(configs%timestep,massas,posicoes,momentos)
-      end if
-    ! Se for positivo, apenas roda normal
-    else
-      ! Roda apenas o futuro
+  ! Se o instante inicial for negativo, entao vai rodar ao contrario
+  IF (configs%t0 < 0) THEN
+    IF (configs%tf == 0) THEN
+      ! Roda apenas o passado
+      WRITE (*,*) " > Intervalo [", configs%t0, ",", configs%tf, "]"
+      CALL rodar(-configs%timestep,massas,posicoes,momentos)
+    ELSE IF (configs%tf > 0) THEN
+      ! Roda o passado e o futuro
+      WRITE (*,*) " > Intervalo [", configs%t0, ",", 0, "]"
+      CALL rodar(-configs%timestep,massas,posicoes,momentos)
       WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-      call rodar(configs%timestep,massas,posicoes,momentos)
-    end if
+      CALL rodar(configs%timestep,massas,posicoes,momentos)
+    ENDIF
+  ! Se for positivo, apenas roda normal
+  ELSE
+    ! Roda apenas o futuro
+    WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
+    CALL rodar(configs%timestep,massas,posicoes,momentos)
+  ENDIF
 
-  end subroutine simular_sorteio
+END SUBROUTINE simular_sorteio
 
-  subroutine rodar (timestep, massas, posicoes, momentos)
-    REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
-    REAL(pf), intent(in)  :: timestep
-    REAL(pf)              :: t0, tf
-    INTEGER               :: qntd_total_passos
+! ************************************************************
+!! Roda simulacao
+!
+! Objetivos:
+!   Roda uma simulacao com as condicoes informadas.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE rodar (timestep, massas, posicoes, momentos)
+  REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf), INTENT(IN)  :: timestep
+  REAL(pf)              :: t0, tf
+  INTEGER               :: qntd_total_passos
 
-    qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
-    WRITE (*,*)
+  qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
+  WRITE (*,*)
 
-    ! timer
-    t0 = omp_get_wtime()
+  ! timer
+  t0 = omp_get_wtime()
 
-    SELECT CASE (configs%integrador)
-      CASE ("verlet")
-        Sim_verlet % corrigir = configs%corretor
-        Sim_verlet % colidir  = configs%colisoes
-        call Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
-        call Sim_verlet%rodar_verlet(qntd_total_passos)
-      CASE ("rk4")
-        Sim_rk4 % corrigir = configs%corretor
-        Sim_rk4 % colidir  = configs%colisoes
-        call Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
-        call Sim_rk4%rodar_rk4(qntd_total_passos)
-    END SELECT
+  SELECT CASE (configs%integrador)
+    CASE ("verlet")
+      Sim_verlet % corrigir = configs%corretor
+      Sim_verlet % colidir  = configs%colisoes
+      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      CALL Sim_verlet%rodar_verlet(qntd_total_passos)
+    CASE ("rk4")
+      Sim_rk4 % corrigir = configs%corretor
+      Sim_rk4 % colidir  = configs%colisoes
+      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      CALL Sim_rk4%rodar_rk4(qntd_total_passos)
+  END SELECT
 
-    tf = omp_get_wtime()
-    WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
-    WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
-  end subroutine rodar
+  tf = omp_get_wtime()
+  WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
+  WRITE (*,*) ' * tempor por passo: ', (tf-t0) / qntd_total_passos
+END SUBROUTINE rodar
 
-  subroutine sorteio_salvar (dir)
-    IMPLICIT NONE
-    CHARACTER(LEN=*) :: dir
-    REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
-    CHARACTER(8) :: datahoje
-    CHARACTER(3) :: numero
-    CHARACTER(16) :: nome_arq
-    CHARACTER(12) :: nome_sorteio
-    INTEGER :: i = 1
-    LOGICAL :: arquivo_existe = .TRUE.
+! ************************************************************
+!! Sorteia e salva
+!
+! Objetivos:
+!   Sorteia os valores iniciais e salva com um preset de 
+!   valores iniciais.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE sorteio_salvar (dir)
+  IMPLICIT NONE
+  CHARACTER(LEN=*) :: dir
+  REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
+  CHARACTER(8) :: datahoje
+  CHARACTER(3) :: numero
+  CHARACTER(16) :: nome_arq
+  CHARACTER(12) :: nome_sorteio
+  INTEGER :: i = 1
+  LOGICAL :: arquivo_existe = .TRUE.
 
-    ! em string
-    call date_and_time(datahoje)
+  ! em string
+  CALL DATE_AND_TIME(datahoje)
 
-    ! Le o arquivo de configuracoes
-    call configs % config(dir)
+  ! Le o arquivo de configuracoes
+  CALL configs % config(dir)
 
-    ! Gera os valores
-    call gerar_condicionado(configs%G, &
-       configs%N, &
-       massas,    &
-       posicoes,  &
-       momentos,  &
-       configs%int_posicoes, & ! Intervalo de posicoes
-       configs%int_momentos, & ! Intervalo de momentos
-       configs%int_massas,   & ! Intervalo de massas 
-       configs%Etot,         & ! Energia total
-       configs%Jtot,         & ! Momento angular total
-       configs%Ptot )          ! Momento angular total
+  ! Gera os valores
+  CALL gerar_condicionado(configs%G, &
+      configs%N, &
+      massas,    &
+      posicoes,  &
+      momentos,  &
+      configs%int_posicoes, & ! Intervalo de posicoes
+      configs%int_momentos, & ! Intervalo de momentos
+      configs%int_massas,   & ! Intervalo de massas 
+      configs%Etot,         & ! Energia total
+      configs%Jtot,         & ! Momento angular total
+      configs%Ptot )          ! Momento angular total
 
-    ! Gera o nome
-    do while (arquivo_existe)
-      write(numero, '(I3.3)') i
-      i = i + 1
+  ! Gera o nome
+  DO WHILE (arquivo_existe)
+    WRITE(numero, '(I3.3)') i
+    i = i + 1
 
-      ! cria nome 
-      nome_sorteio = trim(datahoje)//"_"//trim(numero)
-      nome_arq = nome_sorteio // ".txt"
+    ! cria nome 
+    nome_sorteio = TRIM(datahoje)//"_"//TRIM(numero)
+    nome_arq = nome_sorteio // ".txt"
 
-      ! verifica se existe
-      inquire(file="./out/auto_vi/"//nome_arq, exist=arquivo_existe)
-    end do
+    ! verifica se existe
+    INQUIRE(file="./out/auto_vi/"//nome_arq, exist=arquivo_existe)
+  END DO
 
-    ! Salva o preset gerado
-    CALL salvar_sorteio('out/','auto_vi/', nome_arq,  &
-      "Sorteio_"//nome_sorteio, &
-      configs % G,          &
-      massas,               &
-      posicoes,             &
-      momentos,             &
-      configs % t0,         &
-      configs % tf,         &
-      configs % timestep,   &
-      configs % integrador, &
-      configs % corretor,   &
-      configs % colisoes,   &
-      configs % passos_antes_salvar)
-  end subroutine sorteio_salvar
+  ! Salva o preset gerado
+  CALL salvar_sorteio('out/','auto_vi/', nome_arq,  &
+    "Sorteio_"//nome_sorteio, &
+    configs % G,          &
+    massas,               &
+    posicoes,             &
+    momentos,             &
+    configs % t0,         &
+    configs % tf,         &
+    configs % timestep,   &
+    configs % integrador, &
+    configs % corretor,   &
+    configs % colisoes,   &
+    configs % passos_antes_salvar)
+END SUBROUTINE sorteio_salvar
 
-end module
+END module

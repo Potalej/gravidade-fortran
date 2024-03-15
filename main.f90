@@ -1,20 +1,33 @@
-program main
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
-  use OMP_LIB
-  use simulacao_sorteio
-  use simulacao_vi
-  use leitura
-  use condicoesArtigo
-  use plot
+! ************************************************************
+!! GRAVIDADE-FORTRAN
+!
+! Objetivos:
+!   Arquivo central do gravidade-fortran, sendo o que chama
+!   todas as outras funcoes.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+PROGRAM main
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
+  USE simulacao_sorteio
+  USE simulacao_vi
+  USE leitura
+  USE condicoesIniciais
+  USE plot
   IMPLICIT NONE
 
   CHARACTER(256)  :: arq ! Arquivo
   CHARACTER(15)   :: acao ! Modo em que sera operado
   INTEGER :: i
 
-  if (command_argument_count() == 0) then
+  IF (command_argument_count() == 0) THEN
     STOP 'Nenhum parametro informado! Para mais informacoes, use --help'
-  endif
+  ENDIF
 
   ! O primeiro argumento deve ser a acao
   CALL get_command_argument(1, acao)
@@ -55,12 +68,12 @@ program main
     CASE default
       WRITE (*,*) 'Entrada vazia!!'
       STOP
-  end select
+  END select
 
-contains
+CONTAINS
 
   ! Ajudador
-  subroutine help
+  SUBROUTINE help
     WRITE (*,*) 'SINOPSE:'
     WRITE (*,*) '   # ./gravidade [--help|-h]'
     WRITE (*,*) '   # ./gravidade [OPCAO] [ARQUIVO]'
@@ -78,46 +91,46 @@ contains
     WRITE (*,*) '   (-e, --exibir) [arquivo]' 
     WRITE (*,*) '         Gera um grafico com as trajetorias dos corpos no arquivo informado.'
     WRITE (*,*)
-  end subroutine help
+  END SUBROUTINE help
 
   ! Imprime o cabecalho do programa
-  subroutine cabecalho
-    write(*,*)
-    write(*,*) "|=========================================|"
-    write(*,*) "|                    _    _         _     |"
-    write(*,*) "|  __ _ _ _ __ ___ _(_)__| |__ _ __| |___ |"
-    write(*,*) "| / _` | '_/ _` \ V / / _` / _` / _` / -_)|"
-    write(*,*) "| \__, |_| \__,_|\_/|_\__,_\__,_\__,_\___||"
-    write(*,*) "| |___/                                   |"
-    write(*,*) "|=========================================|"
-    write(*,*)
-  end subroutine cabecalho
+  SUBROUTINE cabecalho
+    WRITE(*,*)
+    WRITE(*,*) "|=========================================|"
+    WRITE(*,*) "|                    _    _         _     |"
+    WRITE(*,*) "|  __ _ _ _ __ ___ _(_)__| |__ _ __| |___ |"
+    WRITE(*,*) "| / _` | '_/ _` \ V / / _` / _` / _` / -_)|"
+    WRITE(*,*) "| \__, |_| \__,_|\_/|_\__,_\__,_\__,_\___||"
+    WRITE(*,*) "| |___/                                   |"
+    WRITE(*,*) "|=========================================|"
+    WRITE(*,*)
+  END SUBROUTINE cabecalho
      
-  subroutine rodar_exibir (dir)
+  SUBROUTINE rodar_exibir (dir)
     IMPLICIT NONE
     CHARACTER(len=*) :: dir
-    real(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
-    real(pf) :: G, h
+    REAL(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
+    REAL(pf) :: G, h
 
     ! Abre o arquivo salvo para leitura
-    call ler_csv(dir, h, G, massas, R, P)
+    CALL ler_csv(dir, h, G, massas, R, P)
     
     ! Exibe as trajetorias
-    call plotar_trajetorias(R,1,2)
+    CALL plotar_trajetorias(R,1,2)
 
-  end subroutine rodar_exibir
+  END SUBROUTINE rodar_exibir
 
-  subroutine rodar_dados (dir)
+  SUBROUTINE rodar_dados (dir)
     IMPLICIT NONE
     CHARACTER(len=*) :: dir
-    real(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
-    real(pf) :: G, h
+    REAL(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
+    REAL(pf) :: G, h
 
     ! Abre o arquivo salvo para leitura
-    call ler_csv(dir, h, G, massas, R, P)
+    CALL ler_csv(dir, h, G, massas, R, P)
     
     ! Exibe as trajetorias
-    call plotar_trajetorias(R,1,2)
-  end subroutine
+    CALL plotar_trajetorias(R,1,2)
+  END SUBROUTINE
 
-end program
+END program

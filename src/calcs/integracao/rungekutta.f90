@@ -1,90 +1,120 @@
-! Integracao
+! ************************************************************
+!! METODO NUMERICO: RUNGE-KUTTA (BASE)
+!
+! Objetivos:
+!   Base para os metodos de Runge-Kutta. Os metodos basicos
+!   aqui servem apenas para contruir outras classes que usem
+!   de fato o metodo, como RK4 e RKF45.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
 ! 
-! Aqui consta o basico da integracao numerica com o metodo de Runge-Kutta.
-! Os metodos basicos aqui servem apenas para construir outras classes que
-! usem de fato o metodo, como RK4 e RKF45.
+MODULE rungekutta
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
 
-module rungekutta
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC RK
 
-  implicit none
-  private
-  public RK
-
-  type :: RK
+  TYPE :: RK
 
     ! m: Massas
     ! massasInvertidas : Matriz como inverso das massas para facilitar a integracao dos momentos
-    real(pf), allocatable :: m(:), massasInvertidas(:,:)
+    REAL(pf), ALLOCATABLE :: m(:), massasInvertidas(:,:)
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
-    real(pf) :: h, G
+    REAL(pf) :: h, G
 
     ! dim: dimensao do problema
     ! N: quantidade de particulas
-    integer :: dim = 3, N
+    INTEGER :: dim = 3, N
 
-    contains
-      procedure :: Iniciar, forcas
+    CONTAINS
+      PROCEDURE :: Iniciar, forcas
 
-  end type
+  END TYPE
 
-contains
+CONTAINS
 
-  ! Construtor da classe, para definir o principal
-  subroutine Iniciar (self, N, massas, G, h)
-    implicit none
-    class(RK), intent(inout) :: self
-    real(pf), allocatable :: massas(:)
-    integer, intent(inout) :: N
-    real(pf)               :: G, h
-    integer :: a, i
+! ************************************************************
+!! Construtor da classe
+!
+! Objetivos:
+!   Define o principal, salvando os valores.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE Iniciar (self, N, massas, G, h)
+  IMPLICIT NONE
+  CLASS(RK), INTENT(INOUT) :: self
+  REAL(pf), ALLOCATABLE :: massas(:)
+  INTEGER, INTENT(INOUT) :: N
+  REAL(pf)               :: G, h
+  INTEGER :: a, i
 
-    ! quantidade de particulas
-    self % N = N
-    ! massas
-    allocate(self % m (self % N))
-    self % m = massas
-    ! vetor de massas invertidas
-    allocate(self % massasInvertidas (self % N, self % dim))
-    do a = 1, self % N
-      do i = 1, self % dim
-        self % massasInvertidas(a,i) = 1/(massas(a))
-      end do
-    end do
+  ! quantidade de particulas
+  self % N = N
+  ! massas
+  ALLOCATE(self % m (self % N))
+  self % m = massas
+  ! vetor de massas invertidas
+  ALLOCATE(self % massasInvertidas (self % N, self % dim))
+  DO a = 1, self % N
+    DO i = 1, self % dim
+      self % massasInvertidas(a,i) = 1/(massas(a))
+    END DO
+  END DO
 
-    ! gravidade
-    self % G = G
-    ! passo
-    self % h = h
-  end subroutine Iniciar  
+  ! gravidade
+  self % G = G
+  ! passo
+  self % h = h
+END SUBROUTINE Iniciar  
 
-  ! Matriz de forcas
-  function forcas (self, R)
-    implicit none
-    class(RK), intent(in) :: self
-    real(pf), dimension(self % N, self % dim), intent(in) :: R
-    real(pf), dimension(self % dim) :: Fab
-    integer :: a, b
-    real(pf) :: distancia
-    real(pf), dimension(self % N, self % dim) :: forcas
-    
-    forcas(:,:) = 0
+! ************************************************************
+!! Matriz de forcas
+!
+! Objetivos:
+!   Calcula a matriz de forcas a partir das posicoes. Eh 
+!   igual em todo metodo de Runge-Kutta.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+FUNCTION forcas (self, R)
+  IMPLICIT NONE
+  CLASS(RK), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
+  REAL(pf), DIMENSION(self % dim) :: Fab
+  INTEGER :: a, b
+  REAL(pf) :: distancia
+  REAL(pf), DIMENSION(self % N, self % dim) :: forcas
+  
+  forcas(:,:) = 0
 
-    do a = 2, self % N
-      do b = 1, a - 1
-        ! distancia entre os corpos
-        distancia = norm2(R(b,:) - R(a,:))**3
-        ! forca entre os corpos a e b
-        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
-        ! Adiciona na matriz
-        forcas(a,:) = forcas(a,:) - Fab
-        forcas(b,:) = forcas(b,:) + Fab
-      end do
-    end do
+  DO a = 2, self % N
+    DO b = 1, a - 1
+      ! distancia entre os corpos
+      distancia = norm2(R(b,:) - R(a,:))**3
+      ! forca entre os corpos a e b
+      Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+      ! Adiciona na matriz
+      forcas(a,:) = forcas(a,:) - Fab
+      forcas(b,:) = forcas(b,:) + Fab
+    END DO
+  END DO
 
-  end function forcas
+END FUNCTION forcas
 
-
-end module rungekutta
+END MODULE rungekutta

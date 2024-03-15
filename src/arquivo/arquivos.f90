@@ -1,480 +1,618 @@
-! Arquivo
+! *****************************************************************
+!! ARQUIVO
+!
+! Objetivos:
+!   Este arquivo contem helpers para arquivos gerais, como para a 
+!   abertura, leitura e escrita.
+!   
+!   O objeto `arquivo` tem as propriedades de criacao, escrita, 
+!   fechamento, criacao de nome e criacao de formato.
+!   
+! Modificado:
+!   15 de marco de 2024
 ! 
-! Para o manejo das questoes voltadas para arquivos .CSV, como a
-! abertura, a leitura e a escrita destes.
+! Autoria:
+!   oap
 ! 
-! O objeto `arquivo` tem as propriedades de criacao, escrita, fechamento,
-! criacao de nome e criacao de formato.
-! 
-! = subroutine criar (self, idarq, qntdCorpos, dimensao)
-! cria um arquivo .CSV que se configura para fazer a formatacao de uma
-! determinada quantidade de particulas e uma determinada quantidade de 
-! dimensoes. O `idarq` é utilizado como identificar unico do arquivo.
-! 
-! = subroutine escrever (self, array)
-! dado um real :: array(2,3,3), cuja ideia eh ser (/Rk, Pk/), os vetores
-! sao salvos no CSV.
-! 
-! = subroutine fechar (self)
-! fecha o arquivo quando termina a simulacao.
-! 
-! = subroutine criarFormato (self, qntdCorpos, dimensao)
-! para uma determinada quantidade de particulas e dimensoes, eh criada a
-! formatacao para transformar o array em uma string corretamente. Sendo
-! N := qntdCorpos e D := dimensao, por exemplo, deve ser gerada a seguinte
-! formatacao: '(2 (N ( D( F15.7, :, "," ) )))'
-! 
-! = subroutine nomeArquivo (self)
-! cria o nome do arquivo baseado no dia corrente e contando a partir do 10,
-! ou seja, nao havendo arquivos CSV do mesmo dia eh criado um AAAAMMDD_10.csv,
-! e caso haja eh criado AAAAMMDD_11.csv, AAAAMMDD_12.csv, etc.
-! 
-
-module arquivos
-  use, intrinsic :: iso_fortran_env, only: pf=>real64
+MODULE arquivos
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
 
   ! OPENMP
-  use OMP_LIB
+  USE OMP_LIB
 
-  implicit none
-  private
-  public arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
 
   ! classe de arquivo
-  type :: arquivo
+  TYPE :: arquivo
 
   ! id do arquivo
-  integer :: idarq, qntdCorpos_int, dimensao_int
+  INTEGER :: idarq, qntdCorpos_int, dimensao_int
   ! nome do arquivo, qntd de corpos, formato e dimensao
-  character(:), allocatable :: nomearq, formato, formatoMassas, qntdCorpos, dimensao
+  CHARACTER(:), allocatable :: nomearq, formato, formatoMassas, qntdCorpos, dimensao
   ! extensão
-  character(4) :: extensao = '.csv'
+  CHARACTER(4) :: extensao = '.csv'
   ! diretório padrão (fora da pasta build)
-  character(11) :: dir = "./out/data/"
+  CHARACTER(11) :: dir = "./out/data/"
   
-  contains
-    procedure :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
+  CONTAINS
+    PROCEDURE :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
                  diretorio_data
-  end type
-
-contains
-
-  subroutine diretorio_out ()
-    implicit none
-    logical :: existe = .true.
-    ! verifica se existe o diretorio out
-    inquire(file="./out", exist=existe)
-    if (.NOT. existe) then
-      call criar_dir("./out")
-    endif
-  end subroutine diretorio_out
-
-  subroutine diretorio_data (self)
-    implicit none
-    class(arquivo), intent(inout) :: self
-    logical :: existe = .true.
-    call diretorio_out()
-    ! verifica se existe o diretorio padrao
-    inquire(file=trim(self % dir), exist=existe)
-    if (.NOT. existe) then
-      call criar_dir(trim(self % dir))
-    endif
-  end subroutine diretorio_data
-
-  ! para criacao do nome do arquivo
-  subroutine nomeArquivo (self)
-
-    implicit none
-    class(arquivo), intent(inout) :: self
-
-    ! para iterar e nao repetir arquivo
-    integer :: i = 1
-    character(3) :: numero
-    logical :: existe
-
-    ! para capturar a data
-    character(8) :: datahoje
-
-    ! verifica se existe o diretorio padrao
-    call self % diretorio_data()
-
-    ! Por padrao, existe
-    existe = .true.
- 
-    ! em string
-    call date_and_time(datahoje)
-
-    do while (existe)
-      write(numero, '(I3.3)') i
-      i = i + 1
-
-      ! cria nome 
-      self % nomearq = self % dir//trim(datahoje)//"_"//trim(numero)//self % extensao
-
-      ! verifica se existe
-      inquire(file=trim(self % nomearq), exist=existe)
-    end do
-
-  end subroutine nomeArquivo
-
-  ! formatacao do arquivo
-  subroutine criarFormato (self, qntdCorpos, dimensao)
-
-    implicit none
-    class(arquivo), intent(inout) :: self
-    integer, intent(in)           :: qntdCorpos, dimensao
-    character                     :: formato
-    integer                       :: i = 1
-
-    ! salva a quantidade de corpos e dimensao
-    self % qntdCorpos = espacosVazios(qntdCorpos)
-    self % dimensao = espacosVazios(dimensao)
-
-    self % qntdCorpos_int = qntdCorpos
-    self % dimensao_int = dimensao
-
-    self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F25.13, :, ","))))'
-    self % formatoMassas = '(' // self % qntdCorpos // '(F25.7, :, ","))'
-
-
-  end subroutine criarFormato
-
-  ! criacao do arquivo
-  subroutine criar (self, idarq, qntdCorpos, dimensao)
-
-    implicit none
-    class(arquivo), intent(inout) :: self
-    integer, intent(in)           :: idarq, qntdCorpos, dimensao
-    character(len=18)             :: nomearq
-    logical                       :: existe ! para verificar se ja existe ou nao
-
-    WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
-
-    ! cria formatacao
-    call self % criarFormato(qntdCorpos, dimensao)
-    WRITE (*, '(a)') '  > formato : ' // self % formato
-
-    ! criacao do nome do arquivo
-    call self % nomeArquivo()
-    WRITE (*,'(a)') '  > arquivo de saída: ' // self % nomearq
-
-    ! agora cria o arquivo
-    self % idarq = idarq
-    open(idarq, file = self % nomearq, status='new')
-    WRITE (*,'(a)') '  > arquivo criado!'
-
-    WRITE(*,*)
-
-  end subroutine criar
-
-  ! escrever massas
-  subroutine escrever_massas (self, massas)
-
-    implicit none
-    class(arquivo), intent(in) :: self
-    real(pf), intent(in)       :: massas(:)
-
-    ! salva
-    write (self % idarq, self % formatoMassas) massas
-
-  end subroutine escrever_massas
-
-  ! Escreve o cabecalho (contendo h, G, massas)
-  subroutine escrever_cabecalho (self, h, G, massas)
-
-    implicit none
-    class(arquivo), intent(in) :: self
-    real(pf), intent(in)       :: massas(:)
-    real(pf)                   :: h, G
-
-    ! Salva h
-    write (self % idarq, "(F25.7, :, ',')") h
-
-    ! Salva G
-    write (self % idarq, "(F25.7, :, ',')") G
-
-    ! Salva as massas
-    call self%escrever_massas(massas)
-
-  end subroutine escrever_cabecalho
-
-  ! escrever no arquivo
-  subroutine escrever (self, array)
-
-    implicit none
-    class(arquivo), intent(in) :: self
-    real(pf), intent(in)       :: array(2,self % qntdCorpos_int,self % dimensao_int)
-
-    ! salva 
-    write (self % idarq, self % formato) array
-
-  end subroutine escrever
-
-  ! fechar arquivo
-  subroutine fechar (self)
-
-    implicit none
-    class(arquivo), intent(in) :: self
-    
-    close(self % idarq)
-
-  end subroutine fechar
-
-  ! ler arquivo CSV
-  subroutine ler_csv (nome, h, G, massas, R, P)
-
-    character(len=*), intent(in)         :: nome
-    real(pf), intent(inout)              :: G, h
-    real(pf), allocatable, intent(inout) :: R(:,:,:), P(:,:,:), massas(:)
-    character(len=10000)                 :: massas_string
-    integer :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
-    real(pf) :: t0, tf
-
-    WRITE(*, '(a)') "LER_CSV:"
-    WRITE(*, '(a)') "  > arquivo: " // trim(nome)
-
-    open(newunit=iu,file=nome,status='old',action='read')
-
-    ! Captura o tamanho do passo
-    read(iu, *) h
-
-    ! Captura a gravidade
-    read(iu, *) G
-
-    ! captura a string de massas
-    read(iu,'(A)') massas_string    
-    
-    ! captura a quantidade de corpos a partir da quantidade de virgulas
-    do i = 1, len(massas_string)
-      if (massas_string(i:i) == ',') then
-        qntdCorpos = qntdCorpos + 1
-      end if
-    end do
-    qntdCorpos = qntdCorpos + 1 ! numero de virgulas = N - 1
-
-    ! captura o numero de linhas do CSV
-    do while (.true.) 
-      read(iu,*, iostat=io)
-      if (io /= 0) exit
-      qntdLinhas = qntdLinhas+1
-    end do
-    
-    rewind(iu)
-    ! Captura o tamanho do passo
-    read(iu, *) h
-
-    ! Captura a gravidade
-    read(iu, *) G    
-    
-    ! captura as massas
-    allocate(massas(qntdCorpos))
-    read(iu, *) massas
-
-    ! aloca os tamanhos
-    allocate(R(qntdLinhas,qntdCorpos,3))
-    allocate(P(qntdLinhas,qntdCorpos,3))
-
-    ! captura as posicoes e momentos
-    t0 = omp_get_wtime()
-    do i = 1, qntdLinhas-1
-      read(iu,*) R(i,:,:),P(i,:,:)
-    end do
-    tf = omp_get_wtime()
-    
-    close(iu)
-
-    WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", tf-t0, "s"
-    WRITE (*,*)
-
-  end subroutine ler_csv
-
-  ! Criacao de diretorio
-  subroutine criar_dir (dir, onde)
-
-    IMPLICIT NONE
-    CHARACTER(LEN=*) :: dir
-    CHARACTER(LEN=*),OPTIONAL :: onde
-    CHARACTER(LEN=len(dir)) :: res
-    CHARACTER(:), ALLOCATABLE :: comando
-    INTEGER :: i
-    res = dir
-    ! Remove o "./" se tiver
-    do i = 1, len(dir)
-      if (dir(i:i) == "/" .OR. dir(i:i) == ".") then
-        res(i:i+1) = " "
-      end if
-    end do
-
-    ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
-    comando = "cd "//onde//" && mkdir "// trim(res)
-
-    call SYSTEM(comando)
-
-  end subroutine criar_dir
-
-  ! Escreve um preset sorteado como um preset de valores iniciais
-  subroutine salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,metodo,corretor,colisoes,passos_antes_salvar)
-
-    IMPLICIT NONE
-    CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
-    CHARACTER(LEN=256)    :: dir_arquivo 
-    CHARACTER(LEN=3)      :: num_arquivo
-    LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
-    REAL(pf)              :: G, t0, tf, timestep
-    REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
-    INTEGER               :: passos_antes_salvar
-    INTEGER               :: u, i, arq_i
-
-    WRITE(*,'(a)') 'SALVAR SORTEIO:'
-
-    ! Verifica se o diretorio desejado existe
-    inquire(file=onde//trim(subdir), exist=diretorio_existe)
-    if (.NOT. diretorio_existe) then
-      call criar_dir (subdir, onde)
-    end if
-
-    ! Agora verifica se o arquivo ja existe
-    dir_arquivo = TRIM(onde//subdir) // TRIM(arquivo)
-    inquire(file=TRIM(dir_arquivo), exist=arquivo_existe)
-    if (arquivo_existe) then
-      arq_i = 1
-      DO WHILE (arquivo_existe)
-        WRITE(num_arquivo, '(I3.3)') arq_i
-        inquire(file=TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt", exist=arquivo_existe)
-      END DO
-      dir_arquivo = TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt"
-    endif
-
-    WRITE(*,'(a)') '  > arquivo: ' // trim(dir_arquivo)
-
-    ! Abre um arquivo
-    OPEN(newunit=u,file=dir_arquivo)
-
-    WRITE(u,'(*(g0,1x))') "! Configs"
-    WRITE(u,'(*(g0,1x))') "modo vi"
-    WRITE(u,'(*(g0,1x))') "nome ", nome
-    WRITE(u,'(*(g0,1x))') "integrador ", metodo
-    WRITE(u,'(*(g0,1x))') "timestep ", timestep
-    WRITE(u,'(*(g0,1x))') "passos_antes_salvar ", passos_antes_salvar
-    WRITE(u,'(*(g0,1x))') "t0 ", t0
-    WRITE(u,'(*(g0,1x))') "tf ", tf
-    WRITE(u,'(*(g0,1x))') "corretor ", corretor
-    WRITE(u,'(*(g0,1x))') "colisoes ", colisoes
-
-    WRITE(u,*)
-
-    WRITE(u,'(*(g0,1x))') "! Valores do problema"
-    WRITE(u,'(*(g0,1x))') "N ", size(massas)
-    WRITE(u,'(*(g0,1x))') "G ", G
-    
-    WRITE(u,*) 
-
-    WRITE(u,'(*(g0,1x))') "! Massas"
-    do i = 1, size(massas)
-      WRITE(u,'(*(g0,1x))') massas(i)
-    end do
-
-    WRITE(u,*)
-
-    WRITE(u,'(*(g0,1x))') "! Posicoes"
-    do i = 1, size(massas)
-      WRITE(u,'(*(g0,1x,","))') R(i,:) 
-    end do
-
-    WRITE(u,*)
-
-    WRITE(u,'(*(g0,1x))') "! Momentos"
-    do i = 1, size(massas)
-      WRITE(u,'(*(g0,1x,","))') P(i,:) 
-    end do
-
-    CLOSE(u)
-
-    WRITE(*,'(a)') '  > arquivo salvo!'
-    WRITE(*,*)
-
-  end subroutine salvar_sorteio
-
-   ! para remover espacos vazios
-  function espacosVazios (valor)
-
-    implicit none
-    integer, intent(in)           :: valor
-    character(7)                  :: valor_str
-    character(:), allocatable     :: valor_str_parcial, espacosVazios
-    integer                       :: i = 1
-
-    ! transforma o valor em string
-    write(valor_str, '(I7)') valor
-
-    ! alinha a esquerda para facilitar
-    valor_str = adjustl(valor_str)
-
-    ! onde ficara salvo
-    valor_str_parcial = ""
-    
-    ! elimina os caracteres vazios
-    do while (.true.)
-      if (valor_str(i:i).eq." ") then
-        i = 1
-        exit
-      else
-        valor_str_parcial = valor_str_parcial // valor_str(i:i)
-        i = i + 1
-      end if     
-    end do
-
-    ! aloca a string para poder salvar
-    allocate( character(len_trim(valor_str_parcial)) :: espacosVazios)
-    ! enfim, salva
-    espacosVazios = trim(valor_str_parcial)
-
-  end function espacosVazios
-
-  !*****************************************************************************
-  !
-  !! Retorna uma unidade FORTRAN que esteja livre
-  !
-  !  Objetivos:
-  !
-  !    Uma unidade de FORTRAN "livre" eh um inteiro entre 1 e 99 que nao esta
-  !    associado a nenhum dispositivo I/O, e eh utilizado para abrir arquivos.
-  !    Se a unidade eh nula, entao nao ha nenhuma unidade FORTRAN livre.
-  !    
-  !    Os numeros 5, 6 e 9 sao reservados, entao nunca sao retornados.
-  !    
-  !    O codigo foi baseado na biblioteca GNUFOR de John Burkardt.
-  !
-  !  Modificado:
-  !
-  !    02 de fevereiro de 2024
-  !
-  !  Autoria:
-  !
-  !    oap
-  !
-  !  Parametros:
-  !
-  !    Output, integer ( kind = 4 ) IUNIT, o numero de unidade livre.
-  !
-  subroutine capturar_unidade ( iunit )
-    IMPLICIT NONE
-    INTEGER ( kind = 4 ) i
-    INTEGER ( kind = 4 ) ios
-    INTEGER ( kind = 4 ) iunit
-    LOGICAL lopen
-    iunit = 0
-    DO i = 1, 99
-      IF (i /= 5 .and. i /= 6 .and. i /= 9) THEN
-        INQUIRE ( unit = i, opened = lopen, iostat = ios )
-        IF ( ios == 0 ) THEN
-          IF ( .not. lopen ) THEN
-            iunit = i
-            RETURN
-          END IF
-        END IF
-      END IF
+  END TYPE
+
+CONTAINS
+
+! ************************************************************
+!! Diretorio "out"
+!
+! Objetivos:
+!   Verifica se existe o diretorio "out". Se nao existir, cria.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE diretorio_out ()
+  implicit IMPLICIT NONE
+  LOGICAL :: existe = .TRUE.
+  ! verifica se existe o diretorio out
+  INQUIRE(file="./out", exist=existe)
+  IF (.NOT. existe) THEN
+    CALL criar_dir("./out")
+  ENDIF
+END SUBROUTINE diretorio_out
+
+! ************************************************************
+!! Diretorio "data"
+!
+! Objetivos:
+!   Verifica se existe o diretorio "data". Se nao existir, cria.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE diretorio_data (self)
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(INOUT) :: self
+  LOGICAL :: existe = .TRUE.
+  CALL diretorio_out()
+  ! verifica se existe o diretorio padrao
+  INQUIRE(file=TRIM(self % dir), exist=existe)
+  IF (.NOT. existe) THEN
+    CALL criar_dir(TRIM(self % dir))
+  ENDIF
+END SUBROUTINE diretorio_data
+
+! ************************************************************
+!! Nome do arquivo
+!
+! Objetivos:
+!   Cria o nome do arquivo baseado no dia corrente e contando
+!   a partir de 1, ou seja, nao havENDo arquivos CSV do mesmo
+!   dia eh criado um AAAAMMDD_01.csv, e caso haja eh criado
+!   AAAAMMDD_02.csv, AAAAMMDD_03.csv, etc.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE nomeArquivo (self)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(INOUT) :: self
+
+  ! para iterar e nao repetir arquivo
+  INTEGER :: i = 1
+  CHARACTER(3) :: numero
+  LOGICAL :: existe
+
+  ! para capturar a data
+  CHARACTER(8) :: datahoje
+
+  ! verifica se existe o diretorio padrao
+  CALL self % diretorio_data()
+
+  ! Por padrao, existe
+  existe = .TRUE.
+
+  ! em string
+  CALL DATE_AND_TIME(datahoje)
+
+  DO WHILE (existe)
+    WRITE(numero, '(I3.3)') i
+    i = i + 1
+
+    ! cria nome 
+    self % nomearq = self % dir//TRIM(datahoje)//"_"//TRIM(numero)//self % extensao
+
+    ! verifica se existe
+    INQUIRE(file=TRIM(self % nomearq), exist=existe)
+  END DO
+
+END SUBROUTINE nomeArquivo
+
+! ************************************************************
+!! Formato do arquivo
+!
+! Objetivos:
+!   Para uma determinada quantidade de particulas e dimensoes,
+!   eh criada a formatacao para transformar o array em uma 
+!   string corretamente. SENDo N:= qntdCorpos e D := dimensao,
+!   por exemplo, deve ser gerada a seguinte formatacao:
+!   '(2(N(D(F25.7,:,","))))'
+!   enquanto para as massas:
+!   '(N(F25.7,:,","))'
+! 
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE criarFormato (self, qntdCorpos, dimensao)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(INOUT) :: self
+  INTEGER, INTENT(IN)           :: qntdCorpos, dimensao
+  CHARACTER                     :: formato
+  INTEGER                       :: i = 1
+
+  ! salva a quantidade de corpos e dimensao
+  self % qntdCorpos = espacosVazios(qntdCorpos)
+  self % dimensao = espacosVazios(dimensao)
+
+  self % qntdCorpos_int = qntdCorpos
+  self % dimensao_int = dimensao
+
+  self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F25.13, :, ","))))'
+  self % formatoMassas = '(' // self % qntdCorpos // '(F25.7, :, ","))'
+
+END SUBROUTINE criarFormato
+
+! ************************************************************
+!! Criacao do arquivo
+!
+! Objetivos:
+!   Cria um arquivo .csv que se configura para fazer a formatacao
+!   de uma determinada quantidade de particulasd e uma determinada
+!   quantidade de dimensoes. O `idarq` eh utilizado como
+!   identificador unico do arquivo.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE criar (self, idarq, qntdCorpos, dimensao)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(INOUT) :: self
+  INTEGER, INTENT(IN)           :: idarq, qntdCorpos, dimensao
+  CHARACTER(LEN=18)             :: nomearq
+  LOGICAL                       :: existe ! para verificar se ja existe ou nao
+
+  WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
+
+  ! cria formatacao
+  CALL self % criarFormato(qntdCorpos, dimensao)
+  WRITE (*, '(a)') '  > formato : ' // self % formato
+
+  ! criacao do nome do arquivo
+  CALL self % nomeArquivo()
+  WRITE (*,'(a)') '  > arquivo de saída: ' // self % nomearq
+
+  ! agora cria o arquivo
+  self % idarq = idarq
+  OPEN(idarq, file = self % nomearq, status='new')
+  WRITE (*,'(a)') '  > arquivo criado!'
+
+  WRITE (*,*)
+
+END SUBROUTINE criar
+
+! ************************************************************
+!! Escrita das massas
+!
+! Objetivos:
+!   Salva as massas no arquivo de acordo com o formato criado.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE escrever_massas (self, massas)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(IN) :: self
+  REAL(pf), INTENT(IN)       :: massas(:)
+
+  ! salva
+  WRITE (self % idarq, self % formatoMassas) massas
+
+END SUBROUTINE escrever_massas
+
+
+! ************************************************************
+!! Escrita do cabecalho
+!
+! Objetivos:
+!   Salva no comeco do arquivo algumas informacoes da simulacao,
+!   como tamanho do passo, valor de G, etc.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE escrever_cabecalho (self, h, G, massas)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(IN) :: self
+  REAL(pf), INTENT(IN)       :: massas(:)
+  REAL(pf)                   :: h, G
+
+  ! Salva h
+  WRITE (self % idarq, "(F25.7, :, ',')") h
+
+  ! Salva G
+  WRITE (self % idarq, "(F25.7, :, ',')") G
+
+  ! Salva as massas
+  CALL self%escrever_massas(massas)
+
+END SUBROUTINE escrever_cabecalho
+
+! ************************************************************
+!! Escrita do arquivo
+!
+! Objetivos:
+!   Escreve o array no arquivo, conforme formato.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE escrever (self, array)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(IN) :: self
+  REAL(pf), INTENT(IN)       :: array(2,self % qntdCorpos_int,self % dimensao_int)
+
+  ! salva 
+  WRITE (self % idarq, self % formato) array
+
+END SUBROUTINE escrever
+
+! ************************************************************
+!! Fechamento do arquivo
+!
+! Objetivos:
+!   Fecha o arquivo.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE fechar (self)
+
+  IMPLICIT NONE
+  CLASS(arquivo), INTENT(IN) :: self
+  
+  CLOSE(self % idarq)
+
+END SUBROUTINE fechar
+
+! ************************************************************
+!! Leitura de arquivo CSV
+!
+! Objetivos:
+!   Le os dados salvos em um arquivo csv no formato deste script.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE ler_csv (nome, h, G, massas, R, P)
+
+  CHARACTER(len=*), INTENT(IN)         :: nome
+  REAL(pf), INTENT(INOUT)              :: G, h
+  REAL(pf), allocatable, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
+  CHARACTER(len=10000)                 :: massas_string
+  INTEGER :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
+  REAL(pf) :: t0, tf
+
+  WRITE(*, '(a)') "LER_CSV:"
+  WRITE(*, '(a)') "  > arquivo: " // TRIM(nome)
+
+  OPEN(newunit=iu,file=nome,status='old',action='read')
+
+  ! Captura o tamanho do passo
+  READ(iu, *) h
+
+  ! Captura a gravidade
+  READ(iu, *) G
+
+  ! captura a string de massas
+  READ(iu,'(A)') massas_string    
+  
+  ! captura a quantidade de corpos a partir da quantidade de virgulas
+  DO i = 1, len(massas_string)
+    IF (massas_string(i:i) == ',') THEN
+      qntdCorpos = qntdCorpos + 1
+    ENDIF
+  END DO
+  qntdCorpos = qntdCorpos + 1 ! numero de virgulas = N - 1
+
+  ! captura o numero de linhas do CSV
+  DO WHILE (.TRUE.) 
+    READ(iu,*, iostat=io)
+    IF (io /= 0) exit
+    qntdLinhas = qntdLinhas+1
+  END DO
+  
+  REWIND(iu)
+  ! Captura o tamanho do passo
+  READ(iu, *) h
+
+  ! Captura a gravidade
+  READ(iu, *) G    
+  
+  ! captura as massas
+  ALLOCATE(massas(qntdCorpos))
+  READ(iu, *) massas
+
+  ! aloca os tamanhos
+  ALLOCATE(R(qntdLinhas,qntdCorpos,3))
+  ALLOCATE(P(qntdLinhas,qntdCorpos,3))
+
+  ! captura as posicoes e momentos
+  t0 = omp_get_wtime()
+  DO i = 1, qntdLinhas-1
+    READ(iu,*) R(i,:,:),P(i,:,:)
+  END DO
+  tf = omp_get_wtime()
+  
+  CLOSE(iu)
+
+  WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", tf-t0, "s"
+  WRITE (*,*)
+
+END SUBROUTINE ler_csv
+
+! ************************************************************
+!! Criacao de diretorio
+!
+! Objetivos:
+!   Cria um diretorio em algum lugar.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE criar_dir (dir, onde)
+
+  IMPLICIT NONE
+  CHARACTER(LEN=*) :: dir
+  CHARACTER(LEN=*),OPTIONAL :: onde
+  CHARACTER(LEN=LEN(dir)) :: res
+  CHARACTER(:), ALLOCATABLE :: comando
+  INTEGER :: i
+  res = dir
+  ! Remove o "./" se tiver
+  DO i = 1, LEN(dir)
+    IF (dir(i:i) == "/" .OR. dir(i:i) == ".") THEN
+      res(i:i+1) = " "
+    ENDIF
+  END DO
+
+  ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
+  comando = "cd "//onde//" && mkdir "// TRIM(res)
+
+  CALL SYSTEM(comando)
+
+END SUBROUTINE criar_dir
+
+! ************************************************************
+!! Salvamento de preset de sorteio
+!
+! Objetivos:
+!   Escreve um preset sorteado como um preset de valores 
+!   iniciais.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,metodo,corretor,colisoes,passos_antes_salvar)
+
+  IMPLICIT NONE
+  CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
+  CHARACTER(LEN=256)    :: dir_arquivo 
+  CHARACTER(LEN=3)      :: num_arquivo
+  LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
+  REAL(pf)              :: G, t0, tf, timestep
+  REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
+  INTEGER               :: passos_antes_salvar
+  INTEGER               :: u, i, arq_i
+
+  WRITE(*,'(a)') 'SALVAR SORTEIO:'
+
+  ! Verifica se o diretorio desejado existe
+  INQUIRE(file=onde//TRIM(subdir), exist=diretorio_existe)
+  IF (.NOT. diretorio_existe) THEN
+    CALL criar_dir (subdir, onde)
+  ENDIF
+
+  ! Agora verifica se o arquivo ja existe
+  dir_arquivo = TRIM(onde//subdir) // TRIM(arquivo)
+  INQUIRE(file=TRIM(dir_arquivo), exist=arquivo_existe)
+  IF (arquivo_existe) THEN
+    arq_i = 1
+    DO WHILE (arquivo_existe)
+      WRITE(num_arquivo, '(I3.3)') arq_i
+      INQUIRE(file=TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt", exist=arquivo_existe)
     END DO
-    RETURN
-  end
-end module arquivos
+    dir_arquivo = TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt"
+  ENDIF
+
+  WRITE(*,'(a)') '  > arquivo: ' // TRIM(dir_arquivo)
+
+  ! Abre um arquivo
+  OPEN(newunit=u,file=dir_arquivo)
+
+  WRITE(u,'(*(g0,1x))') "! Configs"
+  WRITE(u,'(*(g0,1x))') "modo vi"
+  WRITE(u,'(*(g0,1x))') "nome ", nome
+  WRITE(u,'(*(g0,1x))') "integrador ", metodo
+  WRITE(u,'(*(g0,1x))') "timestep ", timestep
+  WRITE(u,'(*(g0,1x))') "passos_antes_salvar ", passos_antes_salvar
+  WRITE(u,'(*(g0,1x))') "t0 ", t0
+  WRITE(u,'(*(g0,1x))') "tf ", tf
+  WRITE(u,'(*(g0,1x))') "corretor ", corretor
+  WRITE(u,'(*(g0,1x))') "colisoes ", colisoes
+
+  WRITE(u,*)
+
+  WRITE(u,'(*(g0,1x))') "! Valores do problema"
+  WRITE(u,'(*(g0,1x))') "N ", SIZE(massas)
+  WRITE(u,'(*(g0,1x))') "G ", G
+  
+  WRITE(u,*) 
+
+  WRITE(u,'(*(g0,1x))') "! Massas"
+  DO i = 1, SIZE(massas)
+    WRITE(u,'(*(g0,1x))') massas(i)
+  END DO
+
+  WRITE(u,*)
+
+  WRITE(u,'(*(g0,1x))') "! Posicoes"
+  DO i = 1, SIZE(massas)
+    WRITE(u,'(*(g0,1x,","))') R(i,:) 
+  END DO
+
+  WRITE(u,*)
+
+  WRITE(u,'(*(g0,1x))') "! Momentos"
+  DO i = 1, SIZE(massas)
+    WRITE(u,'(*(g0,1x,","))') P(i,:) 
+  END DO
+
+  CLOSE(u)
+
+  WRITE(*,'(a)') '  > arquivo salvo!'
+  WRITE(*,*)
+
+END SUBROUTINE salvar_sorteio
+
+! ************************************************************
+!! Remocao de espacos vazios
+!
+! Objetivos:
+!   Salva as massas no arquivo de acordo com o formato criado.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION espacosVazios (valor)
+
+  IMPLICIT NONE
+  INTEGER, INTENT(IN)           :: valor
+  CHARACTER(7)                  :: valor_str
+  CHARACTER(:), ALLOCATABLE     :: valor_str_parcial, espacosVazios
+  INTEGER                       :: i = 1
+
+  ! transforma o valor em string
+  WRITE(valor_str, '(I7)') valor
+
+  ! alinha a esquerda para facilitar
+  valor_str = ADJUSTL(valor_str)
+
+  ! onde ficara salvo
+  valor_str_parcial = ""
+  
+  ! elimina os caracteres vazios
+  DO WHILE (.TRUE.)
+    IF (valor_str(i:i).eq." ") THEN
+      i = 1
+      exit
+    ELSE
+      valor_str_parcial = valor_str_parcial // valor_str(i:i)
+      i = i + 1
+    ENDIF     
+  END DO
+
+  ! aloca a string para poder salvar
+  ALLOCATE( CHARACTER(LEN_TRIM(valor_str_parcial)) :: espacosVazios)
+  ! enfim, salva
+  espacosVazios = TRIM(valor_str_parcial)
+
+END FUNCTION espacosVazios
+
+!*****************************************************************************
+!! Retorna uma unidade FORTRAN que esteja livre
+!
+!  Objetivos:
+!
+!    Uma unidade de FORTRAN "livre" eh um inteiro entre 1 e 99 que nao esta
+!    associado a nenhum dispositivo I/O, e eh utilizado para abrir arquivos.
+!    Se a unidade eh nula, entao nao ha nenhuma unidade FORTRAN livre.
+!    
+!    Os numeros 5, 6 e 9 sao reservados, entao nunca sao retornados.
+!    
+!    O codigo foi baseado na biblioteca GNUFOR de John Burkardt.
+!
+!  Modificado:
+!
+!    02 de fevereiro de 2024
+!
+!  Autoria:
+!
+!    oap
+!
+SUBROUTINE capturar_unidade ( iunit )
+  IMPLICIT NONE
+  INTEGER ( kind = 4 ) i
+  INTEGER ( kind = 4 ) ios
+  INTEGER ( kind = 4 ) iunit
+  LOGICAL lopen
+  iunit = 0
+  DO i = 1, 99
+    IF (i /= 5 .and. i /= 6 .and. i /= 9) THEN
+      INQUIRE ( unit = i, opened = lopen, iostat = ios )
+      IF ( ios == 0 ) THEN
+        IF ( .not. lopen ) THEN
+          iunit = i
+          RETURN
+        ENDIF
+      ENDIF
+    ENDIF
+  END DO
+  RETURN
+END SUBROUTINE capturar_unidade
+END MODULE arquivos
