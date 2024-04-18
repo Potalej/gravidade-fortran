@@ -15,6 +15,7 @@ for arquivo in arquivos_corpos:
       if linha.strip() != ""
     ]
     x,y = list(zip(*linhas))
-    plt.plot(x,y)
+    plt.scatter(x[0],y[0])
+    plt.plot(x[:-1],y[:-1])
 plt.show() # Exibe    
     

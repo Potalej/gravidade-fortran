@@ -56,7 +56,7 @@ CONTAINS
 !   oap
 ! 
 SUBROUTINE diretorio_out ()
-  implicit IMPLICIT NONE
+  IMPLICIT NONE
   LOGICAL :: existe = .TRUE.
   ! verifica se existe o diretorio out
   INQUIRE(file="./out", exist=existe)
@@ -487,7 +487,7 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   WRITE(u,'(*(g0,1x))') "nome ", nome
   WRITE(u,'(*(g0,1x))') "integrador ", metodo
   WRITE(u,'(*(g0,1x))') "timestep ", timestep
-  WRITE(u,'(*(g0,1x))') "passos_antes_salvar ", passos_antes_salvar
+  WRITE(u,'(*(g0,1x))') "passos ", passos_antes_salvar
   WRITE(u,'(*(g0,1x))') "t0 ", t0
   WRITE(u,'(*(g0,1x))') "tf ", tf
   WRITE(u,'(*(g0,1x))') "corretor ", corretor

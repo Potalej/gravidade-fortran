@@ -34,7 +34,7 @@ MODULE leitura
     ! Timestep
     REAL(pf) :: timestep
     ! Quantidade de passos antes de salvar
-    INTEGER :: passos_antes_salvar
+    INTEGER :: passos_antes_salvar = 1
     ! Quantidade de corpos
     INTEGER :: N
     ! Intervalo de integracao
@@ -71,7 +71,7 @@ SUBROUTINE config (self, arquivo)
   CHARACTER(len=48)             :: atributo, valor
 
   WRITE (*,'(a)') "LEITURA DE PRESET"
-  WRITE (*,'(a)') '  > lENDo o arquivo "' // TRIM(arquivo) // '"'
+  WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
   OPEN(2,file=arquivo)
   READ(2,*) ! Comentario
@@ -107,6 +107,7 @@ SUBROUTINE config (self, arquivo)
   ! Integracao
   READ(2,*) atributo, self % integrador
   READ(2,*) atributo, self % timestep
+  READ(2,*) atributo, self % passos_antes_salvar
 
   READ(2,*) ! Espaco
   READ(2,*) ! Comentario  
@@ -174,7 +175,7 @@ SUBROUTINE valores_iniciais (self, arquivo)
   INTEGER                       :: a ! iterador
 
   WRITE (*,'(a)') "LEITURA DE VALORES INICIAIS"
-  WRITE (*,'(a)') '  > lENDo o arquivo "' // TRIM(arquivo) // '"'
+  WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
   OPEN(2,file=arquivo)
   READ(2,*) ! Comentario ("Configs")

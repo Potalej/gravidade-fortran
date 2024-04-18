@@ -60,7 +60,6 @@ MODULE correcao
   USE mecanica
 
   IMPLICIT NONE
-  EXTERNAL dgesv
   PRIVATE
   PUBLIC corrigir
 

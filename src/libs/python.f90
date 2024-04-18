@@ -27,5 +27,5 @@
 SUBROUTINE rodar_plot (diretorio)
   IMPLICIT NONE
   CHARACTER(LEN=*) :: diretorio
-  CALL SYSTEM ('py src/python/plot.py '//TRIM(diretorio))
+  CALL SYSTEM ('python src/python/plot.py '//TRIM(diretorio))
 END SUBROUTINE rodar_plot
