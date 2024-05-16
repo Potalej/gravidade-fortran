@@ -104,22 +104,24 @@ FUNCTION metodo (self, R, P, FSomas)
   REAL(pf), DIMENSION(2, self % N, self % dim) :: metodo
 
   ! componentes da integracao (kappas)
-  REAL(pf), DIMENSION(self % N, self % dim) :: k1, k2, k3, k4, fator
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q, k2_q, k3_q, k4_q
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p, k2_p, k3_p, k4_p
 
-  ! faz a integracao sobre as equacoes x'
-  k1 = P * self % baseRK % massasInvertidas
-  k2 = k1 * self % baseRK % massasInvertidas
-  k3 = k2 * self % baseRK % massasInvertidas
-  k4 = k3 * self % baseRK % massasInvertidas
+  k1_q = P * self % baseRK % massasInvertidas
+  k1_p = self % baseRK % forcas (R)
+
+  k2_q = (P + 0.5 * self % h * k1_p) * self % baseRK % massasInvertidas
+  k2_p = self % baseRK % forcas (R + 0.5 * self % h * k1_q)
+
+  k3_q = (P + 0.5 * self % h * k2_p) * self % baseRK % massasInvertidas
+  k3_p = self % baseRK % forcas (R + 0.5 * self % h * k2_q)
+
+  k4_q = (P + self % h * k3_p) * self % baseRK % massasInvertidas
+  k4_p = self % baseRK % forcas (R + self % h * k3_q)
 
   ! fator para integracao
-  fator = (self % h / 6) * (6*k1 + 3*self % h*k2 + self % h**2 * k3 + 0.25 * self % h**3 * k4)
-
-  ! integra as posicoes
-  R1 = R + fator
-
-  ! integra os momentos
-  P1 = P + self % h * FSomas
+  R1 = R + (self % h / 6) * (k1_q + 2 * k2_q + 2 * k3_q + k4_q)
+  P1 = P + (self % h / 6) * (k1_p + 2 * k2_p + 2 * k3_p + k4_p)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
