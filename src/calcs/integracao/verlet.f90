@@ -97,23 +97,18 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
   forcas(:,:) = 0
-  
-  !$OMP PARALLEL DEFAULT(NONE) PRIVATE(a, b, distancia, Fab) SHARED(self, R) REDUCTION(+:forcas)
-    !$OMP DO
-    do a = 2, self%N
-      do b = 1, a-1
-        ! distancia entre os corpos
-        distancia = norm2(R(b,:) - R(a,:))**3
-        ! forca entre os corpos a e b
-        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
-        
-        ! Adiciona na matriz
-        forcas(a,:) = forcas(a,:) - Fab
-        forcas(b,:) = forcas(b,:) + Fab
-      END do
+
+  do a = 2, self%N
+    do b = 1, a-1
+      ! distancia entre os corpos
+      distancia = norm2(R(b,:) - R(a,:))**3
+      ! forca entre os corpos a e b
+      Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+      ! Adiciona na matriz
+      forcas(a,:) = forcas(a,:) - Fab
+      forcas(b,:) = forcas(b,:) + Fab
     END do
-    !$OMP END DO
-  !$OMP END PARALLEL
+  END do
 
 END FUNCTION forcas
 

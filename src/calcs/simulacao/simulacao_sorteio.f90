@@ -71,56 +71,26 @@ SUBROUTINE simular_sorteio (arquivo)
       configs%Jtot,         & ! Momento angular total
       configs%Ptot )          ! Momento angular total
 
-  ! Gera o nome
-  CALL DATE_AND_TIME(datahoje)
-
   CALL diretorio_out()
-
-  DO WHILE (arquivo_existe)
-    WRITE(numero, '(I3.3)') i
-    i = i + 1
-
-    ! cria nome 
-    nome_sorteio = TRIM(datahoje)//"_"//TRIM(numero)
-    nome_arq = nome_sorteio // ".txt"
-
-    ! verifica se existe
-    INQUIRE(file='out/auto_vi/'//nome_arq, exist=arquivo_existe)
-  END DO
-
-  ! Salva o preset gerado
-  CALL salvar_sorteio('out/', 'auto_vi/', nome_arq,  &
-    "Sorteio_"//nome_sorteio, &
-    configs % G,          &
-    massas,               &
-    posicoes,             &
-    momentos,             &
-    configs % t0,         &
-    configs % tf,         &
-    configs % timestep,   &
-    configs % integrador, &
-    configs % corretor,   &
-    configs % colisoes,   &
-    configs % passos_antes_salvar)
 
   ! Se o instante inicial for negativo, entao vai rodar ao contrario
   IF (configs%t0 < 0) THEN
     IF (configs%tf == 0) THEN
       ! Roda apenas o passado
       WRITE (*,*) " > Intervalo [", configs%t0, ",", configs%tf, "]"
-      CALL rodar(-configs%timestep,massas,posicoes,momentos)
+      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0.0_pf)
     ELSE IF (configs%tf > 0) THEN
       ! Roda o passado e o futuro
       WRITE (*,*) " > Intervalo [", configs%t0, ",", 0, "]"
-      CALL rodar(-configs%timestep,massas,posicoes,momentos)
+      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0.0_pf)
       WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-      CALL rodar(configs%timestep,massas,posicoes,momentos)
+      CALL rodar(configs%timestep,massas,posicoes,momentos,0.0_pf,configs%tf)
     ENDIF
   ! Se for positivo, apenas roda normal
   ELSE
     ! Roda apenas o futuro
     WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-    CALL rodar(configs%timestep,massas,posicoes,momentos)
+    CALL rodar(configs%timestep,massas,posicoes,momentos,0.0_pf,configs%tf)
   ENDIF
 
 END SUBROUTINE simular_sorteio
@@ -132,16 +102,17 @@ END SUBROUTINE simular_sorteio
 !   Roda uma simulacao com as condicoes informadas.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   26 de maio de 2024
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE rodar (timestep, massas, posicoes, momentos)
+SUBROUTINE rodar (timestep, massas, posicoes, momentos, tempo_inicial, tempo_final)
   REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf), INTENT(IN)  :: timestep
   REAL(pf)              :: t0, tf
   INTEGER               :: qntd_total_passos
+  REAL(pf), INTENT(IN)  :: tempo_inicial, tempo_final
 
   qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
   WRITE (*,*)
@@ -153,12 +124,16 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
     CASE ("verlet")
       Sim_verlet % corrigir = configs%corretor
       Sim_verlet % colidir  = configs%colisoes
-      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      ! Instancia o metodo
+      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
+                              configs%integrador,tempo_inicial,tempo_final)
+      ! Roda a simulacao
       CALL Sim_verlet%rodar_verlet(qntd_total_passos)
     CASE ("rk4")
       Sim_rk4 % corrigir = configs%corretor
       Sim_rk4 % colidir  = configs%colisoes
-      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar)
+      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
+                              configs%integrador,tempo_inicial,tempo_final)
       CALL Sim_rk4%rodar_rk4(qntd_total_passos)
   END SELECT
 

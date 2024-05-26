@@ -15,6 +15,8 @@ SET(Open_BLAS_INCLUDE_SEARCH_PATHS
     # MSYS2 + MINGW64 (padrao)
     C:/msys64/mingw64/usr/include
     C:/msys64/mingw64/usr/include/openblas
+
+    D:/programas/msys64/mingw64/include/openblas
     
     # Ambiente (PATH)
     $ENV{OpenBLAS_HOME}
@@ -42,6 +44,8 @@ SET(Open_BLAS_LIB_SEARCH_PATHS
     C:/msys64/mingw64/usr/lib
     C:/msys64/mingw64/usr/lib/openblas
 
+    D:/programas/msys64/mingw64/lib
+
     # Ambiente (PATH)
     $ENV{OpenBLAS}cd
     $ENV{OpenBLAS}/lib
@@ -57,4 +61,5 @@ FIND_LIBRARY(OpenBLAS_LIB NAMES
     openblas PATHS ${Open_BLAS_LIB_SEARCH_PATHS}
 )
 
-message("OpenBLAS_INCLUDE_DIR: ${OpenBLAS_INCLUDE_DIR}, OpenBLAS_LIB: ${OpenBLAS_LIB}")
+message("-- OpenBLAS_INCLUDE_DIR: ${OpenBLAS_INCLUDE_DIR}")
+messagE("-- OpenBLAS_LIB: ${OpenBLAS_LIB}")

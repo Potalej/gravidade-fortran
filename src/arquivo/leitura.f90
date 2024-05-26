@@ -14,7 +14,7 @@
 MODULE leitura
 
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
-
+  USE arquivos
   IMPLICIT NONE
   PRIVATE
   PUBLIC preset_config
@@ -60,7 +60,7 @@ CONTAINS
 !   Le um preset de condicoes iniciais para geracao (sorteio).
 !
 ! Modificado:
-!   15 de marco de 2024
+!   26 de maio de 2024
 !
 ! Autoria:
 !   oap
@@ -69,57 +69,60 @@ SUBROUTINE config (self, arquivo)
   CLASS(preset_config),  INTENT(INOUT) :: self
   CHARACTER(256), INTENT(INOUT) :: arquivo
   CHARACTER(len=48)             :: atributo, valor
+  INTEGER(kind=4)               :: unidade
+
+  call capturar_unidade(unidade)
 
   WRITE (*,'(a)') "LEITURA DE PRESET"
   WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
-  OPEN(2,file=arquivo)
-  READ(2,*) ! Comentario
-  READ(2,*) ! Modo
+  OPEN(unidade,file=arquivo)
+  READ(unidade,*) ! Comentario
+  READ(unidade,*) ! Modo
   
   ! Integrais primeiras
-  READ(2,*) atributo, self % Etot
-  READ(2,*) atributo, self % Jtot
-  READ(2,*) atributo, self % Ptot
+  READ(unidade,*) atributo, self % Etot
+  READ(unidade,*) atributo, self % Jtot
+  READ(unidade,*) atributo, self % Ptot
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Constantes
-  READ(2,*) atributo, self % G
+  READ(unidade,*) atributo, self % G
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
-  READ(2,*) atributo, self % N
+  READ(unidade,*) atributo, self % N
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Intervalos para geracao
-  READ(2,*) atributo, self % int_massas
-  READ(2,*) atributo, self % int_posicoes
-  READ(2,*) atributo, self % int_momentos
+  READ(unidade,*) atributo, self % int_massas
+  READ(unidade,*) atributo, self % int_posicoes
+  READ(unidade,*) atributo, self % int_momentos
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario  
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
 
   ! Integracao
-  READ(2,*) atributo, self % integrador
-  READ(2,*) atributo, self % timestep
-  READ(2,*) atributo, self % passos_antes_salvar
+  READ(unidade,*) atributo, self % integrador
+  READ(unidade,*) atributo, self % timestep
+  READ(unidade,*) atributo, self % passos_antes_salvar
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario  
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
 
-  READ(2,*) atributo, self % t0 ! tempo inicial
-  READ(2,*) atributo, self % tf ! tempo final
+  READ(unidade,*) atributo, self % t0 ! tempo inicial
+  READ(unidade,*) atributo, self % tf ! tempo final
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario  
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
 
-  READ(2,*) atributo, self % corretor ! uso do corretor
-  READ(2,*) atributo, self % colisoes ! uso de colisoes
+  READ(unidade,*) atributo, self % corretor ! uso do corretor
+  READ(unidade,*) atributo, self % colisoes ! uso de colisoes
 
   CLOSE(2)
 
@@ -173,32 +176,35 @@ SUBROUTINE valores_iniciais (self, arquivo)
   CHARACTER(len=48)             :: atributo, valor
   REAL(pf), DIMENSION(3)        :: R, P
   INTEGER                       :: a ! iterador
+  INTEGER(kind=4)               :: unidade
+
+  call capturar_unidade(unidade)
 
   WRITE (*,'(a)') "LEITURA DE VALORES INICIAIS"
   WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
-  OPEN(2,file=arquivo)
-  READ(2,*) ! Comentario ("Configs")
-  READ(2,*) ! Modo
+  OPEN(unidade,file=arquivo)
+  READ(unidade,*) ! Comentario ("Configs")
+  READ(unidade,*) ! Modo
 
-  READ(2,*) atributo, self % nome
-  READ(2,*) atributo, self % integrador
-  READ(2,*) atributo, self % timestep
-  READ(2,*) atributo, self % passos_antes_salvar
-  READ(2,*) atributo, self % t0 ! tempo inicial
-  READ(2,*) atributo, self % tf ! tempo final
-  READ(2,*) atributo, self % corretor
-  READ(2,*) atributo, self % colisoes 
+  READ(unidade,*) atributo, self % nome
+  READ(unidade,*) atributo, self % integrador
+  READ(unidade,*) atributo, self % timestep
+  READ(unidade,*) atributo, self % passos_antes_salvar
+  READ(unidade,*) atributo, self % t0 ! tempo inicial
+  READ(unidade,*) atributo, self % tf ! tempo final
+  READ(unidade,*) atributo, self % corretor
+  READ(unidade,*) atributo, self % colisoes 
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Constantes
-  READ(2,*) atributo, self % N
-  READ(2,*) atributo, self % G
+  READ(unidade,*) atributo, self % N
+  READ(unidade,*) atributo, self % G
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Aloca os espacos na memoria
   ALLOCATE(self%massas(self%N))
@@ -207,26 +213,26 @@ SUBROUTINE valores_iniciais (self, arquivo)
 
   ! Leitura das massas
   DO a = 1, self%N
-    READ(2,*) self%massas(a)
+    READ(unidade,*) self%massas(a)
   END DO
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Leitura das posicoes
   DO a = 1, self%N
-    READ(2,*) self%R(a,:)
+    READ(unidade,*) self%R(a,:)
   END DO
 
-  READ(2,*) ! Espaco
-  READ(2,*) ! Comentario
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
 
   ! Leitura dos momentos lineares
   DO a = 1, self%N
-    READ(2,*) self%P(a,:)
+    READ(unidade,*) self%P(a,:)
   END DO
 
-  CLOSE(2)
+  CLOSE(unidade)
 
   WRITE (*,'(a)') '  > arquivo lido com sucesso!'
   WRITE (*,*)

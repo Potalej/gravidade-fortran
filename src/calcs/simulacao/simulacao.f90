@@ -49,6 +49,12 @@ MODULE simulacao
     
     REAL(pf), DIMENSION(3) :: J0
 
+    ! Metodo
+    CHARACTER(len=100) :: metodo
+
+    ! Diretorio onde ficara salvo
+    CHARACTER(len=256) :: dir
+
     ! Configuracoes
     LOGICAL :: corrigir=.FALSE., colidir=.FALSE.
 
@@ -56,7 +62,7 @@ MODULE simulacao
     TYPE(arquivo) :: Arq
 
     CONTAINS
-      PROCEDURE :: Iniciar, rodar_verlet, rodar_rk4
+      PROCEDURE :: Iniciar, inicializar_metodo, rodar_verlet, rodar_rk4
   END TYPE
 
 CONTAINS
@@ -68,18 +74,20 @@ CONTAINS
 !   Faz a simulacao.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   26 de maio de 2024
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, G, M, R0, P0, h, passos_antes_salvar)
+SUBROUTINE Iniciar (self, G, M, R0, P0, h, passos_antes_salvar, metodo, t0, tf)
 
   CLASS(simular), INTENT(INOUT) :: self
 
   REAL(pf), allocatable :: M(:), R0(:,:), P0(:,:)
   REAL(pf) :: G, h
   INTEGER :: a, i, passos_antes_salvar
+  CHARACTER(len=*) :: metodo
+  REAL(pf), OPTIONAL :: t0, tf
 
   self % passos_antes_salvar = passos_antes_salvar
   
@@ -117,7 +125,46 @@ SUBROUTINE Iniciar (self, G, M, R0, P0, h, passos_antes_salvar)
   ! Salva o centro de massas inicial
   self % Rcm = centro_massas(self % M, self % R)
 
+  ! Salva o metodo
+  self % metodo = metodo
+
+  ! Inicializa o metodo
+  CALL self % inicializar_metodo()
+
+  ! Copia o arquivo de valores iniciais
+  CALL salvar_sorteio('out/data/', self % Arq % dirarq//"/", 'valint.txt', &
+  "Sorteio_"//self % Arq % dirarq, &
+  self % G,        &
+  self % M,        &
+  self % R,        &
+  self % P,        &
+  t0,              &
+  tf,              &
+  ABS(self % h),   &
+  self % metodo,   &
+  self % corrigir, &
+  self % colidir,  &
+  self % passos_antes_salvar)
+
 END SUBROUTINE Iniciar
+
+SUBROUTINE inicializar_metodo (self)
+  IMPLICIT NONE
+  class(simular), INTENT(INOUT) :: self
+
+  ! Cria o arquivo onde sera salvo
+  CALL self % Arq % criar(self % N, self % dim)
+  self % dir = self % Arq % dirarq
+
+  ! Salva as infos de cabecalho
+  CALL self % Arq % escrever_cabecalho(self % h, self % G, self % M)
+
+  ! Salva as informacoes no info.txt
+  CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%corrigir, self%colidir)
+
+  ! Condicoes iniciais
+  CALL self % Arq % escrever((/self % R, self % P/))
+END SUBROUTINE inicializar_metodo
 
 ! ************************************************************
 !! Roda simulacao com Verlet
@@ -126,7 +173,7 @@ END SUBROUTINE Iniciar
 !   Roda uma simulacao com o metodo Velocity-Verlet.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   25 de maio de 2024
 !
 ! Autoria:
 !   oap
@@ -135,63 +182,46 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
   IMPLICIT NONE
   class(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
-  ! iterador e variavel de tempo que sera o nome do arquivo
+  ! Iterador e variavel de tempo
   INTEGER :: i, t
   ! Integrador
   TYPE(integracao_verlet) :: integrador
-  ! Escritor de arquivos
-  TYPE(arquivo) :: Arq
-  
-  REAL(pf), DIMENSION(2, self % N, self % dim) :: resultado
+
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-
   REAL(pf) :: t0, tf, tempo_total = 0.0_pf
-
-  ! Cria o arquivo onde sera salvo
-  CALL Arq % criar(2, self % N, self % dim)
-
-  ! Salva as infos de cabecalho
-  CALL Arq % escrever_cabecalho(self % h, self % G, self % M)
-
-  ! Instanciamento do integrador
-  WRITE (*,'(a)') 'INTEGRACAO NUMERICA'
-  WRITE (*,*) ' > rodando com ', qntdPassos, ' passos'
-  WRITE (*, '(a)') '  > instanciando o metodo velocity-verlet'
+  
+  ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
 
   ! Condicoes iniciais
   R1 = self % R
   P1 = self % P
 
-  CALL Arq % escrever((/R1, P1/))
-
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
   DO i = 1, qntdPassos
-
     ! timer
     t0 = omp_get_wtime()
-
     ! Integracao
     CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
-
     ! timer
     tf = omp_get_wtime()
     tempo_total = tempo_total + tf - t0
 
-    CALL Arq % escrever((/R1, P1/))
-
-    IF (mod(i, 500) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1)
+    CALL self % Arq % escrever((/R1, P1/))
+    IF (mod(i, 1000) == 0) THEN
+      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
+      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
     ENDIF
+  END DO
 
-  END do
-  
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
+  CALL self % Arq % excluir_bkp()
+
   WRITE (*, '(a)') '  > simulacao encerrada!'
   WRITE (*,*)
 
-  CALL Arq % fechar()
-
+  CALL self % Arq % fechar()
 END SUBROUTINE rodar_verlet
 
 ! ************************************************************
@@ -215,42 +245,42 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
   INTEGER :: i, t
   ! Integrador
   TYPE(integracao_rk4) :: integrador
-  ! Escritor de arquivos
-  TYPE(arquivo) :: Arq
   
-  REAL(pf), DIMENSION(2, self % N, self % dim) :: resultado
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
+  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
 
-  ! Instanciamento do integrador    
+  ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
-
-  ! Cria o arquivo onde ficara salvo
-  CALL Arq % criar(1, self % N, self % dim)
-
-  ! Salva as infos de cabecalho
-  CALL Arq % escrever_cabecalho(self % h, self % G, self % M)
 
   ! Condicoes iniciais
   R1 = self % R
   P1 = self % P
-
-  CALL Arq % escrever((/R1, P1/))
+  WRITE (*,*) self % passos_antes_salvar
+  CALL self % Arq % escrever((/R1, P1/))
 
   ! Roda
+  WRITE (*, '(a)') '  > iniciando simulacao...'
   DO i = 1, qntdPassos
-
+    ! timer
+    t0 = omp_get_wtime()
+    ! Integracao
     CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    ! timer
+    tf = omp_get_wtime()
+    tempo_total = tempo_total + tf - t0
 
-    CALL Arq % escrever((/R1, P1/))
-
-    IF (mod(i, 500) == 0) THEN
-      WRITE (*,*) 'energia:', energia_total(self % G, self % M, R1, P1)
-      WRITE (*,*) 'passo: ', i
+    CALL self % Arq % escrever((/R1, P1/))
+    IF (mod(i, 1000) == 0) THEN
+      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
+      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
     ENDIF
+  END DO
 
-  END DO 
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
+  CALL self % Arq % excluir_bkp()
 
-  CALL Arq % fechar()
+  WRITE (*, '(a)') '  > simulacao encerrada!'
+  WRITE (*,*)
 
 END SUBROUTINE rodar_rk4
 

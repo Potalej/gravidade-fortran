@@ -15,6 +15,9 @@ enable_language(Fortran)
 
 # Flags para compilacao
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -ffast-math -fopenmp -cpp")
+message("\n***************************************")
+message("#       gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
+message("***************************************")
 
 # ----------------------------------------------------------------------------
 # Executaveis utilizados no programa
