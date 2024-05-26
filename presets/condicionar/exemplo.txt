@@ -3,7 +3,6 @@ modo sorteio
 Etot 0.0
 Jtot 0.0,0.0,0.0
 Ptot 0.0,0.0,0.0
-Rcm  0.0,0.0,0.0
 
 ! Constantes
 G 1.0
