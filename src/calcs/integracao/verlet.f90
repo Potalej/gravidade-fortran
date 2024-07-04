@@ -94,21 +94,31 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % dim) :: Fab, dif
   INTEGER :: a, b, thread, threads, qntdPorThread
   REAL(pf) :: distancia
-  REAL(pf), DIMENSION(self % N, self % dim) :: forcas
+  REAL(pf), DIMENSION(self % N, self % dim) :: forcas, forcas_local
   
   forcas(:,:) = 0
 
-  do a = 2, self%N
-    do b = 1, a-1
-      ! distancia entre os corpos
-      distancia = norm2(R(b,:) - R(a,:))**3
-      ! forca entre os corpos a e b
-      Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
-      ! Adiciona na matriz
-      forcas(a,:) = forcas(a,:) - Fab
-      forcas(b,:) = forcas(b,:) + Fab
-    END do
-  END do
+  !$OMP PARALLEL SHARED(forcas) PRIVATE(forcas_local, Fab)
+    forcas(:,:) = 0
+    forcas_local(:,:) = 0
+    !$OMP DO
+    DO a = 2, self%N
+      DO b = 1, a-1
+        ! distancia entre os corpos
+        distancia = norm2(R(b,:) - R(a,:))**3
+        ! forca entre os corpos a e b
+        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+        ! Adiciona na matriz
+        forcas_local(a,:) = forcas_local(a,:) - Fab
+        forcas_local(b,:) = forcas_local(b,:) + Fab
+      END DO
+    END DO
+    !$OMP END DO
+
+    !$OMP CRITICAL
+      forcas = forcas + forcas_local
+    !$OMP END CRITICAL
+  !$OMP END PARALLEL
 
 END FUNCTION forcas
 

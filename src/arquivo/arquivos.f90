@@ -594,6 +594,8 @@ SUBROUTINE criar_dir (dir, onde)
 
   CALL SYSTEM(comando)
 
+  DEALLOCATE(comando)
+
 END SUBROUTINE criar_dir
 
 ! ************************************************************

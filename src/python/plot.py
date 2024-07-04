@@ -1,4 +1,3 @@
-from numpy import genfromtxt
 import matplotlib.pyplot as plt
 from sys import argv
 from os import listdir
