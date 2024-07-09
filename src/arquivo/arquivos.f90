@@ -618,7 +618,8 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   CHARACTER(LEN=256)    :: dir_arquivo 
   CHARACTER(LEN=3)      :: num_arquivo
   LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
-  REAL(pf)              :: G, t0, tf, timestep
+  REAL(pf)              :: G, timestep
+  INTEGER               :: t0, tf
   REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
   INTEGER               :: passos_antes_salvar
   INTEGER               :: u, i, arq_i

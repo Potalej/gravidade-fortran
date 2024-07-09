@@ -100,12 +100,12 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
       Sim_verlet % corrigir = configs%corretor
       Sim_verlet % colidir  = configs%colisoes
       CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar,configs%integrador)
-      CALL Sim_verlet%rodar_verlet(qntd_total_passos)
+      CALL Sim_verlet%rodar_verlet(configs % tf - configs % t0)
     CASE ("rk4")
       Sim_rk4 % corrigir = configs%corretor
       Sim_rk4 % colidir  = configs%colisoes
       CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar,configs%integrador)
-      CALL Sim_rk4%rodar_rk4(qntd_total_passos)
+      CALL Sim_rk4%rodar_rk4(configs % tf - configs % t0)
   END SELECT
 
   tf = omp_get_wtime()

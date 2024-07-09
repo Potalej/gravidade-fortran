@@ -78,19 +78,19 @@ SUBROUTINE simular_sorteio (arquivo)
     IF (configs%tf == 0) THEN
       ! Roda apenas o passado
       WRITE (*,*) " > Intervalo [", configs%t0, ",", configs%tf, "]"
-      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0.0_pf)
+      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0)
     ELSE IF (configs%tf > 0) THEN
       ! Roda o passado e o futuro
       WRITE (*,*) " > Intervalo [", configs%t0, ",", 0, "]"
-      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0.0_pf)
+      CALL rodar(-configs%timestep,massas,posicoes,momentos,configs%t0,0)
       WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-      CALL rodar(configs%timestep,massas,posicoes,momentos,0.0_pf,configs%tf)
+      CALL rodar(configs%timestep,massas,posicoes,momentos,0,configs%tf)
     ENDIF
   ! Se for positivo, apenas roda normal
   ELSE
     ! Roda apenas o futuro
     WRITE (*,*) " > Intervalo [", 0, ",", configs%tf, "]"
-    CALL rodar(configs%timestep,massas,posicoes,momentos,0.0_pf,configs%tf)
+    CALL rodar(configs%timestep,massas,posicoes,momentos,0,configs%tf)
   ENDIF
 
 END SUBROUTINE simular_sorteio
@@ -112,7 +112,7 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos, tempo_inicial, tempo_fin
   REAL(pf), INTENT(IN)  :: timestep
   REAL(pf)              :: t0, tf
   INTEGER               :: qntd_total_passos
-  REAL(pf), INTENT(IN)  :: tempo_inicial, tempo_final
+  INTEGER, INTENT(IN)   :: tempo_inicial, tempo_final
 
   qntd_total_passos = (configs%tf - configs%t0) / configs%timestep
   WRITE (*,*)
@@ -128,13 +128,13 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos, tempo_inicial, tempo_fin
       CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
                               configs%integrador,tempo_inicial,tempo_final)
       ! Roda a simulacao
-      CALL Sim_verlet%rodar_verlet(qntd_total_passos)
+      CALL Sim_verlet%rodar_verlet(tempo_final - tempo_inicial)
     CASE ("rk4")
       Sim_rk4 % corrigir = configs%corretor
       Sim_rk4 % colidir  = configs%colisoes
       CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
                               configs%integrador,tempo_inicial,tempo_final)
-      CALL Sim_rk4%rodar_rk4(qntd_total_passos)
+      CALL Sim_rk4%rodar_rk4(tempo_final - tempo_inicial)
   END SELECT
 
   tf = omp_get_wtime()

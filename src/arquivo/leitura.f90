@@ -38,7 +38,7 @@ MODULE leitura
     ! Quantidade de corpos
     INTEGER :: N
     ! Intervalo de integracao
-    REAL(pf) :: t0, tf
+    INTEGER :: t0, tf
     ! Uso de corretor e colisoes
     LOGICAL  :: corretor, colisoes
 
