@@ -31,6 +31,8 @@ MODULE leitura
     REAL(pf), DIMENSION(2) :: int_massas, int_posicoes, int_momentos
     ! Integrador numerico
     CHARACTER(10) :: integrador
+    ! Modo
+    CHARACTER(20) :: modo
     ! Timestep
     REAL(pf) :: timestep
     ! Quantidade de passos antes de salvar
@@ -77,8 +79,9 @@ SUBROUTINE config (self, arquivo)
   WRITE (*,'(a)') '  > lendo o arquivo "' // TRIM(arquivo) // '"'
 
   OPEN(unidade,file=arquivo)
+  READ(unidade,*) atributo, self % modo
+  READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario
-  READ(unidade,*) ! Modo
   
   ! Integrais primeiras
   READ(unidade,*) atributo, self % Etot
@@ -185,7 +188,7 @@ SUBROUTINE valores_iniciais (self, arquivo)
 
   OPEN(unidade,file=arquivo)
   READ(unidade,*) ! Comentario ("Configs")
-  READ(unidade,*) ! Modo
+  READ(unidade,*) atributo, self % modo
 
   READ(unidade,*) atributo, self % nome
   READ(unidade,*) atributo, self % integrador

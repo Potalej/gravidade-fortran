@@ -39,6 +39,10 @@ Com base em um preset modelo disponível em "presets/", escreva seu preset e rod
 ./gravidade -s SEU_ARQUIVO.txt
 ```
 
+Há dois modos para geração aleatória no momento:
+- `modo sorteio`: Gera valores aleatórios no intervalo desejado e os condiciona conforme as integrais primeiras;
+- `modo sorteio_henon`: Gera valores aleatórios no intervalo desejado, mas aplica as condições iniciais de Henón, ignorando as integrais primeiras informadas. Para mais informações, veja a [wiki](https://github.com/Potalej/gravidade-fortran/wiki/Rodando).
+
 ### Valores iniciais
 Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através da opção `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
 

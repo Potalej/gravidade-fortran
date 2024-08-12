@@ -272,7 +272,7 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
     tempo_total = tempo_total + tf - t0
 
     CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 1000) == 0) THEN
+    IF (mod(i, 10) == 0) THEN
       WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
     ENDIF

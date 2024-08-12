@@ -59,17 +59,30 @@ SUBROUTINE simular_sorteio (arquivo)
   ! Le o arquivo de configuracoes
   CALL configs % config(arquivo)
 
-  CALL gerar_condicionado(configs%G, &
-      configs%N, &
+  ! Verifica o modo de sorteio
+  IF (configs%modo == "sorteio_henon") THEN
+    ! Gera conforme as configuracoes de Henon
+    CALL gerar_condicionado_henon(configs%N, &
       massas,    &
       posicoes,  &
       momentos,  &
       configs%int_posicoes, & ! Intervalo de posicoes
       configs%int_momentos, & ! Intervalo de momentos
-      configs%int_massas,   & ! Intervalo de massas 
-      configs%Etot,         & ! Energia total
-      configs%Jtot,         & ! Momento angular total
-      configs%Ptot )          ! Momento angular total
+      configs%int_massas)     ! Intervalo de massas 
+  ELSE
+    ! Gera os valores a partir das integrais primeiras
+    CALL gerar_condicionado_ip(configs%G, &
+        configs%N, &
+        massas,    &
+        posicoes,  &
+        momentos,  &
+        configs%int_posicoes, & ! Intervalo de posicoes
+        configs%int_momentos, & ! Intervalo de momentos
+        configs%int_massas,   & ! Intervalo de massas 
+        configs%Etot,         & ! Energia total
+        configs%Jtot,         & ! Momento angular total
+        configs%Ptot )          ! Momento angular total
+  ENDIF
 
   CALL diretorio_out()
 
@@ -172,18 +185,31 @@ SUBROUTINE sorteio_salvar (dir)
   ! Le o arquivo de configuracoes
   CALL configs % config(dir)
 
-  ! Gera os valores
-  CALL gerar_condicionado(configs%G, &
-      configs%N, &
+  ! Verifica o modo de sorteio
+  WRITE (*,*) 'aqui:', configs%modo
+  IF (configs%modo == "sorteio_henon") THEN
+    ! Gera conforme as configuracoes de Henon
+    CALL gerar_condicionado_henon(configs%N, &
       massas,    &
       posicoes,  &
       momentos,  &
       configs%int_posicoes, & ! Intervalo de posicoes
       configs%int_momentos, & ! Intervalo de momentos
-      configs%int_massas,   & ! Intervalo de massas 
-      configs%Etot,         & ! Energia total
-      configs%Jtot,         & ! Momento angular total
-      configs%Ptot )          ! Momento angular total
+      configs%int_massas)     ! Intervalo de massas 
+  ELSE
+    ! Gera os valores a partir das integrais primeiras
+    CALL gerar_condicionado_ip(configs%G, &
+        configs%N, &
+        massas,    &
+        posicoes,  &
+        momentos,  &
+        configs%int_posicoes, & ! Intervalo de posicoes
+        configs%int_momentos, & ! Intervalo de momentos
+        configs%int_massas,   & ! Intervalo de massas 
+        configs%Etot,         & ! Energia total
+        configs%Jtot,         & ! Momento angular total
+        configs%Ptot )          ! Momento angular total
+  ENDIF
 
   ! Gera o nome
   DO WHILE (arquivo_existe)

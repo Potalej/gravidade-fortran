@@ -165,7 +165,8 @@ SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos)
   ! Outra forma de H>0 seria somente aplicar o fator ((H-EP)/EC)**0.5
 
   IMPLICIT NONE
-  REAL(pf), INTENT(INOUT) :: H, G, posicoes(:,:), momentos(:,:), massas(:)
+  REAL(pf), INTENT(IN)    :: H, G
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), massas(:)
   REAL(pf)                :: EP, EC, fator
 
   ! Calcula as energias
@@ -244,7 +245,7 @@ SUBROUTINE condicionar_momentoLinear (P, massas, momentos)
 END SUBROUTINE condicionar_momentoLinear
 
 ! ************************************************************
-!! Condicionamento de vetores
+!! Condicionamento de integrais primeiras
 !
 ! Objetivos:
 !   Condiciona vetores ja existentes com valores desejados.
@@ -255,7 +256,7 @@ END SUBROUTINE condicionar_momentoLinear
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar (G, massas, posicoes, momentos, H, J, P)
+SUBROUTINE condicionar_ip (G, massas, posicoes, momentos, H, J, P)
   
   IMPLICIT NONE
   REAL(pf), INTENT(INOUT) :: G, posicoes(:,:), momentos(:,:), massas(:)
@@ -305,10 +306,10 @@ SUBROUTINE condicionar (G, massas, posicoes, momentos, H, J, P)
     END DO
   ENDIF
   WRITE (*,*) ' > condicionamento aplicado ', i, ' vezes para obter o erro ', erro_1
-END SUBROUTINE condicionar
+END SUBROUTINE condicionar_ip
 
 ! ************************************************************
-!! Gera valores aleatorios condicionados
+!! Gera valores condicionados pelas integrais primeiras
 !
 ! Objetivos:
 !   Gera vetores aleatorios e os condicionado para valores
@@ -320,7 +321,7 @@ END SUBROUTINE condicionar
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H, J, P)
+SUBROUTINE gerar_condicionado_ip (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H, J, P)
 
   IMPLICIT NONE
   INTEGER, INTENT(IN)     :: N
@@ -339,7 +340,7 @@ SUBROUTINE gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, i
 
   ! Condiciona
   WRITE (*,'(a)') '  > condicionando...'
-  CALL condicionar(G, massas, posicoes, momentos, H, J, P)
+  CALL condicionar_ip(G, massas, posicoes, momentos, H, J, P)
 
   ! Exibe as integrais primeiras do sistema
   WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 
@@ -350,6 +351,69 @@ SUBROUTINE gerar_condicionado (G, N, massas, posicoes, momentos, int_posicoes, i
   WRITE (*,'(a)') '  > condicoes iniciais geradas!'
   WRITE (*,*)
 
-END SUBROUTINE gerar_condicionado
+END SUBROUTINE gerar_condicionado_ip
+
+
+! ************************************************************
+!! Gera valores condicionados pelo modelo de Henon
+!
+! Objetivos:
+!   Gera vetores aleatorios e os condicionado para valores
+!   informados.
+!
+! Modificado:
+!   12 de agosto de 2024
+!
+! Autoria:
+!   oap
+! 
+! DE FATO, NAO USAREI G, H, J E P
+SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+  IMPLICIT NONE
+  INTEGER, INTENT(IN) :: N
+  REAL(pf), DIMENSION(2), INTENT(IN) :: int_posicoes, int_momentos, int_massas
+  REAL(pf), INTENT(INOUT), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf) :: beta, EP, EC, Qvir ! AARSETH
+  integer :: a, m
+
+  WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS (HENON)"
+  
+  ! Gera os valores
+  WRITE (*,'(a)') '  > gerando valores...'
+  ALLOCATE(massas (N))
+  ALLOCATE(posicoes (N, 3))
+  ALLOCATE(momentos (N, 3))
+  CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+  
+  m = SUM(massas)
+  do a = 1, N
+    massas(a) = (1.0_pf / N)
+  end do
+  WRITE (*,*) "M:", SUM(massas)
+
+  ! Condiciona
+  WRITE (*,'(a)') '  > condicionando... (HENON)'
+  
+  ! Zera o centro de massas
+  CALL zerar_centroMassas(massas, posicoes)
+  
+  ! AQUI EU CONSIGO QUE H = -0.25 E V ~ -0.25
+  CALL condicionar_energiaTotal(-0.25_pf, 1.0_pf, massas, posicoes, momentos)
+    
+  ! AGORA EU QUERO QUE V ~ -0.5, OU SEJA, V = 2 * V
+  posicoes = posicoes * 0.5_pf
+  EP = energia_potencial(1.0_pf, massas, posicoes)
+  WRITE (*,*) '    * V   =', EP
+
+  ! AGORA QUERO QUE T/(-V) = 0.5, LOGO v = sqrt(-V/M)
+  momentos = SQRT(0.5 / 3) / N
+
+  EC = energia_cinetica(massas, momentos)
+  WRITE (*,*) '    * T   =', EC
+  WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
+  WRITE (*,*) '    * Q   =', EC/ABS(EP)
+  WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2 * EP)
+
+END SUBROUTINE
 
 END MODULE condicoesIniciais
