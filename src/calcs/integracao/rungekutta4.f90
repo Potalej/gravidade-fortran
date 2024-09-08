@@ -153,6 +153,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   INTEGER, INTENT(IN)                                   :: passos_antes_salvar
   REAL(pf), INTENT(IN)                                  :: E0
   REAL(pf), DIMENSION(3), INTENT(IN)                    :: J0
+  REAL(pf) :: E
   ! para cada passo
   INTEGER :: i, qntd = 10
   ! para verificar se corrigiu
