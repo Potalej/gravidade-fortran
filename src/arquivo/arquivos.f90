@@ -611,18 +611,20 @@ END SUBROUTINE criar_dir
 ! Autoria:
 !   oap
 !
-SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,metodo,corretor,colisoes,passos_antes_salvar)
+SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,metodo,cor,corme,cormnt,colisoes,pas)
 
   IMPLICIT NONE
   CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
   CHARACTER(LEN=256)    :: dir_arquivo 
   CHARACTER(LEN=3)      :: num_arquivo
-  LOGICAL               :: corretor, colisoes, diretorio_existe, arquivo_existe
+  LOGICAL               :: cor, colisoes, diretorio_existe, arquivo_existe
   REAL(pf)              :: G, timestep
   INTEGER               :: t0, tf
   REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
-  INTEGER               :: passos_antes_salvar
+  INTEGER               :: pas ! Passos antes de salvar
   INTEGER               :: u, i, arq_i
+  REAL(pf)              :: corme ! MARGEM DE ERRO DO CORRETOR
+  INTEGER               :: cormnt ! MAXIMO DE NUMERO DE TENTATIVAS DO CORRETOR
 
   WRITE(*,'(a)') 'SALVAR SORTEIO:'
 
@@ -654,11 +656,17 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   WRITE(u,'(*(g0,1x))') "nome ", nome
   WRITE(u,'(*(g0,1x))') "integrador ", metodo
   WRITE(u,'(*(g0,1x))') "timestep ", timestep
-  WRITE(u,'(*(g0,1x))') "passos ", passos_antes_salvar
+  WRITE(u,'(*(g0,1x))') "passos ", pas ! Passos antes de salvar
   WRITE(u,'(*(g0,1x))') "t0 ", t0
   WRITE(u,'(*(g0,1x))') "tf ", tf
-  WRITE(u,'(*(g0,1x))') "corretor ", corretor
   WRITE(u,'(*(g0,1x))') "colisoes ", colisoes
+
+  WRITE(u,*)
+
+  WRITE(u,'(*(g0,1x))') "! Opcoes do corretor"
+  WRITE(u,'(*(g0,1x))') "corretor ", cor
+  WRITE(u,'(*(g0,1x))') "margem_erro ", corme
+  WRITE(u,'(*(g0,1x))') "max_num_tentativas ", cormnt
 
   WRITE(u,*)
 

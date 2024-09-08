@@ -57,6 +57,8 @@ MODULE simulacao
 
     ! Configuracoes
     LOGICAL :: corrigir=.FALSE., colidir=.FALSE.
+    REAL(pf) :: corrigir_margem_erro = 0.1_pf
+    INTEGER :: corrigir_max_num_tentativas = 5
 
     !> Arquivo
     TYPE(arquivo) :: Arq
@@ -143,6 +145,8 @@ SUBROUTINE Iniciar (self, G, M, R0, P0, h, passos_antes_salvar, metodo, t0, tf)
   ABS(self % h),   &
   self % metodo,   &
   self % corrigir, &
+  self % corrigir_margem_erro, &
+  self % corrigir_max_num_tentativas, &
   self % colidir,  &
   self % passos_antes_salvar)
 
@@ -183,7 +187,7 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
   class(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
   ! Iterador e variavel de tempo
-  INTEGER :: i, t
+  INTEGER :: i = 0, t
   ! Integrador
   TYPE(integracao_verlet) :: integrador
 
@@ -192,7 +196,9 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
   INTEGER  :: timestep_inv
   
   ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+  CALL integrador % Iniciar(self % M, self % G, self % h, &
+    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
+    self%colidir)
 
   ! Condicoes iniciais
   R1 = self % R
@@ -201,20 +207,23 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO i = 1, qntdPassos, self % passos_antes_salvar
+  DO WHILE (i .le. qntdPassos)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
     CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
+    
     ! timer
     tf = omp_get_wtime()
     tempo_total = tempo_total + tf - t0
 
     CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 10) == 0) THEN
+    IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
       WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
     ENDIF
+
+    i = i + self % passos_antes_salvar
   END DO
 
   CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
@@ -252,7 +261,9 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
   REAL(pf) :: t0, tf, tempo_total = 0.0_pf
 
   ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self%corrigir, self%colidir)
+  CALL integrador % Iniciar(self % M, self % G, self % h, &
+    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
+    self%colidir)
 
   ! Condicoes iniciais
   R1 = self % R
@@ -262,11 +273,12 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO i = 1, qntdPassos
+  DO WHILE (i .le. qntdPassos)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
     CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    
     ! timer
     tf = omp_get_wtime()
     tempo_total = tempo_total + tf - t0
@@ -276,6 +288,8 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
       WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
     ENDIF
+
+    i = i + self % passos_antes_salvar
   END DO
 
   CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)

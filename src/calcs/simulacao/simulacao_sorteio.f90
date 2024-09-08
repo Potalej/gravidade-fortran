@@ -236,6 +236,8 @@ SUBROUTINE sorteio_salvar (dir)
     configs % timestep,   &
     configs % integrador, &
     configs % corretor,   &
+    configs % corretor_margem_erro, &
+    configs % corretor_max_num_tentativas, &
     configs % colisoes,   &
     configs % passos_antes_salvar)
 END SUBROUTINE sorteio_salvar

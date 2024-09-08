@@ -77,62 +77,79 @@ CONTAINS
 ! Autoria:
 !   oap
 !
-SUBROUTINE corrigir (G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
+SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
   IMPLICIT NONE
+  REAL(pf) :: corme ! CORrecao Margem Erro
+  INTEGER  :: cormnt ! CORrecao Max Num Tentativas
   REAL(pf), INTENT(IN) :: G, massas(:)
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
-  INTEGER  :: N, a, INFO, b
+  INTEGER  :: N, a, INFO, b, contador = 0
   INTEGER :: pivos(4)
-  REAL(pf) :: JJt(4, 4), vetG(4), minimo_lagrange
+  REAL(pf) :: JJt(4, 4), vetG(4)
   LOGICAL, INTENT(INOUT) :: corrigiu
   REAL(pf) :: H, J(3)
 
   N = SIZE(massas)
   
-  ! calcula a mariz normal
-  JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
+  ! enquanto nao tiver aceitado a correcao, roda
+  loop: DO WHILE (.TRUE.)
 
-  ! vetor G
-  vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
+    IF (contador >= cormnt) THEN
+      ! WRITE(*,*) "max num tentativas atingido"
+      EXIT loop
+    ENDIF
 
-  ! resolve o sistema
-  CALL dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
+    ! Contador de correcoes
+    contador = contador + 1
 
-  ! if (INFO == 0 .AND. minval(vetorCorrecao) >= -1) THEN
-  IF (INFO == 0) THEN
-    ! se tiver solucao, verifica a condicao de 1a ordem do KKT, i.e., os
-    ! multiplicadores de Lagrange precisam ser nao negativos
-    ! Vou dar um desconto e verificar se o minimo, caso seja menor que 0,
-    ! esta mais proximo do 0 ou do -1. Se for do 0, levarei em conta.
-    ! minimo_lagrange = minval(vetorCorrecao)
-    ! se for maior, entao corrige
-    corrigiu = .TRUE.
-    ! aplica a correcao
-    DO a = 1, 4
-      grads(a,:) = vetG(a)*grads(a,:)
-    END DO
-    gradsT = transpose(grads)
+    ! calcula a mariz normal
+    JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
 
-    DO a = 1, 6*N
-      vetorCorrecao(a) = sum(gradsT(a,:))
-    END DO
+    ! vetor G
+    vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
 
-    ! aplica a correcao
-    DO a = 1, N
-      posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
-      posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
-      posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
-      momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
-      momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
-      momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
-    END do
-    ! ELSE
-    !   corrigiu = .FALSE.
-    !   WRITE (*,*) 'nao corrigiu pq ', minimo_lagrange
-    ! ENDIF
+    ! resolve o sistema
+    CALL dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
 
-  ENDIF
+    IF (INFO == 0) THEN
+      ! aplica a correcao
+      DO a = 1, 4
+        grads(a,:) = vetG(a)*grads(a,:)
+      END DO
+      gradsT = transpose(grads)
 
+      DO a = 1, 6*N
+        vetorCorrecao(a) = sum(gradsT(a,:))
+      END DO
+
+      ! ! Ve se esta na margem de erro
+      ! IF (ABS(MINVAL(vetorCorrecao)) .le. corme .AND. ABS(MAXVAL(vetorCorrecao)) .le. corme) THEN
+      !   ! Se estiver, manda embora porque a correcao sera desnecessaria
+      !   ! WRITE(*,*) "dentro da margem aceitavel"
+      !   EXIT
+      ! END IF
+
+      ! aplica a correcao
+      DO a = 1, N
+        posicoes(a,1) = posicoes(a,1) + vetorCorrecao(6*a-5)
+        posicoes(a,2) = posicoes(a,2) + vetorCorrecao(6*a-4)
+        posicoes(a,3) = posicoes(a,3) + vetorCorrecao(6*a-3)
+        momentos(a,1) = momentos(a,1) + vetorCorrecao(6*a-2)
+        momentos(a,2) = momentos(a,2) + vetorCorrecao(6*a-1)
+        momentos(a,3) = momentos(a,3) + vetorCorrecao(6*a-0)
+      END DO
+
+      corrigiu = .TRUE.
+      
+    ELSE
+      ! Caso contrario, nao tem como corrigir e so sai
+      corrigiu = .FALSE.
+      WRITE(*,*) "problema na matriz"
+      EXIT loop
+    
+    ENDIF
+
+  END DO loop
 END SUBROUTINE corrigir
 
 ! ************************************************************

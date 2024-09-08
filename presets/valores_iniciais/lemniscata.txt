@@ -4,10 +4,14 @@ nome "Lemniscata"
 integrador verlet
 timestep   0.001
 passos     5
-t0    0.0
-tf    1.0
-corretor F
+t0    0
+tf    2000
 colisoes F
+
+! Opcoes do corretor
+corretor F
+margem_erro 0.1
+max_num_tentativas 15
 
 ! Valores do problema
 N 3

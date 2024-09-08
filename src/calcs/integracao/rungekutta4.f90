@@ -17,6 +17,7 @@ MODULE rungekutta4
   USE correcao
   USE colisao
   USE integrador
+  USE mecanica
 
   IMPLICIT NONE
   PRIVATE
@@ -47,13 +48,15 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
+SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   IMPLICIT NONE
   CLASS(integracao_rk4), INTENT(INOUT) :: self
   LOGICAL,INTENT(IN) :: corrigir, colidir
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h
   INTEGER :: a, i
+  REAL(pf) :: corme
+  INTEGER :: cormnt
 
   ! quantidade de partículas
   self % N = SIZE(massas)
@@ -68,6 +71,8 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
 
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
+  self % corme = corme
+  self % cormnt = cormnt
 
   ! Se vai ou nao colidir
   self % colidir = colidir
@@ -167,17 +172,20 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
     R1 = resultado(1,:,:)
     P1 = resultado(2,:,:)
 
-    ! aplica a correcao geral, se solicitado
-    IF (self % corrigir) THEN
-      CALL corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
-    ENDIF
-
     ! se tiver colisoes, aplica
     IF (self % colidir .AND. .NOT. corrigiu) THEN
       CALL verificar_e_colidir(self % m, R1, P1)
     ENDIF
 
   END DO
+
+  ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
+  IF (self%corrigir) THEN
+    E = energia_total(self % G, self % m, R1, P1)
+    IF (ABS(E - E0) > self%corme) THEN
+      CALL corrigir(self%corme,self%cormnt,self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+    END IF
+  ENDIF
 
   R = R1
   P = P1

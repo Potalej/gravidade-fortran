@@ -41,8 +41,13 @@ MODULE leitura
     INTEGER :: N
     ! Intervalo de integracao
     INTEGER :: t0, tf
-    ! Uso de corretor e colisoes
-    LOGICAL  :: corretor, colisoes
+    ! Uso de corretor
+    LOGICAL  :: corretor
+    REAL(pf) :: corretor_margem_erro
+    INTEGER  :: corretor_max_num_tentativas
+
+    ! Uso de colisoes
+    LOGICAL :: colisoes
 
     ! Massas, posicoes e momentos
     REAL(pf), allocatable :: R(:,:), P(:,:), massas(:)
@@ -124,8 +129,16 @@ SUBROUTINE config (self, arquivo)
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario  
 
-  READ(unidade,*) atributo, self % corretor ! uso do corretor
-  READ(unidade,*) atributo, self % colisoes ! uso de colisoes
+  ! Correcao numerica
+  READ(unidade,*) atributo, self % corretor
+  READ(unidade,*) atributo, self % corretor_margem_erro
+  READ(unidade,*) atributo, self % corretor_max_num_tentativas
+
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
+
+  ! Colisoes
+  READ(unidade,*) atributo, self % colisoes
 
   CLOSE(2)
 
@@ -196,8 +209,15 @@ SUBROUTINE valores_iniciais (self, arquivo)
   READ(unidade,*) atributo, self % passos_antes_salvar
   READ(unidade,*) atributo, self % t0 ! tempo inicial
   READ(unidade,*) atributo, self % tf ! tempo final
-  READ(unidade,*) atributo, self % corretor
   READ(unidade,*) atributo, self % colisoes 
+
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
+
+  ! Correcao
+  READ(unidade,*) atributo, self % corretor
+  READ(unidade,*) atributo, self % corretor_margem_erro
+  READ(unidade,*) atributo, self % corretor_max_num_tentativas
 
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario

@@ -13,6 +13,7 @@
 MODULE verlet
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE OMP_LIB
+  USE mecanica
   USE correcao
   USE colisao
   USE integrador
@@ -43,12 +44,14 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
+SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   IMPLICIT NONE
   class(integracao_verlet), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h
   LOGICAL,INTENT(IN) :: corrigir, colidir
+  REAL(pf) :: corme
+  INTEGER :: cormnt
   INTEGER :: a, i
 
   ! Quantidade de particulas
@@ -64,6 +67,8 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, colidir)
 
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
+  self % corme = corme
+  self % cormnt = cormnt
 
   ! Se vai ou nao colidir
   self % colidir = colidir  
@@ -107,10 +112,10 @@ FUNCTION forcas (self, R)
         ! distancia entre os corpos
         distancia = norm2(R(b,:) - R(a,:))**3
         ! forca entre os corpos a e b
-        Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+        Fab = self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
         ! Adiciona na matriz
-        forcas_local(a,:) = forcas_local(a,:) - Fab
-        forcas_local(b,:) = forcas_local(b,:) + Fab
+        forcas_local(a,:) = forcas_local(a,:) + Fab
+        forcas_local(b,:) = forcas_local(b,:) - Fab
       END DO
     END DO
     !$OMP END DO
@@ -179,6 +184,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
   INTEGER, INTENT(IN) :: passos_antes_salvar
   REAL(pf), INTENT(IN) :: E0
+  REAL(pf)             :: E
   REAL(pf), DIMENSION(3), INTENT(IN) :: J0
   ! Para cada passo
   INTEGER :: i
@@ -211,11 +217,15 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
     P1 = resultado(2,:,:)
     FSomas_ant = resultado(3,:,:)
 
-    IF (self%corrigir) THEN
-      CALL corrigir(self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
-    ENDIF
-
   END DO
+
+  ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
+  IF (self%corrigir) THEN
+    E = energia_total(self % G, self % m, R1, P1)
+    IF (ABS(E - E0) > self%corme) THEN
+      CALL corrigir(self%corme,self%cormnt,self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+    END IF
+  ENDIF
 
   R = R1
   P = P1

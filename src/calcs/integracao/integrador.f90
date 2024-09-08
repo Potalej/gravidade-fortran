@@ -32,7 +32,9 @@ MODULE integrador
     INTEGER :: dim = 3, N
 
     ! Se vai ou nao corrigir
-    LOGICAL :: corrigir = .FALSE.
+    LOGICAL  :: corrigir = .FALSE.
+    REAL(pf) :: corme ! margem de erro
+    INTEGER  :: cormnt ! max num tentativas
 
     ! Se vai ou nao colidir
     LOGICAL :: colidir = .FALSE.

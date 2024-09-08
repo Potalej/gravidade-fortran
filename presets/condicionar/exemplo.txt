@@ -1,7 +1,7 @@
 modo sorteio_henon
 
 ! Integrais primeiras desejadas
-Etot 0.0
+Etot -0.25
 Jtot 0.0,0.0,0.0
 Ptot 0.0,0.0,0.0
 
@@ -9,11 +9,11 @@ Ptot 0.0,0.0,0.0
 G 1.0
 
 ! Quantidade de corpos
-N 10
+N 30
 
 ! Intervalos para geracao
 Intervalo-Massas    1000.0, 10000.0
-Intervalo-Posicoes -5000.0, 5000.0
+Intervalo-Posicoes -50.0, 50.0
 Intervalo-Momentos -1.0,1.0
 
 ! Sobre a integracao (verlet / rk4)
@@ -25,6 +25,10 @@ passos     5
 t0    0
 tf    1
 
-! Outras opcoes
+! Correcao numerica
 corretor F
+margem_erro 0.1
+max_num_tentativas 4
+
+! Colisoes
 colisoes F
