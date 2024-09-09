@@ -25,7 +25,8 @@ MODULE integrador
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
-    REAL(pf) :: h, G
+    ! potsoft: Softening do potencial
+    REAL(pf) :: h, G, potsoft
 
     ! dim: Dimensao do problema
     ! N: Quantidade de partículas
@@ -38,6 +39,7 @@ MODULE integrador
 
     ! Se vai ou nao colidir
     LOGICAL :: colidir = .FALSE.
+    REAL(pf) :: colmd ! max dist colisoes
 
     ! vetores para aplicar a correcao
     REAL(pf), ALLOCATABLE :: grads(:,:), gradsT(:,:), vetorCorrecao(:)

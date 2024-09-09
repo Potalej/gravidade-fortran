@@ -27,7 +27,8 @@ MODULE rungekutta
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
-    REAL(pf) :: h, G
+    ! potsoft: Softening do potencial
+    REAL(pf) :: h, G, potsoft
 
     ! dim: dimensao do problema
     ! N: quantidade de particulas
@@ -52,16 +53,18 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, N, massas, G, h)
+SUBROUTINE Iniciar (self, N, massas, G, h, potsoft)
   IMPLICIT NONE
   CLASS(RK), INTENT(INOUT) :: self
   REAL(pf), ALLOCATABLE :: massas(:)
   INTEGER, INTENT(INOUT) :: N
-  REAL(pf)               :: G, h
+  REAL(pf)               :: G, h, potsoft
   INTEGER :: a, i
 
   ! quantidade de particulas
   self % N = N
+  ! Softening do potencial
+  self % potsoft = potsoft
   ! massas
   ALLOCATE(self % m (self % N))
   self % m = massas
@@ -106,7 +109,7 @@ FUNCTION forcas (self, R)
   DO a = 2, self % N
     DO b = 1, a - 1
       ! distancia entre os corpos
-      distancia = norm2(R(b,:) - R(a,:))**3
+      distancia = (norm2(R(b,:) - R(a,:))**2 + self % potsoft**2)**(3/2)
       ! forca entre os corpos a e b
       Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
       ! Adiciona na matriz

@@ -41,13 +41,16 @@ MODULE leitura
     INTEGER :: N
     ! Intervalo de integracao
     INTEGER :: t0, tf
+    ! Softening ("amolecimento") do potencial 
+    REAL(pf) :: potsoft
     ! Uso de corretor
     LOGICAL  :: corretor
     REAL(pf) :: corretor_margem_erro
     INTEGER  :: corretor_max_num_tentativas
 
     ! Uso de colisoes
-    LOGICAL :: colisoes
+    LOGICAL  :: colisoes
+    REAL(pf) :: colisoes_max_distancia
 
     ! Massas, posicoes e momentos
     REAL(pf), allocatable :: R(:,:), P(:,:), massas(:)
@@ -118,6 +121,7 @@ SUBROUTINE config (self, arquivo)
   ! Integracao
   READ(unidade,*) atributo, self % integrador
   READ(unidade,*) atributo, self % timestep
+  READ(unidade,*) atributo, self % potsoft
   READ(unidade,*) atributo, self % passos_antes_salvar
 
   READ(unidade,*) ! Espaco
@@ -139,6 +143,7 @@ SUBROUTINE config (self, arquivo)
 
   ! Colisoes
   READ(unidade,*) atributo, self % colisoes
+  READ(unidade,*) atributo, self % colisoes_max_distancia
 
   CLOSE(2)
 
@@ -206,11 +211,11 @@ SUBROUTINE valores_iniciais (self, arquivo)
   READ(unidade,*) atributo, self % nome
   READ(unidade,*) atributo, self % integrador
   READ(unidade,*) atributo, self % timestep
+  READ(unidade,*) atributo, self % potsoft
   READ(unidade,*) atributo, self % passos_antes_salvar
   READ(unidade,*) atributo, self % t0 ! tempo inicial
   READ(unidade,*) atributo, self % tf ! tempo final
-  READ(unidade,*) atributo, self % colisoes 
-
+  
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario
 
@@ -218,6 +223,13 @@ SUBROUTINE valores_iniciais (self, arquivo)
   READ(unidade,*) atributo, self % corretor
   READ(unidade,*) atributo, self % corretor_margem_erro
   READ(unidade,*) atributo, self % corretor_max_num_tentativas
+
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
+
+  ! Colisoes
+  READ(unidade,*) atributo, self % colisoes 
+  READ(unidade,*) atributo, self % colisoes_max_distancia
 
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario

@@ -136,17 +136,26 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos, tempo_inicial, tempo_fin
   SELECT CASE (configs%integrador)
     CASE ("verlet")
       Sim_verlet % corrigir = configs%corretor
+      Sim_verlet % corrigir_margem_erro = configs%corretor_margem_erro
+      Sim_verlet % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
+      
       Sim_verlet % colidir  = configs%colisoes
+      Sim_verlet % colisoes_max_distancia = configs%colisoes_max_distancia
+
       ! Instancia o metodo
-      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
-                              configs%integrador,tempo_inicial,tempo_final)
+      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%potsoft, &
+        configs%passos_antes_salvar, configs%integrador,tempo_inicial,tempo_final)
       ! Roda a simulacao
       CALL Sim_verlet%rodar_verlet(tempo_final - tempo_inicial)
     CASE ("rk4")
       Sim_rk4 % corrigir = configs%corretor
+      Sim_rk4 % corrigir_margem_erro = configs%corretor_margem_erro
+      Sim_rk4 % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
+      
       Sim_rk4 % colidir  = configs%colisoes
-      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar, &
-                              configs%integrador,tempo_inicial,tempo_final)
+      Sim_rk4 % colisoes_max_distancia = configs%colisoes_max_distancia
+      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%potsoft, &
+        configs%passos_antes_salvar, configs%integrador,tempo_inicial,tempo_final)
       CALL Sim_rk4%rodar_rk4(tempo_final - tempo_inicial)
   END SELECT
 
@@ -234,11 +243,13 @@ SUBROUTINE sorteio_salvar (dir)
     configs % t0,         &
     configs % tf,         &
     configs % timestep,   &
+    configs % potsoft,   &
     configs % integrador, &
     configs % corretor,   &
     configs % corretor_margem_erro, &
     configs % corretor_max_num_tentativas, &
     configs % colisoes,   &
+    configs % colisoes_max_distancia,   &
     configs % passos_antes_salvar)
 END SUBROUTINE sorteio_salvar
 

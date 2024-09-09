@@ -9,7 +9,7 @@ Ptot 0.0,0.0,0.0
 G 1.0
 
 ! Quantidade de corpos
-N 30
+N 200
 
 ! Intervalos para geracao
 Intervalo-Massas    1000.0, 10000.0
@@ -18,17 +18,19 @@ Intervalo-Momentos -1.0,1.0
 
 ! Sobre a integracao (verlet / rk4)
 integrador verlet
-timestep   0.001
+timestep   0.01
+soft 0.01
 passos     5
 
 ! Intervalo de integracao
 t0    0
-tf    1
+tf    2000
 
 ! Correcao numerica
 corretor F
-margem_erro 0.1
-max_num_tentativas 4
+margem_erro 0.01
+max_num_tentativas 150
 
 ! Colisoes
 colisoes F
+max_distancia 0.1

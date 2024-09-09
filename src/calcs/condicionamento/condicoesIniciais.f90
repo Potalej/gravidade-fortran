@@ -374,6 +374,7 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   REAL(pf), DIMENSION(2), INTENT(IN) :: int_posicoes, int_momentos, int_massas
   REAL(pf), INTENT(INOUT), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf) :: beta, EP, EC, Qvir ! AARSETH
+  REAL(pf) :: P_normas = 0.0_pf ! Soma dos quadrados das normas dos momentos lineares
   integer :: a, m
 
   WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS (HENON)"
@@ -396,7 +397,7 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
-  
+
   ! AQUI EU CONSIGO QUE H = -0.25 E V ~ -0.25
   CALL condicionar_energiaTotal(-0.25_pf, 1.0_pf, massas, posicoes, momentos)
     
@@ -405,14 +406,22 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   EP = energia_potencial(1.0_pf, massas, posicoes)
   WRITE (*,*) '    * V   =', EP
 
+  ! Zera o momento linear total
+  CALL condicionar_momentoLinear((/0.0_pf,0.0_pf,0.0_pf/), massas, momentos)
+
   ! AGORA QUERO QUE T/(-V) = 0.5, LOGO v = sqrt(-V/M)
-  momentos = SQRT(0.5 / 3) / N
+  ! momentos = SQRT(0.5 / 3) / N
+  DO a = 1, N
+    P_normas = P_normas + NORM2(momentos(a,:))**2
+  END DO
+  momentos = momentos * 1/SQRT(2 * N * P_normas)
 
   EC = energia_cinetica(massas, momentos)
   WRITE (*,*) '    * T   =', EC
   WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
   WRITE (*,*) '    * Q   =', EC/ABS(EP)
   WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2 * EP)
+  WRITE (*,*) '    * P   =', momentoLinear_total(momentos)
 
 END SUBROUTINE
 

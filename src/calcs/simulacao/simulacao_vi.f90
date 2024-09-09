@@ -100,9 +100,12 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
       Sim_verlet % corrigir = configs%corretor
       Sim_verlet % corrigir_margem_erro = configs%corretor_margem_erro
       Sim_verlet % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
-
+      
       Sim_verlet % colidir  = configs%colisoes
-      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar,configs%integrador)
+      Sim_verlet % colisoes_max_distancia = configs%colisoes_max_distancia
+      
+      CALL Sim_verlet%Iniciar(configs%G, massas, posicoes, momentos, &
+        timestep, configs%potsoft, configs%passos_antes_salvar,configs%integrador)
       CALL Sim_verlet%rodar_verlet(configs % tf - configs % t0)
     CASE ("rk4")
       Sim_rk4 % corrigir = configs%corretor
@@ -110,7 +113,10 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
       Sim_rk4 % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
 
       Sim_rk4 % colidir  = configs%colisoes
-      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, timestep, configs%passos_antes_salvar,configs%integrador)
+      Sim_rk4 % colisoes_max_distancia = configs%colisoes_max_distancia
+
+      CALL Sim_rk4%Iniciar(configs%G, massas, posicoes, momentos, &
+        timestep, configs%potsoft, configs%passos_antes_salvar,configs%integrador)
       CALL Sim_rk4%rodar_rk4(configs % tf - configs % t0)
   END SELECT
 

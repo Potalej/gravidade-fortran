@@ -44,13 +44,13 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd)
   IMPLICIT NONE
   class(integracao_verlet), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h
   LOGICAL,INTENT(IN) :: corrigir, colidir
-  REAL(pf) :: corme
+  REAL(pf) :: corme, potsoft, colmd
   INTEGER :: cormnt
   INTEGER :: a, i
 
@@ -64,6 +64,8 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   self % G = G
   ! Passo
   self % h = h
+  ! Softening do potencial
+  self % potsoft = potsoft
 
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
@@ -71,7 +73,8 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   self % cormnt = cormnt
 
   ! Se vai ou nao colidir
-  self % colidir = colidir  
+  self % colidir = colidir
+  self % colmd = colmd
 
   ! Alocando variaveis de correcao
   ALLOCATE(self%grads(4, 6*self%N))
@@ -110,7 +113,11 @@ FUNCTION forcas (self, R)
     DO a = 2, self%N
       DO b = 1, a-1
         ! distancia entre os corpos
-        distancia = norm2(R(b,:) - R(a,:))**3
+        IF (self % potsoft .NE. 0) THEN
+          distancia = (norm2(R(b,:) - R(a,:))**2 + self%potsoft**2)**(3/2)
+        ELSE
+          distancia = norm2(R(b,:) - R(a,:))**3
+        ENDIF
         ! forca entre os corpos a e b
         Fab = self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
         ! Adiciona na matriz
@@ -208,15 +215,14 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
     ! Aplica o metodo
     resultado = self % metodo(R1, P1, FSomas_ant)
 
-    ! se tiver colisoes, aplica
-    IF (self % colidir .AND. .NOT. corrigiu) THEN
-      CALL verificar_e_colidir(self % m, R1, P1)
-    ENDIF
-
     R1 = resultado(1,:,:)
     P1 = resultado(2,:,:)
     FSomas_ant = resultado(3,:,:)
 
+    ! se tiver colisoes, aplica
+    IF (self % colidir) THEN
+      CALL verificar_e_colidir(self % m, R1, P1, self % colmd)
+    ENDIF
   END DO
 
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa

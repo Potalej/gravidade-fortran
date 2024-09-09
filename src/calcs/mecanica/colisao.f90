@@ -46,23 +46,23 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P)
+SUBROUTINE verificar_e_colidir (m, R, P, colmd)
   IMPLICIT NONE
-  REAL(pf) :: m(:), R(:,:), P(:,:), max_aprox = 3
-  INTEGER :: a, b
+  REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
+  INTEGER :: a, b, qntd_colisoes
+  qntd_colisoes = 0
   DO a = 2, SIZE(m)
     DO b = 1, a-1
-      IF (norm2(R(b,:)-R(a,:)) <= max_aprox) THEN
+      IF (norm2(R(b,:)-R(a,:)) <= colmd) THEN
         ! Agora verifica o sinal da derivada da distancia
         ! e estiver negativo, eh porque estao se aproximando
         IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
           CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
-          WRITE (*,*) 'colidiu'
+          qntd_colisoes = qntd_colisoes + 1
         ENDIF
       ENDIF 
     END DO
   END DO
-
 END SUBROUTINE verificar_e_colidir
 
 ! ************************************************************
@@ -82,6 +82,7 @@ SUBROUTINE colidir (ma, Ra, Pa, mb, Rb, Pb)
   IMPLICIT NONE
   REAL(pf) :: ma, mb, Ra(3), Pa(3), Rb(3), Pb(3)
   REAL(pf) :: ua(3), ub(3), Normal(3), Normal_(3), u1, u2, ua_p(3), ub_p(3)
+  REAL(pf) :: S(3), T(3)
 
   ! separa as velocidades
   ua = Pa/ma
@@ -95,9 +96,18 @@ SUBROUTINE colidir (ma, Ra, Pa, mb, Rb, Pb)
   u1 = DOT_PRODUCT(ua, Normal_)
   u2 = DOT_PRODUCT(ub, Normal_)
   
+  ! Para calcular o plano tangente, tome T = (-n2_, n1_, 0)
+  T(1) = - Normal_(2)
+  T(2) =   Normal_(1)
+  T(3) =   0.0_pf
+  ! e S = N_ x T
+  S(1) = - Normal_(1) * Normal_(3)
+  S(2) = - Normal_(2) * Normal_(3)
+  S(3) =   Normal_(1)**2 + Normal_(2)**2
+  
   ! calcula as componentes do plano
-  ua_p = ua - u1*Normal
-  ub_p = ub - u2*Normal
+  ua_p = DOT_PRODUCT(ua, S) * S + DOT_PRODUCT(ua, T) * T
+  ub_p = DOT_PRODUCT(ub, S) * S + DOT_PRODUCT(ub, T) * T
 
   ! obtem as novas velocidades
   Pa = ma * (ua_p + (u1*(ma-mb)+2*mb*u2)/(ma+mb) * Normal_)

@@ -2,16 +2,20 @@
 modo vi
 nome "Lemniscata"
 integrador verlet
-timestep   0.001
-passos     5
+timestep   0.01
+potsoft 0.00000000000001
+passos     1
 t0    0
-tf    2000
-colisoes F
+tf    10
 
 ! Opcoes do corretor
 corretor F
 margem_erro 0.1
 max_num_tentativas 15
+
+! Opcoes de colisao
+colisoes F
+max_distancia 0.1
 
 ! Valores do problema
 N 3

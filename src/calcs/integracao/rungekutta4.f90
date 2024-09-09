@@ -48,12 +48,12 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd)
   IMPLICIT NONE
   CLASS(integracao_rk4), INTENT(INOUT) :: self
   LOGICAL,INTENT(IN) :: corrigir, colidir
   REAL(pf), allocatable :: massas(:)
-  REAL(pf)              :: G, h
+  REAL(pf)              :: G, h, potsoft, colmd
   INTEGER :: a, i
   REAL(pf) :: corme
   INTEGER :: cormnt
@@ -68,6 +68,8 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   self % G = G
   ! passo
   self % h = h
+  ! Softening do potencial
+  self % potsoft = potsoft
 
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
@@ -76,6 +78,7 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
 
   ! Se vai ou nao colidir
   self % colidir = colidir
+  self % colmd = colmd
 
   ! alocando variaveis de correcao
   ALLOCATE(self%grads(10, 6*self%N))
@@ -83,7 +86,7 @@ SUBROUTINE Iniciar (self, massas, G, h, corrigir, corme, cormnt, colidir)
   ALLOCATE(self%vetorCorrecao(1:6*self%N))
   
   ! Inicia o base do RK 
-  CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h)
+  CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h, self % potsoft)
 
 END SUBROUTINE Iniciar
 
@@ -174,8 +177,8 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
     P1 = resultado(2,:,:)
 
     ! se tiver colisoes, aplica
-    IF (self % colidir .AND. .NOT. corrigiu) THEN
-      CALL verificar_e_colidir(self % m, R1, P1)
+    IF (self % colidir) THEN
+      CALL verificar_e_colidir(self % m, R1, P1, self % colmd)
     ENDIF
 
   END DO
