@@ -195,7 +195,6 @@ SUBROUTINE sorteio_salvar (dir)
   CALL configs % config(dir)
 
   ! Verifica o modo de sorteio
-  WRITE (*,*) 'aqui:', configs%modo
   IF (configs%modo == "sorteio_henon") THEN
     ! Gera conforme as configuracoes de Henon
     CALL gerar_condicionado_henon(configs%N, &

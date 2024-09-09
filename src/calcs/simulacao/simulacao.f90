@@ -171,7 +171,9 @@ SUBROUTINE inicializar_metodo (self)
   CALL self % Arq % escrever_cabecalho(self % h, self % G, self % M)
 
   ! Salva as informacoes no info.txt
-  CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%corrigir, self%colidir)
+  CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
+    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
+    self%colidir, self%colisoes_max_distancia)
 
   ! Condicoes iniciais
   CALL self % Arq % escrever((/self % R, self % P/))

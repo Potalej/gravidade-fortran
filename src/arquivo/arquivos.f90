@@ -350,14 +350,16 @@ END SUBROUTINE fechar
 ! Autoria:
 !   oap
 !
-SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, cor, col)
+SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, cor, corme, cormnt, col, colmd)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN)   :: self
   INTEGER, INTENT(IN)          :: N
-  REAL(pf), INTENT(IN)         :: G, h
+  REAL(pf), INTENT(IN)         :: G, h, potsoft
   CHARACTER(len=*), INTENT(IN) :: metodo
   LOGICAL                      :: cor, col ! correcao, colisao
+  REAL(pf)                     :: corme, colmd
+  INTEGER                      :: cormnt
 
   WRITE (self % idarqinfo, '(*(g0,1x))') "# gravidade-fortran v0.1"
   WRITE (self % idarqinfo, *) 
@@ -367,9 +369,13 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, cor, col)
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- metodo: ", metodo
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- G: ", G
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- h: ", h
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- potsoft: ", potsoft
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: " 
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", cor
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", col
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes max. dist.: ", colmd
 
   WRITE (self % idarqinfo, *)
 
