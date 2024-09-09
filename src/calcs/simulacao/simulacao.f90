@@ -21,6 +21,8 @@ MODULE simulacao
   ! Metodos de integracao numerica
   USE rungekutta4
   USE verlet
+  ! Para configuracoes
+  USE leitura
 
   IMPLICIT NONE
   PRIVATE
@@ -83,26 +85,25 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo, t0, tf)
+! SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo, t0, tf)
+SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
 
   CLASS(simular), INTENT(INOUT) :: self
-
+  CLASS(preset_config) :: configs
   REAL(pf), allocatable :: M(:), R0(:,:), P0(:,:)
-  REAL(pf) :: G, h, potsoft
-  INTEGER :: a, i, passos_antes_salvar
-  CHARACTER(len=*) :: metodo
-  INTEGER, OPTIONAL :: t0, tf
+  REAL(pf) :: h
+  INTEGER :: a, i
 
-  self % passos_antes_salvar = passos_antes_salvar
+  self % passos_antes_salvar = configs % passos_antes_salvar
   
   ! Salva o tamanho dos passos
   self % h = h
 
   ! Salva o softening do potencial
-  self % potsoft = potsoft
+  self % potsoft = configs % potsoft
 
   ! Salva a gravidade
-  self % G = G
+  self % G = configs % G
 
   ! Salva as massas
   self % M = M  
@@ -124,7 +125,7 @@ SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo,
   self % Ptot = momentoLinear_total(self % P)
 
   ! Salva a energia inicial
-  self % E0 = energia_total(G, self % M, self % R, self % P)
+  self % E0 = energia_total(self % G, self % M, self % R, self % P)
 
   ! Salva o momento angular inicial
   self % J0 = momento_angular_total(self % R, self % P)
@@ -133,7 +134,16 @@ SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo,
   self % Rcm = centro_massas(self % M, self % R)
 
   ! Salva o metodo
-  self % metodo = metodo
+  self % metodo = configs % integrador
+
+  ! Salva o corretor
+  self % corrigir = configs%corretor
+  self % corrigir_margem_erro = configs%corretor_margem_erro
+  self % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
+  
+  ! Salva as colisoes
+  self % colidir  = configs%colisoes
+  self % colisoes_max_distancia = configs%colisoes_max_distancia
 
   ! Inicializa o metodo
   CALL self % inicializar_metodo()
@@ -145,8 +155,8 @@ SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo,
   self % M,        &
   self % R,        &
   self % P,        &
-  t0,              &
-  tf,              &
+  configs % t0,    &
+  configs % tf,    &
   ABS(self % h),   &
   self % potsoft,  &
   self % metodo,   &
@@ -217,13 +227,12 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos * timestep_inv)
+  DO WHILE (i .le. qntdPassos)
   ! DO WHILE (i .le. qntdPassos)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
-    ! CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
     
     ! timer
     tf = omp_get_wtime()
@@ -288,12 +297,11 @@ SUBROUTINE rodar_rk4 (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos * timestep_inv)
+  DO WHILE (i .le. qntdPassos)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
-    ! CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
     
     ! timer
     tf = omp_get_wtime()
