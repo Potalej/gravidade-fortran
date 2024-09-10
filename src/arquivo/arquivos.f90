@@ -409,8 +409,8 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
   REAL(pf), INTENT(IN)         :: duracao
-  INTEGER :: linha_qntd_passos = 8, linha_duracao = 13
-  INTEGER :: i = 1, tamanho_arquivo = 13, nova_unidade
+  INTEGER :: linha_qntd_passos = 9, linha_duracao = 17
+  INTEGER :: i = 1, tamanho_arquivo = 17, nova_unidade
   LOGICAL :: mudou_qntd_passos = .FALSE., mudou_duracao = .FALSE.
   CHARACTER(len=50), allocatable :: infos(:)
 
@@ -429,7 +429,7 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   REWIND(self % idarqinfo)
 
   ! DO WHILE (.NOT. mudou_qntd_passos .AND. .NOT. mudou_duracao)
-  DO i = 1, 13
+  DO i = 1, 17
     ! se estiver na linha do tf
     IF (i == linha_qntd_passos) THEN
       WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: ", qntd_passos
