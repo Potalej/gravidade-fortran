@@ -21,7 +21,7 @@ MODULE simulacao_vi
   PUBLIC simular_vi
 
   ! Instanciamento da classe
-  TYPE(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
+  TYPE(simular) :: Simulador
   TYPE(preset_config) :: configs
 
 CONTAINS
@@ -95,13 +95,19 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
 
   WRITE (*,*)
 
+  CALL Simulador%Iniciar(configs, massas, posicoes, momentos, timestep)
+
   SELECT CASE (configs%integrador)
     CASE ("verlet")
-      CALL Sim_verlet%Iniciar(configs, massas, posicoes, momentos, timestep)
-      CALL Sim_verlet%rodar_verlet(configs % tf - configs % t0)
+      CALL Simulador%rodar_verlet(configs % tf - configs % t0)
     CASE ("rk4")
-      CALL Sim_rk4%Iniciar(configs, massas, posicoes, momentos, timestep)
-      CALL Sim_rk4%rodar_rk4(configs % tf - configs % t0)
+      CALL Simulador%rodar_rk4(configs % tf - configs % t0)
+    CASE ("eulersimp")
+      CALL Simulador%rodar_eulersimp(configs % tf - configs % t0)
+    CASE ("ruth3")
+      CALL Simulador%rodar_ruth3(configs % tf - configs % t0)
+    CASE ("ruth4")
+      CALL Simulador%rodar_ruth4(configs % tf - configs % t0)
   END SELECT
 
   tf = omp_get_wtime()

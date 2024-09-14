@@ -23,7 +23,7 @@ MODULE simulacao_sorteio
   PUBLIC simular_sorteio, sorteio_salvar
 
   ! Instanciamento da classe
-  TYPE(simular) :: Sim_rk4, Sim_verlet, Sim_corrigir
+  TYPE(simular) :: Simulador
   TYPE(preset_config) :: configs
 
 CONTAINS
@@ -132,14 +132,20 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos, tempo_inicial, tempo_fin
 
   ! timer
   t0 = omp_get_wtime()
+  
+  CALL Simulador%Iniciar(configs, massas, posicoes, momentos, timestep)
 
   SELECT CASE (configs%integrador)
     CASE ("verlet")
-      CALL Sim_verlet%Iniciar(configs, massas, posicoes, momentos, timestep)
-      CALL Sim_verlet%rodar_verlet(tempo_final - tempo_inicial)
+      CALL Simulador%rodar_verlet(tempo_final - tempo_inicial)
     CASE ("rk4")
-      CALL Sim_rk4%Iniciar(configs, massas, posicoes, momentos, timestep)
-      CALL Sim_rk4%rodar_rk4(tempo_final - tempo_inicial)
+      CALL Simulador%rodar_rk4(tempo_final - tempo_inicial)
+    CASE ("eulersimp")
+      CALL Simulador%rodar_eulersimp(tempo_final - tempo_inicial)
+    CASE ("ruth3")
+      CALL Simulador%rodar_ruth3(configs % tf - configs % t0)
+    CASE ("ruth4")
+      CALL Simulador%rodar_ruth4(configs % tf - configs % t0)
   END SELECT
 
   tf = omp_get_wtime()
