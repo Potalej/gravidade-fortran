@@ -19,6 +19,7 @@ MODULE simulacao
   USE auxiliares
   USE arquivos
   ! Metodos de integracao numerica
+  USE integrador
   USE rungekutta4
   USE verlet
   USE eulersimp
@@ -30,6 +31,13 @@ MODULE simulacao
   IMPLICIT NONE
   PRIVATE
   PUBLIC simular
+
+  ! Tipos de metodo de integracao
+  TYPE(integracao_verlet),    TARGET, SAVE :: INT_VERLET
+  TYPE(integracao_eulersimp), TARGET, SAVE :: INT_EULERSIMP
+  TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
+  TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
+  TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
 
   ! Classe de simulacao
   TYPE :: simular
@@ -71,12 +79,8 @@ MODULE simulacao
     TYPE(arquivo) :: Arq
 
     CONTAINS
-      PROCEDURE :: Iniciar, inicializar_metodo, &
-                   rodar_verlet, &
-                   rodar_rk4, &
-                   rodar_eulersimp, &
-                   rodar_ruth3, &
-                   rodar_ruth4
+      PROCEDURE :: Iniciar, inicializar_metodo, rodar
+      
   END TYPE
 
 CONTAINS
@@ -195,33 +199,52 @@ SUBROUTINE inicializar_metodo (self)
 
   ! Condicoes iniciais
   CALL self % Arq % escrever((/self % R, self % P/))
+
+  WRITE(*,*) 'E0 = ', self % E0
 END SUBROUTINE inicializar_metodo
 
+
 ! ************************************************************
-!! Roda simulacao com Verlet
+!! Roda simulacao com algum metodo definido dinamicamente
 !
 ! Objetivos:
-!   Roda uma simulacao com o metodo Velocity-Verlet.
+!   Roda uma simulacao com algum metodo numerico desejado.
 !
 ! Modificado:
-!   25 de maio de 2024
+!   14 de setembro de 2024
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE rodar_verlet (self, qntdPassos)
+SUBROUTINE rodar (self, qntdPassos)
   IMPLICIT NONE
   class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos
+  INTEGER, INTENT(IN) :: qntdPassos  
   ! Iterador e variavel de tempo
   INTEGER :: i = 0, t
-  ! Integrador
-  TYPE(integracao_verlet) :: integrador
-
+  
+  ! Integrador, definido dinamicamente
+  CLASS(integracao), POINTER :: integrador
+  
+  ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf) :: t0, tf, tempo_total = 0.0_pf
   INTEGER  :: timestep_inv
+
+  ! Definicao dinamica do metodo
+  WRITE (*,'(a)') 'METODO: ', self % metodo, ''
   
+  SELECT CASE (self % metodo)
+    CASE ('verlet');    integrador => INT_VERLET
+    CASE ('rk4');       integrador => INT_RK4
+    CASE ('eulersimp'); integrador => INT_EULERSIMP
+    CASE ('ruth3');     integrador => INT_RUTH3
+    CASE ('ruth4');     integrador => INT_RUTH4
+    
+    ! Por padrao, sera o VERLET
+    CASE DEFAULT;       integrador => INT_VERLET
+  END SELECT
+
   ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
@@ -261,272 +284,7 @@ SUBROUTINE rodar_verlet (self, qntdPassos)
   WRITE (*,*)
 
   CALL self % Arq % fechar()
-END SUBROUTINE rodar_verlet
 
-! ************************************************************
-!! Roda simulacao com RK4
-!
-! Objetivos:
-!   Roda uma simulacao com o metodo de Runge-Kutta de ordem 4.
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE rodar_rk4 (self, qntdPassos)
-
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos
-  ! Iterador e variavel de tempo que sera o nome do arquivo
-  INTEGER :: i = 0, t
-  ! Integrador
-  TYPE(integracao_rk4) :: integrador
-  
-  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
-  INTEGER :: timestep_inv
-
-  ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
-
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = NINT(1/self % h)
-
-  WRITE(*,*) 'Passos:', qntdPassos * timestep_inv
-
-  ! Roda
-  WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos)
-    ! timer
-    t0 = omp_get_wtime()
-    ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-    
-    ! timer
-    tf = omp_get_wtime()
-    tempo_total = tempo_total + tf - t0
-
-    CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 1*self%passos_antes_salvar) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
-    ENDIF
-
-    i = i + self % passos_antes_salvar
-  END DO
-
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
-  CALL self % Arq % excluir_bkp()
-
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
-
-END SUBROUTINE rodar_rk4
-
-! ************************************************************
-!! Roda simulacao com Euler Simpletico
-!
-! Objetivos:
-!   Roda uma simulacao com o metodo Euler Simpletico
-!
-! Modificado:
-!   14 de setembro de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE rodar_eulersimp (self, qntdPassos)
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos
-  ! Iterador e variavel de tempo
-  INTEGER :: i = 0, t
-  ! Integrador
-  TYPE(integracao_eulersimp) :: integrador
-
-  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
-  INTEGER  :: timestep_inv
-  
-  ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
-
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = NINT(1/self % h)
-
-  ! Roda
-  WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos)
-    ! timer
-    t0 = omp_get_wtime()
-    ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-
-    ! timer
-    tf = omp_get_wtime()
-    tempo_total = tempo_total + tf - t0
-
-    CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
-    ENDIF
-
-    i = i + self % passos_antes_salvar
-  END DO
-
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
-  CALL self % Arq % excluir_bkp()
-
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
-
-  CALL self % Arq % fechar()
-END SUBROUTINE rodar_eulersimp
-
-! ************************************************************
-!! Roda simulacao com Ruth 3a Ordem
-!
-! Objetivos:
-!   Roda uma simulacao com o metodo Ruth 3a Ordem
-!
-! Modificado:
-!   14 de setembro de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE rodar_ruth3 (self, qntdPassos)
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos
-  ! Iterador e variavel de tempo
-  INTEGER :: i = 0, t
-  ! Integrador
-  TYPE(integracao_ruth3) :: integrador
-
-  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
-  INTEGER  :: timestep_inv
-  
-  ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
-
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = NINT(1/self % h)
-
-  ! Roda
-  WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos)
-    ! timer
-    t0 = omp_get_wtime()
-    ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-
-    ! timer
-    tf = omp_get_wtime()
-    tempo_total = tempo_total + tf - t0
-
-    CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
-    ENDIF
-
-    i = i + self % passos_antes_salvar
-  END DO
-
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
-  CALL self % Arq % excluir_bkp()
-
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
-
-  CALL self % Arq % fechar()
-END SUBROUTINE rodar_ruth3
-
-! ************************************************************
-!! Roda simulacao com Ruth 4a Ordem
-!
-! Objetivos:
-!   Roda uma simulacao com o metodo Ruth 4a Ordem
-!
-! Modificado:
-!   14 de setembro de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE rodar_ruth4 (self, qntdPassos)
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos
-  ! Iterador e variavel de tempo
-  INTEGER :: i = 0, t
-  ! Integrador
-  TYPE(integracao_ruth4) :: integrador
-
-  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
-  INTEGER  :: timestep_inv
-  
-  ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
-
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = NINT(1/self % h)
-
-  ! Roda
-  WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos)
-    ! timer
-    t0 = omp_get_wtime()
-    ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
-
-    ! timer
-    tf = omp_get_wtime()
-    tempo_total = tempo_total + tf - t0
-
-    CALL self % Arq % escrever((/R1, P1/))
-    IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
-    ENDIF
-
-    i = i + self % passos_antes_salvar
-  END DO
-
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
-  CALL self % Arq % excluir_bkp()
-
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
-
-  CALL self % Arq % fechar()
-END SUBROUTINE rodar_ruth4
+END SUBROUTINE rodar
 
 END module simulacao

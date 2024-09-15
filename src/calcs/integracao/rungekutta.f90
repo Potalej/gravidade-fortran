@@ -35,7 +35,7 @@ MODULE rungekutta
     INTEGER :: dim = 3, N
 
     CONTAINS
-      PROCEDURE :: Iniciar, forcas
+      PROCEDURE :: Iniciar
 
   END TYPE
 
@@ -81,43 +81,5 @@ SUBROUTINE Iniciar (self, N, massas, G, h, potsoft)
   ! passo
   self % h = h
 END SUBROUTINE Iniciar  
-
-! ************************************************************
-!! Matriz de forcas
-!
-! Objetivos:
-!   Calcula a matriz de forcas a partir das posicoes. Eh 
-!   igual em todo metodo de Runge-Kutta.
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-! 
-FUNCTION forcas (self, R)
-  IMPLICIT NONE
-  CLASS(RK), INTENT(IN) :: self
-  REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
-  REAL(pf), DIMENSION(self % dim) :: Fab
-  INTEGER :: a, b
-  REAL(pf) :: distancia
-  REAL(pf), DIMENSION(self % N, self % dim) :: forcas
-  
-  forcas(:,:) = 0
-
-  DO a = 2, self % N
-    DO b = 1, a - 1
-      ! distancia entre os corpos
-      distancia = (norm2(R(b,:) - R(a,:))**2 + self % potsoft**2)**(3/2)
-      ! forca entre os corpos a e b
-      Fab = - self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
-      ! Adiciona na matriz
-      forcas(a,:) = forcas(a,:) - Fab
-      forcas(b,:) = forcas(b,:) + Fab
-    END DO
-  END DO
-
-END FUNCTION forcas
 
 END MODULE rungekutta

@@ -97,18 +97,7 @@ SUBROUTINE rodar (timestep, massas, posicoes, momentos)
 
   CALL Simulador%Iniciar(configs, massas, posicoes, momentos, timestep)
 
-  SELECT CASE (configs%integrador)
-    CASE ("verlet")
-      CALL Simulador%rodar_verlet(configs % tf - configs % t0)
-    CASE ("rk4")
-      CALL Simulador%rodar_rk4(configs % tf - configs % t0)
-    CASE ("eulersimp")
-      CALL Simulador%rodar_eulersimp(configs % tf - configs % t0)
-    CASE ("ruth3")
-      CALL Simulador%rodar_ruth3(configs % tf - configs % t0)
-    CASE ("ruth4")
-      CALL Simulador%rodar_ruth4(configs % tf - configs % t0)
-  END SELECT
+  CALL Simulador%rodar(configs % tf - configs % t0)
 
   tf = omp_get_wtime()
   WRITE (*,*) ' * tempo ', configs%integrador, ': ', tf - t0
