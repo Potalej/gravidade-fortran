@@ -71,12 +71,12 @@ target_link_libraries(condicionamento
 # Metodos de integracao
 add_library(integracao 
   "./src/calcs/integracao/integrador.f90" 
-  "./src/calcs/integracao/verlet.f90" 
-  "./src/calcs/integracao/rungekutta.f90" 
-  "./src/calcs/integracao/rungekutta4.f90" 
-  "./src/calcs/integracao/eulersimp.f90" 
-  "./src/calcs/integracao/ruth3.f90" 
-  "./src/calcs/integracao/ruth4.f90" 
+  "./src/calcs/integracao/rk/rungekutta.f90" 
+  "./src/calcs/integracao/rk/rungekutta4.f90" 
+  "./src/calcs/integracao/simpleticos/verlet.f90" 
+  "./src/calcs/integracao/simpleticos/eulersimp.f90" 
+  "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
+  "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes

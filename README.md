@@ -61,11 +61,16 @@ Além disso, é possível também visualizar as simulações feitas através da 
 
 ## Métodos
 Os métodos de integração disponíveis são:
-- [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem)
-- [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method)
-- [Velocity Verlet (Simplético)](https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet)
+- Métodos de Runge-Kutta:
+    - [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem);
+    - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method);
+- Métodos simpléticos:
+    - [Euler simplético](https://en.wikipedia.org/wiki/Symplectic_integrator#A_first-order_example);
+    - [Velocity-Verlet](https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet);
+    - [Ruth de 3ª Ordem (RUTH3)](https://en.wikipedia.org/wiki/Symplectic_integrator#A_third-order_example);
+    - [Ruth de 4ª Ordem (RUTH4)](https://en.wikipedia.org/wiki/Symplectic_integrator#A_fourth-order_example).
 
-Também pode ser utilizada uma correção numérica baseada na [condição de 1ª ordem de Karush-Kuhn-Tucker](https://en.wikipedia.org/wiki/Karush%E2%80%93Kuhn%E2%80%93Tucker_conditions). Seu uso, porém, gera um custo computacional 7x maior se aplicado a cada passo. Use com moderação.
+Também pode ser utilizada uma correção numérica baseada na [condição de 1ª ordem de Karush-Kuhn-Tucker](https://en.wikipedia.org/wiki/Karush%E2%80%93Kuhn%E2%80%93Tucker_conditions). Seu uso, porém, gera um custo computacional até 7x maior se aplicado a cada passo. Use com moderação.
 
 As massas, posições e momentos lineares são armazenados em arquivos .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vv.csv", onde "v" se refere à versão do dia, iniciando em 10 e indo até 99.
 
