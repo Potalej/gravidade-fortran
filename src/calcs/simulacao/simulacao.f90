@@ -25,6 +25,7 @@ MODULE simulacao
   USE eulersimp
   USE ruth3
   USE ruth4
+  USE rkn552
   ! Para configuracoes
   USE leitura
 
@@ -38,6 +39,7 @@ MODULE simulacao
   TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
   TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
   TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
+  TYPE(integracao_rkn552),     TARGET, SAVE :: INT_RKN552
 
   ! Classe de simulacao
   TYPE :: simular
@@ -240,6 +242,7 @@ SUBROUTINE rodar (self, qntdPassos)
     CASE ('eulersimp'); integrador => INT_EULERSIMP
     CASE ('ruth3');     integrador => INT_RUTH3
     CASE ('ruth4');     integrador => INT_RUTH4
+    CASE ('rkn552');     integrador => INT_RKN552
     
     ! Por padrao, sera o VERLET
     CASE DEFAULT;       integrador => INT_VERLET
@@ -258,11 +261,12 @@ SUBROUTINE rodar (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  DO WHILE (i .le. qntdPassos)
+  WRITE(*,*) qntdPassos * timestep_inv
+  DO WHILE (i .le. qntdPassos * timestep_inv)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar * timestep_inv, self % E0, self % J0)
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
     
     ! timer
     tf = omp_get_wtime()

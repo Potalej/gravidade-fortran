@@ -90,6 +90,7 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
   REAL(pf) :: H, J(3)
 
   N = SIZE(massas)
+  contador = 0
   
   ! enquanto nao tiver aceitado a correcao, roda
   loop: DO WHILE (.TRUE.)
@@ -123,11 +124,11 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
       END DO
 
       ! ! Ve se esta na margem de erro
-      ! IF (ABS(MINVAL(vetorCorrecao)) .le. corme .AND. ABS(MAXVAL(vetorCorrecao)) .le. corme) THEN
-      !   ! Se estiver, manda embora porque a correcao sera desnecessaria
-      !   ! WRITE(*,*) "dentro da margem aceitavel"
-      !   EXIT
-      ! END IF
+      IF (ABS(MINVAL(vetorCorrecao)) .le. 1.0E-20_pf .AND. ABS(MAXVAL(vetorCorrecao)) .le. 1.0E-20_pf) THEN
+        ! Se estiver, manda embora porque a correcao sera desnecessaria
+        ! WRITE(*,*) "dentro da margem aceitavel"
+        EXIT
+      END IF
 
       ! aplica a correcao
       DO a = 1, N
@@ -140,7 +141,7 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
       END DO
 
       corrigiu = .TRUE.
-      
+
     ELSE
       ! Caso contrario, nao tem como corrigir e so sai
       corrigiu = .FALSE.
@@ -281,10 +282,10 @@ FUNCTION gradiente_angularX (posicoes, momentos, N)
   REAL(pf) :: gradiente_angularX(6*N), posicoes(N,3), momentos(N,3)
 
   DO a = 1, N
-    gradiente_angularX(6*a-5) = 0
+    gradiente_angularX(6*a-5) = 0.0_pf
     gradiente_angularX(6*a-4) = momentos(a,3)
     gradiente_angularX(6*a-3) = - momentos(a,2)
-    gradiente_angularX(6*a-2) = 0
+    gradiente_angularX(6*a-2) = 0.0_pf
     gradiente_angularX(6*a-1) = - posicoes(a,3)
     gradiente_angularX(6*a-0) = posicoes(a,2)
   END DO
@@ -311,10 +312,10 @@ FUNCTION gradiente_angularY (posicoes, momentos, N)
 
   DO a = 1, N
     gradiente_angularY(6*a-5) = - momentos(a,3)
-    gradiente_angularY(6*a-4) = 0
+    gradiente_angularY(6*a-4) = 0.0_pf
     gradiente_angularY(6*a-3) = momentos(a,1)
     gradiente_angularY(6*a-2) = posicoes(a,3)
-    gradiente_angularY(6*a-1) = 0
+    gradiente_angularY(6*a-1) = 0.0_pf
     gradiente_angularY(6*a-0) = - posicoes(a,1)
   END DO
 
@@ -341,10 +342,10 @@ FUNCTION gradiente_angularZ (posicoes, momentos, N)
   DO a = 1, N
     gradiente_angularZ(6*a-5) = momentos(a,2)
     gradiente_angularZ(6*a-4) = - momentos(a,1)
-    gradiente_angularZ(6*a-3) = 0
+    gradiente_angularZ(6*a-3) = 0.0_pf
     gradiente_angularZ(6*a-2) = - posicoes(a,2)
     gradiente_angularZ(6*a-1) = posicoes(a,1)
-    gradiente_angularZ(6*a-0) = 0
+    gradiente_angularZ(6*a-0) = 0.0_pf
   END DO
 
 END FUNCTION gradiente_angularZ

@@ -30,7 +30,7 @@ MODULE integrador
     ! h: Passo de integracao
     ! G: Constante de gravitacao
     ! potsoft: Softening do potencial
-    REAL(pf) :: h, G, potsoft
+    REAL(pf) :: h, G, potsoft, potsoft2
 
     ! dim: Dimensao do problema
     ! N: Quantidade de partículas
@@ -98,6 +98,7 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % h = h
   ! Softening do potencial
   self % potsoft = potsoft
+  self % potsoft2 = potsoft*potsoft
 
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
@@ -132,9 +133,9 @@ FUNCTION forcas (self, R)
   IMPLICIT NONE
   CLASS(integracao), INTENT(IN) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
-  REAL(pf), DIMENSION(self % dim) :: Fab
+  REAL(pf), DIMENSION(self % dim) :: Fab, Rab
   INTEGER :: a, b
-  REAL(pf) :: distancia
+  REAL(pf) :: distancia, distancia_inv
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas, forcas_local
   
   forcas(:,:) = 0.0_pf
@@ -146,13 +147,16 @@ FUNCTION forcas (self, R)
     DO a = 2, self % N
       DO b = 1, a - 1
         ! distancia entre os corpos
+        Rab = R(b,:) - R(a,:)
+        distancia = norm2(Rab)
         IF (self % potsoft .NE. 0) THEN
-          distancia = (norm2(R(b,:) - R(a,:))**2 + self%potsoft**2)**(3/2)
-        ELSE
-          distancia = norm2(R(b,:) - R(a,:))**3
+          distancia = SQRT(distancia*distancia + self%potsoft2)
         ENDIF
+        distancia_inv = 1/distancia
+        distancia_inv = distancia_inv**3
+
         ! forca entre os corpos a e b
-        Fab = self % G * self % m(a) * self % m(b) * (R(b,:) - R(a,:))/distancia
+        Fab = self % G * self % m(a) * self % m(b) * (Rab) * distancia_inv
         ! Adiciona na matriz
         forcas_local(a,:) = forcas_local(a,:) + Fab
         forcas_local(b,:) = forcas_local(b,:) - Fab

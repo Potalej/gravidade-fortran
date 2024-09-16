@@ -77,6 +77,7 @@ add_library(integracao
   "./src/calcs/integracao/simpleticos/eulersimp.f90" 
   "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
   "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" 
+  "./src/calcs/integracao/simpleticos/rkn/rkn552.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes
