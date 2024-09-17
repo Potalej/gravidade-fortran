@@ -14,7 +14,7 @@ project("gravidade" VERSION 0.1
 enable_language(Fortran)
 
 # Flags para compilacao
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -ffast-math -fopenmp -cpp")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
 message("\n***************************************")
 message("#       gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
 message("***************************************")
@@ -78,6 +78,7 @@ add_library(integracao
   "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
   "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" 
   "./src/calcs/integracao/simpleticos/rkn/rkn552.f90" 
+  "./src/calcs/integracao/simpleticos/rkn/rkn671.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes

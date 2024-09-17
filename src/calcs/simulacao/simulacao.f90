@@ -26,6 +26,7 @@ MODULE simulacao
   USE ruth3
   USE ruth4
   USE rkn552
+  USE rkn671
   ! Para configuracoes
   USE leitura
 
@@ -39,7 +40,8 @@ MODULE simulacao
   TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
   TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
   TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
-  TYPE(integracao_rkn552),     TARGET, SAVE :: INT_RKN552
+  TYPE(integracao_rkn552),    TARGET, SAVE :: INT_RKN552
+  TYPE(integracao_rkn671),    TARGET, SAVE :: INT_RKN671
 
   ! Classe de simulacao
   TYPE :: simular
@@ -234,18 +236,19 @@ SUBROUTINE rodar (self, qntdPassos)
   INTEGER  :: timestep_inv
 
   ! Definicao dinamica do metodo
-  WRITE (*,'(a)') 'METODO: ', self % metodo, ''
+  WRITE (*,'(a)') 'METODO: ', self % metodo
   
-  SELECT CASE (self % metodo)
+  SELECT CASE (TRIM(self % metodo))
     CASE ('verlet');    integrador => INT_VERLET
     CASE ('rk4');       integrador => INT_RK4
     CASE ('eulersimp'); integrador => INT_EULERSIMP
     CASE ('ruth3');     integrador => INT_RUTH3
     CASE ('ruth4');     integrador => INT_RUTH4
-    CASE ('rkn552');     integrador => INT_RKN552
+    CASE ('rkn552');    integrador => INT_RKN552
+    CASE ('rkn671');    integrador => INT_RKN671
     
     ! Por padrao, sera o VERLET
-    CASE DEFAULT;       integrador => INT_VERLET
+    CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
   END SELECT
 
   ! inicializa o integrador 

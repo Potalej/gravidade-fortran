@@ -50,15 +50,14 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   INTEGER :: a
 
   ! Integrando as posicoes
-  DO a = 1, self % N
-    R1(a,:) = R(a,:) + self % h * P(a,:) / self % m(a) + 0.5*(self%h**2)*FSomas_ant(a,:)/self%m(a)
-  END DO
+  R1 = (P + 0.5_pf * self%h * FSomas_ant) * self%massasInvertidas
+  R1 = R + self % h * R1
 
   ! Calcula as novas forcas
   FSomas_prox = self%forcas(R1)
 
   ! Integrando as velocidades
-  P1 = P + 0.5*self%h*(FSomas_ant + FSomas_prox)
+  P1 = P + 0.5_pf*self%h*(FSomas_ant + FSomas_prox)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1

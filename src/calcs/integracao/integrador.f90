@@ -136,38 +136,28 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % dim) :: Fab, Rab
   INTEGER :: a, b
   REAL(pf) :: distancia, distancia_inv
-  REAL(pf), DIMENSION(self % N, self % dim) :: forcas, forcas_local
+  REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
   forcas(:,:) = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas) PRIVATE(forcas_local, Fab)
-    forcas(:,:) = 0.0_pf
-    forcas_local(:,:) = 0.0_pf
-    !$OMP DO
-    DO a = 2, self % N
-      DO b = 1, a - 1
-        ! distancia entre os corpos
-        Rab = R(b,:) - R(a,:)
-        distancia = norm2(Rab)
-        IF (self % potsoft .NE. 0) THEN
-          distancia = SQRT(distancia*distancia + self%potsoft2)
-        ENDIF
-        distancia_inv = 1/distancia
-        distancia_inv = distancia_inv**3
+  DO a = 2, self % N
+    DO b = 1, a - 1
+      ! distancia entre os corpos
+      Rab = R(b,:) - R(a,:)
+      distancia = norm2(Rab)
+      IF (self % potsoft .NE. 0) THEN
+        distancia = SQRT(distancia*distancia + self%potsoft2)
+      ENDIF
+      distancia_inv = 1/distancia
+      distancia_inv = distancia_inv**3
 
-        ! forca entre os corpos a e b
-        Fab = self % G * self % m(a) * self % m(b) * (Rab) * distancia_inv
-        ! Adiciona na matriz
-        forcas_local(a,:) = forcas_local(a,:) + Fab
-        forcas_local(b,:) = forcas_local(b,:) - Fab
-      END DO
+      ! forca entre os corpos a e b
+      Fab = self % G * self % m(a) * self % m(b) * (Rab) * distancia_inv
+      ! Adiciona na matriz
+      forcas(a,:) = forcas(a,:) + Fab
+      forcas(b,:) = forcas(b,:) - Fab
     END DO
-    !$OMP END DO
-
-    !$OMP CRITICAL
-      forcas = forcas + forcas_local
-    !$OMP END CRITICAL
-  !$OMP END PARALLEL
+  END DO
 
 END FUNCTION forcas
 

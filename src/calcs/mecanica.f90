@@ -85,8 +85,9 @@ FUNCTION energia_cinetica (m, P)
   INTEGER  :: i
   energia_cinetica=0.0_pf
   DO i=1, SIZE(m)
-    energia_cinetica = energia_cinetica + NORM2(P(i,:))**2/(2*m(i))
+    energia_cinetica = energia_cinetica + NORM2(P(i,:))**2/m(i)
   END DO
+  energia_cinetica = 0.5_pf * energia_cinetica
 END FUNCTION energia_cinetica
 
 ! ************************************************************
@@ -108,13 +109,14 @@ END FUNCTION energia_cinetica
 FUNCTION energia_potencial (G,m,R)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:)
-  REAL(pf) :: distancia, G, energia_potencial
+  REAL(pf) :: distancia, G, energia_potencial, distancia_inv
   INTEGER  :: i,j
   energia_potencial=0.0_pf
   DO i=2, SIZE(m)
     DO j=1,i-1
       distancia = NORM2(R(i,:)-R(j,:))
-      energia_potencial = energia_potencial + m(i)*m(j)/distancia
+      distancia_inv = 1.0_pf/distancia
+      energia_potencial = energia_potencial + m(i)*m(j)*distancia_inv
     END DO
   END DO
   energia_potencial = -G*energia_potencial
