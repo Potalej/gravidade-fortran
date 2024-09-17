@@ -52,6 +52,9 @@ MODULE leitura
     LOGICAL  :: colisoes
     REAL(pf) :: colisoes_max_distancia
 
+    ! Uso de paralelisacao
+    LOGICAL  :: paralelo
+
     ! Massas, posicoes e momentos
     REAL(pf), allocatable :: R(:,:), P(:,:), massas(:)
     ! Nome do problema de valores iniciais
@@ -129,6 +132,12 @@ SUBROUTINE config (self, arquivo)
 
   READ(unidade,*) atributo, self % t0 ! tempo inicial
   READ(unidade,*) atributo, self % tf ! tempo final
+
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
+
+  ! Uso de paralelisacao
+  READ(unidade,*) atributo, self % paralelo
 
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario  
@@ -216,6 +225,12 @@ SUBROUTINE valores_iniciais (self, arquivo)
   READ(unidade,*) atributo, self % t0 ! tempo inicial
   READ(unidade,*) atributo, self % tf ! tempo final
   
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario
+
+  ! Uso de paralelisacao
+  READ(unidade,*) atributo, self % paralelo
+
   READ(unidade,*) ! Espaco
   READ(unidade,*) ! Comentario
 

@@ -15,6 +15,7 @@
 MODULE integrador
 
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE funcoes_forca
   USE mecanica
   USE correcao
   USE colisao
@@ -45,14 +46,30 @@ MODULE integrador
     LOGICAL :: colidir = .FALSE.
     REAL(pf) :: colmd ! max dist colisoes
 
+    ! Se vai ou nao usar paralelizacao
+    LOGICAL :: paralelo = .FALSE.
+
     ! vetores para aplicar a correcao
     REAL(pf), ALLOCATABLE :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
 
+    PROCEDURE(forcas_funcbase), POINTER, NOPASS :: forcas_funcao => NULL()
+
     CONTAINS
-      PROCEDURE :: Iniciar, forcas, aplicarNVezes, metodo
+      PROCEDURE :: Iniciar, aplicarNVezes, metodo, forcas
   
   END TYPE integracao
 
+  ABSTRACT INTERFACE
+    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft, potsoft2)
+        IMPORT :: pf
+        IMPLICIT NONE
+        INTEGER,                     INTENT(IN) :: N, dim
+        REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
+        REAL(pf), DIMENSION(N),      INTENT(IN) :: m
+        REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
+    END FUNCTION forcas_funcbase
+  END INTERFACE
 CONTAINS
 
 ! ************************************************************
@@ -68,12 +85,12 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h
-  LOGICAL,INTENT(IN) :: corrigir, colidir
+  LOGICAL,INTENT(IN) :: corrigir, colidir, paralelo
   REAL(pf) :: corme, potsoft, colmd
   INTEGER :: cormnt
   INTEGER :: a, i
@@ -114,50 +131,23 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   ALLOCATE(self%gradsT(6*self%N,4))
   ALLOCATE(self%vetorCorrecao(1:6*self%N))
 
+  ! Codigo paralelo
+  self % paralelo = paralelo
+  IF (paralelo) THEN
+    self % forcas_funcao => forcas_par
+  ELSE
+    self % forcas_funcao => forcas_seq
+  ENDIF
 END SUBROUTINE Iniciar
 
-! ************************************************************
-!! Matriz de forcas
-!
-! Objetivos:
-!   Calcula a matriz de forcas a partir das posicoes. Todos os metodos
-!   calculam as forcas do mesmo jeito.
-!
-! Modificado:
-!   14 de setembro de 2024
-!
-! Autoria:
-!   oap
-! 
+
 FUNCTION forcas (self, R)
   IMPLICIT NONE
-  CLASS(integracao), INTENT(IN) :: self
+  class(integracao), INTENT(IN) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
-  REAL(pf), DIMENSION(self % dim) :: Fab, Rab
-  INTEGER :: a, b
-  REAL(pf) :: distancia, distancia_inv
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
-  forcas(:,:) = 0.0_pf
-
-  DO a = 2, self % N
-    DO b = 1, a - 1
-      ! distancia entre os corpos
-      Rab = R(b,:) - R(a,:)
-      distancia = norm2(Rab)
-      IF (self % potsoft .NE. 0) THEN
-        distancia = SQRT(distancia*distancia + self%potsoft2)
-      ENDIF
-      distancia_inv = 1/distancia
-      distancia_inv = distancia_inv**3
-
-      ! forca entre os corpos a e b
-      Fab = self % G * self % m(a) * self % m(b) * (Rab) * distancia_inv
-      ! Adiciona na matriz
-      forcas(a,:) = forcas(a,:) + Fab
-      forcas(b,:) = forcas(b,:) - Fab
-    END DO
-  END DO
+  forcas = self % forcas_funcao(self%m, R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
 
 END FUNCTION forcas
 

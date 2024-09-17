@@ -227,7 +227,8 @@ SUBROUTINE sorteio_salvar (dir)
     configs % corretor_max_num_tentativas, &
     configs % colisoes,   &
     configs % colisoes_max_distancia,   &
-    configs % passos_antes_salvar)
+    configs % passos_antes_salvar, &
+    configs % paralelo)
 END SUBROUTINE sorteio_salvar
 
 END module

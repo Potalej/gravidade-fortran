@@ -70,6 +70,8 @@ target_link_libraries(condicionamento
 
 # Metodos de integracao
 add_library(integracao 
+  "./src/calcs/integracao/forcas.f90" 
+  
   "./src/calcs/integracao/integrador.f90" 
   "./src/calcs/integracao/rk/rungekutta.f90" 
   "./src/calcs/integracao/rk/rungekutta4.f90" 

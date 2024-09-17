@@ -350,7 +350,7 @@ END SUBROUTINE fechar
 ! Autoria:
 !   oap
 !
-SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, passos_inst, cor, corme, cormnt, col, colmd)
+SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, passos_inst, cor, corme, cormnt, col, colmd, fp)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN)   :: self
@@ -360,6 +360,7 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, pas
   LOGICAL                      :: cor, col ! correcao, colisao
   REAL(pf)                     :: corme, colmd
   INTEGER                      :: cormnt
+  LOGICAL                      :: fp ! forcas paralelas
 
   WRITE (self % idarqinfo, '(*(g0,1x))') "# gravidade-fortran v0.1"
   WRITE (self % idarqinfo, *) 
@@ -374,6 +375,7 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, pas
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- total passos: " 
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- t0: ", t0
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- t1: ", t1
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- paralelisacao: ", fp
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", cor
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
@@ -412,8 +414,8 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
   REAL(pf), INTENT(IN)         :: duracao
-  INTEGER :: linha_qntd_passos = 10, linha_duracao = 20
-  INTEGER :: i = 1, tamanho_arquivo = 20, nova_unidade
+  INTEGER :: linha_qntd_passos = 10, linha_duracao = 21
+  INTEGER :: i = 1, tamanho_arquivo = 21, nova_unidade
   LOGICAL :: mudou_qntd_passos = .FALSE., mudou_duracao = .FALSE.
   CHARACTER(len=50), allocatable :: infos(:)
 
@@ -432,7 +434,7 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   REWIND(self % idarqinfo)
 
   ! DO WHILE (.NOT. mudou_qntd_passos .AND. .NOT. mudou_duracao)
-  DO i = 1, 20
+  DO i = 1, 21
     ! se estiver na linha do tf
     IF (i == linha_qntd_passos) THEN
       WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: ", qntd_passos
@@ -620,10 +622,10 @@ END SUBROUTINE criar_dir
 ! Autoria:
 !   oap
 !
-SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,potsoft,metodo,cor,corme,cormnt,colisoes,colmd,pas)
+SUBROUTINE salvar_sorteio (onde,subdir,arq,nome,G,massas,R,P,t0,tf,timestep,potsoft,metodo,cor,corme,cormnt,colisoes,colmd,pas,fp)
 
   IMPLICIT NONE
-  CHARACTER(LEN=*)      :: onde, subdir, arquivo, metodo, nome
+  CHARACTER(LEN=*)      :: onde, subdir, arq, metodo, nome
   CHARACTER(LEN=256)    :: dir_arquivo 
   CHARACTER(LEN=3)      :: num_arquivo
   LOGICAL               :: cor, colisoes, diretorio_existe, arquivo_existe
@@ -634,6 +636,7 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   INTEGER               :: u, i, arq_i
   REAL(pf)              :: corme ! MARGEM DE ERRO DO CORRETOR
   INTEGER               :: cormnt ! MAXIMO DE NUMERO DE TENTATIVAS DO CORRETOR
+  LOGICAL               :: fp ! forcas paralelisadas
 
   WRITE(*,'(a)') 'SALVAR SORTEIO:'
 
@@ -644,7 +647,7 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   ENDIF
 
   ! Agora verifica se o arquivo ja existe
-  dir_arquivo = TRIM(onde//subdir) // TRIM(arquivo)
+  dir_arquivo = TRIM(onde//subdir) // TRIM(arq)
   INQUIRE(file=TRIM(dir_arquivo), exist=arquivo_existe)
   IF (arquivo_existe) THEN
     arq_i = 1
@@ -670,6 +673,11 @@ SUBROUTINE salvar_sorteio (onde,subdir,arquivo,nome,G,massas,R,P,t0,tf,timestep,
   WRITE(u,'(*(g0,1x))') "t0 ", t0
   WRITE(u,'(*(g0,1x))') "tf ", tf
   
+  WRITE(u,*)
+
+  WRITE(u,'(*(g0,1x))') "! Usar paralelisacao nas forcas"
+  WRITE(u,'(*(g0,1x))') "paralelo ", fp
+
   WRITE(u,*)
 
   WRITE(u,'(*(g0,1x))') "! Opcoes do corretor"

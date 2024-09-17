@@ -9,11 +9,11 @@ Ptot 0.0,0.0,0.0
 G 1.0
 
 ! Quantidade de corpos
-N 200
+N 1000
 
 ! Intervalos para geracao
 Intervalo-Massas    1000.0, 10000.0
-Intervalo-Posicoes -50.0, 50.0
+Intervalo-Posicoes -100.0, 100.0
 Intervalo-Momentos -1.0,1.0
 
 ! Sobre a integracao (verlet / rk4)
@@ -24,10 +24,13 @@ passos     5
 
 ! Intervalo de integracao
 t0    0
-tf    2000
+tf    500
+
+! Usar paralelisacao nas forcas
+paralelo T
 
 ! Correcao numerica
-corretor F
+corretor T
 margem_erro 0.01
 max_num_tentativas 150
 

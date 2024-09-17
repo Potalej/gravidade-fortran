@@ -45,10 +45,10 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
   IMPLICIT NONE
   CLASS(integracao_rk4), INTENT(INOUT) :: self
-  LOGICAL,INTENT(IN) :: corrigir, colidir
+  LOGICAL,INTENT(IN) :: corrigir, colidir, paralelo
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd
   INTEGER :: a, i

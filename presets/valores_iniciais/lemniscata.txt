@@ -1,12 +1,15 @@
 ! Configs
 modo vi
 nome "Lemniscata"
-integrador verlet
-timestep   0.01
-potsoft 0.00000000000001
-passos     1
+integrador svcp10s35
+timestep   0.05
+potsoft 0.0
+passos     100
 t0    0
-tf    10
+tf    1000
+
+! Usar paralelisacao nas forcas
+paralelo T
 
 ! Opcoes do corretor
 corretor F

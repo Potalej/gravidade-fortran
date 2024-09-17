@@ -78,7 +78,7 @@ MODULE simulacao
     CHARACTER(len=256) :: dir
 
     ! Configuracoes
-    LOGICAL :: corrigir=.FALSE., colidir=.FALSE.
+    LOGICAL :: corrigir=.FALSE., colidir=.FALSE., paralelo=.FALSE.
     REAL(pf) :: corrigir_margem_erro = 0.1_pf
     INTEGER :: corrigir_max_num_tentativas = 5
     REAL(pf) :: colisoes_max_distancia = 0.1
@@ -168,6 +168,9 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % colidir  = configs%colisoes
   self % colisoes_max_distancia = configs%colisoes_max_distancia
 
+  ! Salva o uso de paralelizacao
+  self % paralelo = configs%paralelo
+
   ! Inicializa o metodo
   CALL self % inicializar_metodo()
 
@@ -188,7 +191,8 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % corrigir_max_num_tentativas, &
   self % colidir,  &
   self % colisoes_max_distancia,  &
-  self % passos_antes_salvar)
+  self % passos_antes_salvar, &
+  configs % paralelo)
 
 END SUBROUTINE Iniciar
 
@@ -207,7 +211,7 @@ SUBROUTINE inicializar_metodo (self)
   CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
     self%t0, self%tf, self % passos_antes_salvar, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
+    self%colidir, self%colisoes_max_distancia, self % paralelo)
 
   ! Condicoes iniciais
   CALL self % Arq % escrever((/self % R, self % P/))
@@ -264,7 +268,7 @@ SUBROUTINE rodar (self, qntdPassos)
   ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia)
+    self%colidir, self%colisoes_max_distancia, self%paralelo)
 
   ! Condicoes iniciais
   R1 = self % R
