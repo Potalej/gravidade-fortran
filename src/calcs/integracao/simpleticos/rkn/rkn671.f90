@@ -3,13 +3,15 @@
 !
 ! Objetivos:
 !   Aplicacao do metodo simpletico RKN67 (1).
+!   Runge-Kutta-Nystrom de Ordem 6 e 7 Estagios. Eh o primeiro
+!   metodo na tabela 2.
+!   Referencia: (Okunbor & Skeel, 1992, p.380)
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de setembro de 2024
 !
 ! Autoria:
-!   oap
-!
+!  
 MODULE rkn671
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE OMP_LIB
@@ -62,7 +64,7 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de setembro de 2024
 !
 ! Autoria:
 !   oap
@@ -77,12 +79,12 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   
   INTEGER :: a, i, j
 
-  REAL(pf), DIMENSION(7, self%N, self%dim) :: y, fi
+  REAL(pf), DIMENSION(SIZE(c), self%N, self%dim) :: y, fi
 
   R1 = R + self % h * P * self % massasInvertidas
   P1 = P
 
-  DO i = 1, 7
+  DO i = 1, SIZE(c)
 
     ! Calcula a base do yi
     y(i,:,:) = R + c(i) * self % h * P * self % massasInvertidas

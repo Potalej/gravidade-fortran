@@ -350,11 +350,11 @@ END SUBROUTINE fechar
 ! Autoria:
 !   oap
 !
-SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, cor, corme, cormnt, col, colmd)
+SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, passos_inst, cor, corme, cormnt, col, colmd)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN)   :: self
-  INTEGER, INTENT(IN)          :: N
+  INTEGER, INTENT(IN)          :: N, t0, t1, passos_inst
   REAL(pf), INTENT(IN)         :: G, h, potsoft
   CHARACTER(len=*), INTENT(IN) :: metodo
   LOGICAL                      :: cor, col ! correcao, colisao
@@ -370,7 +370,10 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, cor, corme,
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- G: ", G
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- h: ", h
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- potsoft: ", potsoft
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: " 
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos por instante: ", passos_inst
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- total passos: " 
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- t0: ", t0
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- t1: ", t1
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", cor
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
@@ -409,8 +412,8 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
   REAL(pf), INTENT(IN)         :: duracao
-  INTEGER :: linha_qntd_passos = 9, linha_duracao = 17
-  INTEGER :: i = 1, tamanho_arquivo = 17, nova_unidade
+  INTEGER :: linha_qntd_passos = 10, linha_duracao = 20
+  INTEGER :: i = 1, tamanho_arquivo = 20, nova_unidade
   LOGICAL :: mudou_qntd_passos = .FALSE., mudou_duracao = .FALSE.
   CHARACTER(len=50), allocatable :: infos(:)
 
@@ -429,7 +432,7 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   REWIND(self % idarqinfo)
 
   ! DO WHILE (.NOT. mudou_qntd_passos .AND. .NOT. mudou_duracao)
-  DO i = 1, 17
+  DO i = 1, 20
     ! se estiver na linha do tf
     IF (i == linha_qntd_passos) THEN
       WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: ", qntd_passos

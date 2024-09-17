@@ -75,10 +75,18 @@ add_library(integracao
   "./src/calcs/integracao/rk/rungekutta4.f90" 
   "./src/calcs/integracao/simpleticos/verlet.f90" 
   "./src/calcs/integracao/simpleticos/eulersimp.f90" 
+
+  # Metodos de Ruth
   "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
   "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" 
-  "./src/calcs/integracao/simpleticos/rkn/rkn552.f90" 
+
+  # Metodos de Runge-Kutta-Nystrom
+  "./src/calcs/integracao/simpleticos/rkn/rkn551.f90" 
   "./src/calcs/integracao/simpleticos/rkn/rkn671.f90" 
+
+  # Metodos de Stormer-Verlet Compostos
+  "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90" 
+  "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes

@@ -1,23 +1,26 @@
 ! ************************************************************
-!! METODO NUMERICO: RKN55 (2)
+!! METODO NUMERICO: RKN55 (1)
 !
 ! Objetivos:
-!   Aplicacao do metodo simpletico RKN55 (2).
+!   Aplicacao do metodo simpletico RKN55 (1).
+!   Runge-Kutta-Nystrom de Ordem 5 e 5 Estagios. Eh o primeiro
+!   metodo na tabela 1.
+!   Referencia: (Okunbor & Skeel, 1992, p.378)
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de setembro de 2024
 !
 ! Autoria:
 !   oap
 !
-MODULE rkn552
+MODULE rkn551
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE OMP_LIB
   USE integrador
 
   IMPLICIT NONE
   PRIVATE
-  PUBLIC integracao_rkn552
+  PUBLIC integracao_rkn551
 
   REAL(pf), DIMENSION(5) :: g = (/ -1.67080892327314312060_pf, 1.22143909230997538270_pf, &
                                     0.08849515813253908125_pf, 0.95997088013770159876_pf, &
@@ -38,7 +41,7 @@ MODULE rkn552
         0.6578770843749833_pf,  -0.4102884193238952_pf,  0.028470999680411457_pf, -0.4748934220077836_pf/), &
        shape(aij), order=(/2,1/) )
 
-  TYPE, EXTENDS(integracao) :: integracao_rkn552
+  TYPE, EXTENDS(integracao) :: integracao_rkn551
 
     CONTAINS
       PROCEDURE :: metodo
@@ -54,7 +57,7 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de setembro de 2024
 !
 ! Autoria:
 !   oap
@@ -62,19 +65,19 @@ CONTAINS
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_rkn552), INTENT(IN) :: self
+  class(integracao_rkn551), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   
   INTEGER :: a, i, j
 
-  REAL(pf), DIMENSION(5, self%N, self%dim) :: y, fi
+  REAL(pf), DIMENSION(SIZE(c), self%N, self%dim) :: y, fi
 
   R1 = R + self % h * P * self % massasInvertidas
   P1 = P
 
-  DO i = 1, 5
+  DO i = 1, SIZE(c)
 
     ! Calcula a base do yi
     y(i,:,:) = R + c(i) * self % h * P * self % massasInvertidas
@@ -105,4 +108,4 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
 END FUNCTION metodo
 
-END MODULE rkn552
+END MODULE rkn551

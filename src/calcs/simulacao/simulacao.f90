@@ -25,8 +25,10 @@ MODULE simulacao
   USE eulersimp
   USE ruth3
   USE ruth4
-  USE rkn552
+  USE rkn551
   USE rkn671
+  USE svcp8s15
+  USE svcp10s35
   ! Para configuracoes
   USE leitura
 
@@ -40,15 +42,17 @@ MODULE simulacao
   TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
   TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
   TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
-  TYPE(integracao_rkn552),    TARGET, SAVE :: INT_RKN552
+  TYPE(integracao_rkn551),    TARGET, SAVE :: INT_RKN551
   TYPE(integracao_rkn671),    TARGET, SAVE :: INT_RKN671
+  TYPE(integracao_svcp8s15),  TARGET, SAVE :: INT_SVCP8S15
+  TYPE(integracao_svcp10s35),  TARGET, SAVE :: INT_SVCP10S35
 
   ! Classe de simulacao
   TYPE :: simular
   
     !> N: Quantidade de corpos
     !> dim: Dimensao do problema
-    INTEGER :: N, dim = 3, passos_antes_salvar
+    INTEGER :: N, dim = 3, passos_antes_salvar, t0, tf
 
     !> h: Tamanho do passo de integracao
     !> G: Constante de gravitacao universal
@@ -152,6 +156,9 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   ! Salva o metodo
   self % metodo = configs % integrador
 
+  self % t0 = configs % t0
+  self % tf = configs % tf
+
   ! Salva o corretor
   self % corrigir = configs%corretor
   self % corrigir_margem_erro = configs%corretor_margem_erro
@@ -198,6 +205,7 @@ SUBROUTINE inicializar_metodo (self)
 
   ! Salva as informacoes no info.txt
   CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
+    self%t0, self%tf, self % passos_antes_salvar, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
     self%colidir, self%colisoes_max_distancia)
 
@@ -244,8 +252,10 @@ SUBROUTINE rodar (self, qntdPassos)
     CASE ('eulersimp'); integrador => INT_EULERSIMP
     CASE ('ruth3');     integrador => INT_RUTH3
     CASE ('ruth4');     integrador => INT_RUTH4
-    CASE ('rkn552');    integrador => INT_RKN552
+    CASE ('rkn551');    integrador => INT_RKN551
     CASE ('rkn671');    integrador => INT_RKN671
+    CASE ('svcp8s15');  integrador => INT_SVCP8S15
+    CASE ('svcp10s35');  integrador => INT_SVCP10S35
     
     ! Por padrao, sera o VERLET
     CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
@@ -278,13 +288,13 @@ SUBROUTINE rodar (self, qntdPassos)
     CALL self % Arq % escrever((/R1, P1/))
     IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
       WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar, tempo_total)
+      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*timestep_inv, tempo_total)
     ENDIF
 
     i = i + self % passos_antes_salvar
   END DO
 
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar, tempo_total)
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar*timestep_inv, tempo_total)
   CALL self % Arq % excluir_bkp()
 
   WRITE (*, '(a)') '  > simulacao encerrada!'
