@@ -43,6 +43,8 @@ Há dois modos para geração aleatória no momento:
 - `modo sorteio`: Gera valores aleatórios no intervalo desejado e os condiciona conforme as integrais primeiras;
 - `modo sorteio_henon`: Gera valores aleatórios no intervalo desejado, mas aplica as condições iniciais de Henón, ignorando as integrais primeiras informadas. Para mais informações, veja a [wiki](https://github.com/Potalej/gravidade-fortran/wiki/Rodando).
 
+Confira [aqui](/presets/condicionar/exemplo.txt) um exemplo de arquivo de valores para sorteio.
+
 ### Valores iniciais
 Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através da opção `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
 
@@ -52,6 +54,8 @@ Para rodar este caso, utilize:
 ./gravidade -vi SEU_ARQUIVO.txt
 ```
 
+Confira [aqui](/presets/valores_iniciais/lemniscata.txt) um exemplo de arquivo de valores iniciais.
+
 ### Visualizando
 Além disso, é possível também visualizar as simulações feitas através da opção `-e` ou `--exibir`. É uma visualização simples das trajetórias, mas pode ajudar a conferir resultados rapidamente.
 
@@ -60,18 +64,34 @@ Além disso, é possível também visualizar as simulações feitas através da 
 ```
 
 ## Métodos
-Os métodos de integração disponíveis são:
+Os métodos de integração implementados são:
+
 - Métodos de Runge-Kutta:
     - [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem);
-    - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method);
+    - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method) (INDISPONÍVEL);
 - Métodos simpléticos:
     - [Euler simplético](https://en.wikipedia.org/wiki/Symplectic_integrator#A_first-order_example);
     - [Velocity-Verlet](https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet);
     - [Ruth de 3ª Ordem (RUTH3)](https://en.wikipedia.org/wiki/Symplectic_integrator#A_third-order_example);
     - [Ruth de 4ª Ordem (RUTH4)](https://en.wikipedia.org/wiki/Symplectic_integrator#A_fourth-order_example).
+    - Stormer-Verlet Composto de 8ª Ordem e 15 Estágios (svcp8s15);.
+    - Stormer-Verlet Composto de 10ª Ordem e 35 Estágios (svcp10s35).
 
-Também pode ser utilizada uma correção numérica baseada na [condição de 1ª ordem de Karush-Kuhn-Tucker](https://en.wikipedia.org/wiki/Karush%E2%80%93Kuhn%E2%80%93Tucker_conditions). Seu uso, porém, gera um custo computacional até 7x maior se aplicado a cada passo. Use com moderação.
+Também há três aplicações para modificar soluções:
 
-As massas, posições e momentos lineares são armazenados em arquivos .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vv.csv", onde "v" se refere à versão do dia, iniciando em 10 e indo até 99.
+1. Um corretor numérico baseado na [condição de 1ª ordem de Karush-Kuhn-Tucker](https://en.wikipedia.org/wiki/Karush%E2%80%93Kuhn%E2%80%93Tucker_conditions). Bastante útil para simulações com muitos corpos;
+2. Colisões perfeitamente elásticas entre os corpos. Interessante para casos com poucos corpos e baixas velocidades;
+3. Um amortecedor no potencial, que impede aproximações muito intensas. Para poucos corpos pode gerar instabilidades, mas é útil para grandes quantidades de corpos.
+
+As massas, posições e momentos lineares são armazenados em arquivos .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vv.csv", onde "v" se refere à versão do dia, iniciando em 001 e indo até 999.
 
 A análise dos dados pode ser feita com Python através de [gravidade-analise](https://github.com/Potalej/gravidade-analise).
+
+
+## Referências
+
+* VOLCHAN, Sérgio. Uma Introdução à Mecânica Celeste. Rio de Janeiro: Instituto Nacional de Matemática Pura e Aplicada - IMPA, 2007.
+* BERTSEKAS, Dmitri Panteli. Nonlinear Programming. 3ed. Nashua: Athena Scientific, 2016.
+* HAIRER, Ernst; WANNER, Gerhard; LUBICH, Christian. Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations. Heidelberg: Springer-Verlag, 2006. DOI: 10.1007/3-540-30666-8. Disponível em: https://doi.org/10.1007/3-540-30666-8.
+* ROMA, Alexandre et al. Métodos para a solução numérica de equações diferenciais ordinárias a valores iniciais. São Paulo: Notas de aula, 2019.
+* OKUNBOR, D. I.; SKEEL, R. D. Canonical Runge—Kutta—Nyström methods of orders five and six. Journal of Computational and Applied Mathematics, v. 51, n. 3, p. 375–382, jun. 1994. 
