@@ -46,7 +46,7 @@ def main ():
   # Seleciona a funcao a partir do SO
   os = platform.system()
   if os == "Windows": cmd = lambda arq: system(f"cd helpers/windows && {arq}.bat")
-  elif os == "Linux": cmd = system(f"ls {arq}.sh")
+  elif os == "Linux": cmd = lambda arq: system(f"ls {arq}.sh")
   else:
     print("Algo de errado nao esta certo...")
     return
