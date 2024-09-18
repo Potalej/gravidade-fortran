@@ -84,6 +84,12 @@ SUBROUTINE diretorio_data (self)
   CLASS(arquivo), INTENT(INOUT) :: self
   LOGICAL :: existe = .TRUE.
   CALL diretorio_out()
+  ! verifica se existe o diretorio "out"
+  INQUIRE(file=TRIM(self % dir_out), exist=existe)
+  IF (.NOT. existe) THEN
+    CALL criar_dir(TRIM(self % dir_out), './')
+  ENDIF
+
   ! verifica se existe o diretorio padrao
   INQUIRE(file=TRIM(self % dir), exist=existe)
   IF (.NOT. existe) THEN
