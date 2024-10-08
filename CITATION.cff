@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+title: gravidade-fortran
+message: >-
+  Se for usar pra alguma coisa, cita o repositorio
+  usando esse arquivo aqui.
+type: software
+authors:
+  - given-names: Octavio Augusto Potalej
+    email: oapotalej@usp.br
+    affiliation: Universidade de São Paulo
+repository-code: 'https://github.com/Potalej/gravidade-fortran'
+abstract: >-
+  Simulações do problema de N-corpos gravitacional em
+  Fortran.
