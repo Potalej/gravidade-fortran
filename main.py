@@ -4,30 +4,45 @@ from os import system
 def rodar (comando:str)->None:
   system(comando)
 
-def build (buildar:bool=False):
+def build (buildar:bool=False, os:str="Linux"):
   rodar('cmake -B build -G Ninja && ninja -C build')
 
-def sortear_salvar (buildar:bool=False):
+def sortear_salvar (buildar:bool=False, os:str="Linux"):
   if buildar: build()
-  rodar('gravidade.exe -sv ./presets/condicionar/exemplo.txt')
+  if os == "Windows":
+    rodar('gravidade.exe -sv ./presets/condicionar/exemplo.txt')
+  elif os == "Linux":
+    rodar('./gravidade -sv ./presets/condicionar/exemplo.txt')
 
-def sortear_simular (buildar:bool=False):
+def sortear_simular (buildar:bool=False, os:str="Linux"):
   if buildar: build()
-  rodar('gravidade.exe -s ./presets/condicionar/exemplo.txt')
+  if os == "Windows":
+    rodar('gravidade.exe -s ./presets/condicionar/exemplo.txt')
+  elif os == "Linux":
+    rodar('./gravidade -s ./presets/condicionar/exemplo.txt')
 
-def lemniscata (buildar:bool=False):
+def lemniscata (buildar:bool=False, os:str="Linux"):
   if buildar: build()
-  rodar('gravidade.exe -vi ./presets/valores_iniciais/lemniscata.txt')
+  if os == "Windows":
+    rodar('gravidade.exe -vi ./presets/valores_iniciais/lemniscata.txt')
+  elif os == "Linux":
+    rodar('./gravidade -vi ./presets/valores_iniciais/lemniscata.txt')
 
-def trajetorias (buildar:bool=False):
+def trajetorias (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   arq = input('> ')
   if arq == "":
-    rodar('gravidade.exe -e ./presets/data/lemniscata.csv')
+    if os == "Windows":
+      rodar('gravidade.exe -e ./presets/data/lemniscata.csv')
+    elif os == "Linux":
+      rodar('./gravidade -e ./presets/data/lemniscata.csv')
   else:
-    rodar(f'gravidade.exe -e ./out/data/{arq}/data.csv')
+    if os == "Windows":
+      rodar(f'gravidade.exe -e ./out/data/{arq}/data.csv')
+    elif os == "Linux":
+      rodar(f'./gravidade -e ./out/data/{arq}/data.csv')
 
-def docker (buildar:bool=False):
+def docker (buildar:bool=False, os:str="Linux"):
   rodar('docker buildar -t local:gravidade .')
   rodar('echo "Para acessar o diretorio do gravidade-fortran, use `cd /src`"')
   rodar('docker run -it -v .:/src local:gravidade')
@@ -46,7 +61,7 @@ def main ():
   # Seleciona a funcao a partir do SO
   os = platform.system()
   if os == "Windows": cmd = lambda arq: system(f"cd helpers/windows && {arq}.bat")
-  elif os == "Linux": cmd = system(f"ls {arq}.sh")
+  elif os == "Linux": cmd = lambda arq: system(f"ls {arq}.sh")
   else:
     print("Algo de errado nao esta certo...")
     return
@@ -65,7 +80,7 @@ def main ():
     return
 
   helper_escolhido = helpers[escolha]
-  helper_escolhido['func'](buildar)
+  helper_escolhido['func'](buildar, os)
 
 if __name__ == "__main__":
   main()
