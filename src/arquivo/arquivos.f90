@@ -15,7 +15,7 @@
 !   oap
 ! 
 MODULE arquivos
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64, pf64=>real64
 
   ! OPENMP
   USE OMP_LIB
@@ -413,7 +413,7 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
-  REAL(pf), INTENT(IN)         :: duracao
+  REAL(pf64), INTENT(IN)         :: duracao
   INTEGER :: linha_qntd_passos = 10, linha_duracao = 21
   INTEGER :: i = 1, tamanho_arquivo = 21, nova_unidade
   LOGICAL :: mudou_qntd_passos = .FALSE., mudou_duracao = .FALSE.
@@ -467,7 +467,7 @@ SUBROUTINE arquivo_bkp (self, qntd_passos, duracao)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
-  REAL(pf), INTENT(IN)         :: duracao
+  REAL(pf64), INTENT(IN)         :: duracao
 
   REWIND(self%idarqbkp)
   WRITE(self%idarqbkp, '(*(g0,1x))') qntd_passos, duracao

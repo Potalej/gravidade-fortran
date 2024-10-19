@@ -15,6 +15,7 @@
 MODULE integrador
 
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE OMP_LIB
   USE funcoes_forca
   USE mecanica
   USE correcao
@@ -127,6 +128,8 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % colmd = colmd
 
   ! Alocando variaveis de correcao
+  ! ALLOCATE(self%grads(10, 6*self%N))
+  ! ALLOCATE(self%gradsT(6*self%N,10))
   ALLOCATE(self%grads(4, 6*self%N))
   ALLOCATE(self%gradsT(6*self%N,4))
   ALLOCATE(self%vetorCorrecao(1:6*self%N))
@@ -171,6 +174,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   INTEGER, INTENT(IN) :: passos_antes_salvar
   REAL(pf), INTENT(IN) :: E0
   REAL(pf)             :: E
+  REAL(pf), DIMENSION(3) :: J
   REAL(pf), DIMENSION(3), INTENT(IN) :: J0
   ! Para cada passo
   INTEGER :: i
@@ -181,6 +185,11 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   REAL(pf), DIMENSION(3, self%N, self%dim) :: resultado
   ! Energia total aproximada
   REAL(pf) :: Et_aprox
+  ! Consumo de tempo com correcao
+  REAL(pf) :: t0_cor, tempo_correcao
+  INTEGER :: contagem_correcao
+
+  contagem_correcao = 0
 
   ! Salvando as primeiras posicoes e momentos
   R1 = R
@@ -207,13 +216,23 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
   IF (self%corrigir) THEN
     E = energia_total(self % G, self % m, R1, P1)
-    IF (ABS(E - E0) > self%corme) THEN
+    J = momento_angular_total(R1, P1)
+    IF (ABS(E - E0) > self%corme .OR. NORM2(J - J0) > self%corme) THEN
+      t0_cor = omp_get_wtime()
       CALL corrigir(self%corme,self%cormnt,self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+      IF (corrigiu) THEN
+        contagem_correcao = contagem_correcao + 1
+      END IF
+      tempo_correcao = tempo_correcao + (omp_get_wtime() - t0_cor)
     END IF
   ENDIF
 
   R = R1
   P = P1
+
+  IF (contagem_correcao > 0) THEN
+    WRITE (*,*) contagem_correcao, ' correcoes, tempo: ', tempo_correcao
+  ENDIF
 
 END SUBROUTINE aplicarNVezes
 

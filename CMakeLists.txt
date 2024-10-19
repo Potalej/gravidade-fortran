@@ -89,6 +89,9 @@ add_library(integracao
   # Metodos de Stormer-Verlet Compostos
   "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90" 
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" 
+
+  # Euler (explicito, tradicional)
+  "./src/calcs/integracao/euler.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes
@@ -150,6 +153,7 @@ target_link_libraries(gravidade
   mecanica
   python_lib
   condicionamento
+  random
 )
 
 # ----------------------------------------------------------------------------

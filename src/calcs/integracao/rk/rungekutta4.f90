@@ -14,6 +14,7 @@
 MODULE rungekutta4
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE rungekutta
+  USE funcoes_forca
   USE integrador
 
   IMPLICIT NONE
@@ -84,6 +85,14 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   
   ! Inicia o base do RK 
   CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h, self % potsoft)
+  
+  ! Codigo paralelo
+  self % paralelo = paralelo
+  IF (paralelo) THEN
+    self % forcas_funcao => forcas_par
+  ELSE
+    self % forcas_funcao => forcas_seq
+  ENDIF
 
 END SUBROUTINE Iniciar
 

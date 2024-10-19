@@ -11,7 +11,7 @@
 !   oap
 ! 
 MODULE simulacao
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64, pf64=>real64
   USE OMP_LIB
 
   ! Auxiliares
@@ -29,6 +29,7 @@ MODULE simulacao
   USE rkn671
   USE svcp8s15
   USE svcp10s35
+  USE euler
   ! Para configuracoes
   USE leitura
 
@@ -45,7 +46,8 @@ MODULE simulacao
   TYPE(integracao_rkn551),    TARGET, SAVE :: INT_RKN551
   TYPE(integracao_rkn671),    TARGET, SAVE :: INT_RKN671
   TYPE(integracao_svcp8s15),  TARGET, SAVE :: INT_SVCP8S15
-  TYPE(integracao_svcp10s35),  TARGET, SAVE :: INT_SVCP10S35
+  TYPE(integracao_svcp10s35), TARGET, SAVE :: INT_SVCP10S35
+  TYPE(integracao_euler),     TARGET, SAVE :: INT_EULER
 
   ! Classe de simulacao
   TYPE :: simular
@@ -244,7 +246,7 @@ SUBROUTINE rodar (self, qntdPassos)
   
   ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf) :: t0, tf, tempo_total = 0.0_pf
+  REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
   INTEGER  :: timestep_inv
 
   ! Definicao dinamica do metodo
@@ -259,7 +261,8 @@ SUBROUTINE rodar (self, qntdPassos)
     CASE ('rkn551');    integrador => INT_RKN551
     CASE ('rkn671');    integrador => INT_RKN671
     CASE ('svcp8s15');  integrador => INT_SVCP8S15
-    CASE ('svcp10s35');  integrador => INT_SVCP10S35
+    CASE ('svcp10s35'); integrador => INT_SVCP10S35
+    CASE ('euler');     integrador => INT_EULER
     
     ! Por padrao, sera o VERLET
     CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
