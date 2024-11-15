@@ -64,7 +64,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   IMPLICIT NONE
   class(integracao_svcp8s15), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R_meio, R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   INTEGER :: i
   REAL(pf) :: h ! tamanho de passo dinamico
@@ -75,9 +75,9 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   DO i=size(s),1,-1
     h = s(i) * self % h
 
-    R_meio = R1 + 0.5_pf * h * P1 * self % massasInvertidas
-    P1 = P1 + h * self%forcas(R_meio)
-    R1 = R_meio + 0.5_pf * h * P1 * self % massasInvertidas
+    P_meio = P1 + 0.5_pf * h * self%forcas(R1)
+    R1 = R1 + h * P_meio * self % massasInvertidas
+    P1 = P_meio + 0.5_pf * h * self%forcas(R1)
   END DO
 
   metodo(1,:,:) = R1
