@@ -49,7 +49,7 @@
 ! 
 ! 
 ! Modificado:
-!   15 de marco de 2024
+!   10 de novembro de 2024
 ! 
 ! Autoria:
 !   oap
@@ -61,7 +61,7 @@ MODULE correcao
 
   IMPLICIT NONE
   PRIVATE
-  PUBLIC corrigir
+  PUBLIC corrigir, corrigir_apenas_energia
 
 CONTAINS
 
@@ -69,28 +69,32 @@ CONTAINS
 !! Aplicacao
 !
 ! Objetivos:
-!   Aplicacao da correcao numerica.
+!   Aplicacao da correcao numerica nas integrais primeiras.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   10 de novembro de 2024
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT, vetorCorrecao, corrigiu, H, J)
+SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, J)
   IMPLICIT NONE
-  REAL(pf) :: corme ! CORrecao Margem Erro
-  INTEGER  :: cormnt ! CORrecao Max Num Tentativas
-  REAL(pf), INTENT(IN) :: G, massas(:)
-  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), grads(:,:),gradsT(:,:),vetorCorrecao(:)
-  INTEGER  :: N, a, INFO, b, contador = 0
-  INTEGER :: pivos(4)
-  REAL(pf) :: JJt(4, 4), vetG(4)
-  LOGICAL, INTENT(INOUT) :: corrigiu
-  REAL(pf) :: H, J(3)
+  REAL(pf), INTENT(IN)    :: corme ! CORrecao Margem Erro
+  INTEGER,  INTENT(IN)    :: cormnt ! CORrecao Max Num Tentativas
+  REAL(pf), INTENT(IN)    :: G, massas(:)
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
+  LOGICAL,  INTENT(INOUT) :: corrigiu
+  INTEGER                 :: N, a, INFO, b, contador = 0, pivos(4)
+  REAL(pf)                :: JJt(4, 4), vetG(4)
+  REAL(pf), ALLOCATABLE   :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
+  REAL(pf)                :: H, J(3)
 
   N = SIZE(massas)
   contador = 0
+
+  ALLOCATE(grads(4,6*N))
+  ALLOCATE(gradsT(6*N,4))
+  ALLOCATE(vetorCorrecao(6*N))
   
   ! enquanto nao tiver aceitado a correcao, roda
   loop: DO WHILE (.TRUE.)
@@ -109,8 +113,9 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
     ! vetor G
     vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
 
-    ! resolve o sistema
-    CALL dgesv(4, 1, JJt, 4, pivos, vetG, 4, INFO)
+    ! resolve o sistema via fatoracao de Cholesky
+    CALL dpotrf('L', 4, JJt, 4, INFO)
+    CALL dpotrs('L', 4, 1, JJt, 4, vetG, 4, INFO)
 
     IF (INFO == 0) THEN
       ! aplica a correcao
@@ -123,8 +128,9 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
         vetorCorrecao(a) = sum(gradsT(a,:))
       END DO
 
-      ! ! Ve se esta na margem de erro
-      IF (ABS(MINVAL(vetorCorrecao)) .le. 1.0E-20_pf .AND. ABS(MAXVAL(vetorCorrecao)) .le. 1.0E-20_pf) THEN
+      ! Ve se esta na margem de erro
+      ! IF (ABS(MINVAL(vetorCorrecao)) .le. 1.0E-20_pf .AND. ABS(MAXVAL(vetorCorrecao)) .le. 1.0E-20_pf) THEN
+      IF (NORM2(vetorCorrecao) .le. corme) THEN
         ! Se estiver, manda embora porque a correcao sera desnecessaria
         ! WRITE(*,*) "dentro da margem aceitavel"
         EXIT
@@ -152,6 +158,75 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, grads, gradsT
 
   END DO loop
 END SUBROUTINE corrigir
+
+! ************************************************************
+!! Aplicacao
+!
+! Objetivos:
+!   Aplicacao da correcao numerica da energia total apenas.
+!
+! Modificado:
+!   10 de novembro de 2024
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, J)
+  IMPLICIT NONE
+  REAL(pf), INTENT(IN)    :: corme  ! CORrecao Margem Erro
+  INTEGER,  INTENT(IN)    :: cormnt ! CORrecao Max Num Tentativas
+  REAL(pf), INTENT(IN)    :: G, massas(:)
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
+  LOGICAL,  INTENT(INOUT) :: corrigiu
+  INTEGER                 :: N, a, b, contador = 0
+  REAL(pf)                :: H, J(3), gradE2, alpha
+  REAL(pf), ALLOCATABLE   :: gradE(:)
+
+  N = SIZE(massas)
+  contador = 0
+
+  aLlocate(gradE(1:6*N))
+  
+  ! enquanto nao tiver aceitado a correcao, roda
+  loop: DO WHILE (.TRUE.)
+
+    IF (contador >= cormnt) THEN
+      ! WRITE(*,*) "max num tentativas atingido"
+      EXIT loop
+    ENDIF
+
+    ! Contador de correcoes
+    contador = contador + 1
+
+    gradE=gradiente_energia(G, massas, posicoes, momentos, N)
+    gradE2 = DOT_PRODUCT(gradE,gradE)
+
+    alpha = (-energia_total(G, massas, posicoes, momentos) + H) / gradE2
+
+    ! aplica a correcao
+    gradE = gradE * alpha
+
+    ! Ve se esta na margem de erro
+    IF (MAXVAL(gradE) .le. 1E-8) THEN
+      ! Se estiver, manda embora porque a correcao sera desnecessaria
+      WRITE(*,*) "dentro da margem aceitavel: ", NORM2(gradE)
+      EXIT
+    END IF
+
+    ! aplica a correcao
+    DO a = 1, N
+      posicoes(a,1) = posicoes(a,1) + gradE(6*a-5)
+      posicoes(a,2) = posicoes(a,2) + gradE(6*a-4)
+      posicoes(a,3) = posicoes(a,3) + gradE(6*a-3)
+      momentos(a,1) = momentos(a,1) + gradE(6*a-2)
+      momentos(a,2) = momentos(a,2) + gradE(6*a-1)
+      momentos(a,3) = momentos(a,3) + gradE(6*a-0)
+    END DO
+
+    corrigiu = .TRUE.
+
+  END DO loop
+END SUBROUTINE corrigir_apenas_energia
 
 ! ************************************************************
 !! Vetor de estado
