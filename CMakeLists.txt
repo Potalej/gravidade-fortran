@@ -48,6 +48,11 @@ ENDIF()
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
 
+# RANDOM
+add_library(random 
+  "./src/libs/random.f90" 
+)
+
 # Mecanica
 add_library(mecanica 
   "./src/calcs/mecanica.f90" 
@@ -74,9 +79,11 @@ add_library(integracao
   
   "./src/calcs/integracao/integrador.f90" 
   "./src/calcs/integracao/rk/rungekutta.f90" 
+  "./src/calcs/integracao/rk/rungekutta2.f90" 
+  "./src/calcs/integracao/rk/rungekutta3.f90" 
   "./src/calcs/integracao/rk/rungekutta4.f90" 
   "./src/calcs/integracao/simpleticos/verlet.f90" 
-  "./src/calcs/integracao/simpleticos/eulersimp.f90" 
+  "./src/calcs/integracao/simpleticos/euler_simp.f90" 
 
   # Metodos de Ruth
   "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
@@ -89,9 +96,14 @@ add_library(integracao
   # Metodos de Stormer-Verlet Compostos
   "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90" 
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" 
+  
+  # Mikkola (leapfrog regularizado)
+  "./src/calcs/integracao/simpleticos/mikkola.f90" 
 
   # Euler (explicito, tradicional)
-  "./src/calcs/integracao/euler.f90" 
+  "./src/calcs/integracao/euler_exp.f90" 
+  # Euler (implicito, tradicional)
+  "./src/calcs/integracao/euler_imp.f90" 
 )
 target_link_libraries(integracao
   mecanica # usa o corretor e o de colisoes

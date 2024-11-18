@@ -31,10 +31,12 @@ CONTAINS
 ! 
 FUNCTION gerar_vetores3d (N, min, max)
 
-  INTEGER, INTENT(IN)     :: N
-  REAL(pf), INTENT(IN)    :: min, max
-  REAL(pf), DIMENSION(N,3)    :: gerar_vetores3d
-  INTEGER, DIMENSION(N,3) :: ajuste
+  INTEGER, INTENT(IN)      :: N
+  REAL(pf), INTENT(IN)     :: min, max
+  REAL(pf), DIMENSION(N,3) :: gerar_vetores3d
+  INTEGER, DIMENSION(N,3)  :: ajuste
+  INTEGER :: i, j
+  REAL(pf) :: maior_valor = 1.0_pf
 
   ajuste(:,:) = min
 
@@ -251,7 +253,7 @@ END SUBROUTINE condicionar_momentoLinear
 !   Condiciona vetores ja existentes com valores desejados.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   10 de novembro de 2024
 !
 ! Autoria:
 !   oap
@@ -259,10 +261,12 @@ END SUBROUTINE condicionar_momentoLinear
 SUBROUTINE condicionar_ip (G, massas, posicoes, momentos, H, J, P)
   
   IMPLICIT NONE
-  REAL(pf), INTENT(INOUT) :: G, posicoes(:,:), momentos(:,:), massas(:)
+  REAL(pf), INTENT(IN) :: G
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), massas(:)
   REAL(pf) :: H, J(3), P(3)
   REAL(pf) :: erro_0, erro_1, ENERGIA, LINEAR(3), ANGULAR(3) ! Para medir a taxa de erro
   INTEGER :: i = 0
+  REAL(pf) :: erro_limite = 0.1E-8
 
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
@@ -277,15 +281,15 @@ SUBROUTINE condicionar_ip (G, massas, posicoes, momentos, H, J, P)
   CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos)
 
   ! Calculo dos erros
-  ENERGIA = energia_total(G,massas,posicoes,momentos) - H
-  LINEAR = momentoLinear_total(momentos) - P
-  ANGULAR = momento_angular_total(posicoes,momentos) - J
-  erro_1 = NORM2((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
+  ENERGIA = ABS(energia_total(G,massas,posicoes,momentos) - H)
+  LINEAR  = ABS(momentoLinear_total(momentos) - P)
+  ANGULAR = ABS(momento_angular_total(posicoes,momentos) - J)
+  erro_1 = MAXVAL((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
 
-  IF (erro_1 >= 0.00005) THEN
+  IF (erro_1 >= erro_limite) THEN
     erro_0 = ABS(erro_1) + 1.0 ! Para entrar no loop abaixo
     
-    DO WHILE (ABS(erro_0 - erro_1) >= 0.00005 .AND. i <= 10)
+    DO WHILE (ABS(erro_1) >= erro_limite .AND. i <= 10)
       i = i + 1
       erro_0 = erro_1
 
@@ -299,12 +303,13 @@ SUBROUTINE condicionar_ip (G, massas, posicoes, momentos, H, J, P)
       CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos)
 
       ! Calculo dos erros
-      ENERGIA = energia_total(G,massas,posicoes,momentos) - H
-      LINEAR = momentoLinear_total(momentos) - P
-      ANGULAR = momento_angular_total(posicoes,momentos) - J
-      erro_1 = NORM2((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
+      ENERGIA = ABS(energia_total(G,massas,posicoes,momentos) - H)
+      LINEAR  = ABS(momentoLinear_total(momentos) - P)
+      ANGULAR = ABS(momento_angular_total(posicoes,momentos) - J)
+      erro_1 = MAXVAL((/ENERGIA,LINEAR(1),LINEAR(2),LINEAR(3),ANGULAR(1),ANGULAR(2),ANGULAR(3)/))
     END DO
   ENDIF
+
   WRITE (*,*) ' > condicionamento aplicado ', i, ' vezes para obter o erro ', erro_1
 END SUBROUTINE condicionar_ip
 
@@ -362,7 +367,7 @@ END SUBROUTINE gerar_condicionado_ip
 !   informados.
 !
 ! Modificado:
-!   12 de agosto de 2024
+!   10 de novembro de 2024
 !
 ! Autoria:
 !   oap
@@ -385,7 +390,7 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   ALLOCATE(posicoes (N, 3))
   ALLOCATE(momentos (N, 3))
   CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
-  
+
   m = SUM(massas)
   do a = 1, N
     massas(a) = (1.0_pf / N)
@@ -394,34 +399,30 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
 
   ! Condiciona
   WRITE (*,'(a)') '  > condicionando... (HENON)'
-  
-  ! Zera o centro de massas
-  CALL zerar_centroMassas(massas, posicoes)
 
-  ! AQUI EU CONSIGO QUE H = -0.25 E V ~ -0.25
-  CALL condicionar_energiaTotal(-0.25_pf, 1.0_pf, massas, posicoes, momentos)
+  CALL condicionar_ip (1.0_pf, massas, posicoes, momentos, -0.25_pf, (/0.0_pf,0.0_pf,0.0_pf/), (/0.0_pf,0.0_pf,0.0_pf/))
     
   ! AGORA EU QUERO QUE V ~ -0.5, OU SEJA, V = 2 * V
-  posicoes = posicoes * 0.5_pf
+  EP = energia_potencial(1.0_pf, massas, posicoes)
+  WRITE (*,*) '    * V antes =', EP
+  posicoes = posicoes * EP * 2.0_pf
   EP = energia_potencial(1.0_pf, massas, posicoes)
   WRITE (*,*) '    * V   =', EP
-
-  ! Zera o momento linear total
-  CALL condicionar_momentoLinear((/0.0_pf,0.0_pf,0.0_pf/), massas, momentos)
 
   ! AGORA QUERO QUE T/(-V) = 0.5, LOGO v = sqrt(-V/M)
   ! momentos = SQRT(0.5 / 3) / N
   DO a = 1, N
     P_normas = P_normas + NORM2(momentos(a,:))**2
   END DO
-  momentos = momentos * 1/SQRT(2 * N * P_normas)
+  momentos = momentos * 1/SQRT(2.0_pf * N * P_normas)
 
   EC = energia_cinetica(massas, momentos)
   WRITE (*,*) '    * T   =', EC
   WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
   WRITE (*,*) '    * Q   =', EC/ABS(EP)
-  WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2 * EP)
+  WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2.0_pf * EP)
   WRITE (*,*) '    * P   =', momentoLinear_total(momentos)
+  WRITE (*,*) '    * J   =', momento_angular_total(posicoes, momentos)
 
 END SUBROUTINE
 

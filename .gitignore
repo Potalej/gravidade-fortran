@@ -38,4 +38,8 @@ presets/auto_vi
 /outros
 
 * Para testes
-/teste/
+teste/
+/tests
+
+# do Python
+__pycache__

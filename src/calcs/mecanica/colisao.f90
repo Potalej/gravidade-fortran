@@ -39,30 +39,56 @@ CONTAINS
 !   Passa por cada par de particulas avaliando as distancias e
 !   taxa de variacao desta, verificando se trata-se de caso de
 !   colisao ou nao.
+!   Condicoes para colisao:
+!     1. fator <= colmd
+!     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   15 de marco de 2024
+!   11 de novembro de 2024
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P, colmd)
+SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
-  INTEGER :: a, b, qntd_colisoes
-  qntd_colisoes = 0
-  DO a = 2, SIZE(m)
-    DO b = 1, a-1
-      IF (norm2(R(b,:)-R(a,:)) <= colmd) THEN
-        ! Agora verifica o sinal da derivada da distancia
-        ! e estiver negativo, eh porque estao se aproximando
-        IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
-          CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
-          qntd_colisoes = qntd_colisoes + 1
-        ENDIF
-      ENDIF 
+  INTEGER :: a, b
+  LOGICAL :: paralelo
+  REAL(pf) :: m13a, m13b, fator
+
+  IF (paralelo) THEN
+    !$OMP PARALLEL PRIVATE(a, b, m13a, m13b, fator)
+      !$OMP DO
+      DO a = 2, SIZE(m)
+        m13a = m(a) ** (1.0_pf/3.0_pf)
+        DO b = 1, a-1
+          m13b = m(b) ** (1.0_pf/3.0_pf)
+          fator = norm2(R(b,:)-R(a,:)) / ABS(m13a + m13b)
+          IF (fator <= colmd) THEN
+            IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
+              CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
+            ENDIF
+          ENDIF 
+        END DO
+      END DO
+      !$OMP END DO
+    !$OMP END PARALLEL
+  ELSE
+    DO a = 2, SIZE(m)
+      m13a = m(a) ** (1.0_pf/3.0_pf)
+      DO b = 1, a-1
+        m13b = m(b) ** (1.0_pf/3.0_pf)
+        fator = norm2(R(b,:)-R(a,:)) / ABS(m13a + m13b)
+        IF (fator <= colmd) THEN
+          ! CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
+
+          IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
+            CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
+          ENDIF
+        ENDIF 
+      END DO
     END DO
-  END DO
+  ENDIF
 END SUBROUTINE verificar_e_colidir
 
 ! ************************************************************

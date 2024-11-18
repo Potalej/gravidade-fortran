@@ -1,17 +1,17 @@
 ! ************************************************************
-!! METODO NUMERICO RK4
+!! METODO NUMERICO RK2
 !
 ! Objetivos:
-!   Aplicacao do metodo de Runge-Kutta de Quarta Ordem em Quatro
-!   Estagios (RK4 ou RK44)
+!   Aplicacao do metodo de Runge-Kutta de Terceira Ordem em Tres
+!   Estagios (RK3 ou RK33)
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de novembro de 2024
 !
 ! Autoria:
 !   oap
 ! 
-MODULE rungekutta4
+MODULE rungekutta3
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE rungekutta
   USE funcoes_forca
@@ -19,9 +19,9 @@ MODULE rungekutta4
 
   IMPLICIT NONE
   PRIVATE
-  PUBLIC integracao_rk4
+  PUBLIC integracao_rk3
 
-  TYPE, EXTENDS(integracao) :: integracao_rk4
+  TYPE, EXTENDS(integracao) :: integracao_rk3
     
     ! Base do Runge-Kutta
     TYPE(RK) :: baseRK
@@ -29,7 +29,7 @@ MODULE rungekutta4
     CONTAINS
       PROCEDURE :: Iniciar, metodo
 
-  END TYPE integracao_rk4
+  END TYPE integracao_rk3
 
 CONTAINS
 
@@ -41,14 +41,14 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de novembro de 2024
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
   IMPLICIT NONE
-  CLASS(integracao_rk4), INTENT(INOUT) :: self
+  CLASS(integracao_rk3), INTENT(INOUT) :: self
   LOGICAL,INTENT(IN) :: corrigir, colidir, paralelo
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd
@@ -99,7 +99,7 @@ END SUBROUTINE Iniciar
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   17 de novembro de 2024
 !
 ! Autoria:
 !   oap
@@ -107,34 +107,31 @@ END SUBROUTINE Iniciar
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_rk4), INTENT(IN) :: self
+  class(integracao_rk3), INTENT(IN) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf), DIMENSION(3, self % N, self % dim) :: metodo
 
   ! componentes da integracao (kappas)
-  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q, k2_q, k3_q, k4_q
-  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p, k2_p, k3_p, k4_p
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q, k2_q, k3_q
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p, k2_p, k3_p
 
   k1_q = P * self % baseRK % massasInvertidas
   k1_p = self % forcas (R)
 
-  k2_q = (P + 0.5_pf * self % h * k1_p) * self % baseRK % massasInvertidas
-  k2_p = self % forcas (R + 0.5_pf * self % h * k1_q)
+  k2_q = (P + 0.5 * self % h * k1_p) * self % baseRK % massasInvertidas
+  k2_p = self % forcas (R + 0.5 * self % h * k1_q)
 
-  k3_q = (P + 0.5_pf * self % h * k2_p) * self % baseRK % massasInvertidas
-  k3_p = self % forcas (R + 0.5_pf * self % h * k2_q)
-
-  k4_q = (P + self % h * k3_p) * self % baseRK % massasInvertidas
-  k4_p = self % forcas (R + self % h * k3_q)
+  k3_q = (P - self % h * k1_p + 2.0_pf * self % h * k2_p) * self % baseRK % massasInvertidas
+  k3_p = self % forcas (R - self % h * k1_q + 2.0_pf * self % h * k2_q)
 
   ! fator para integracao
-  R1 = R + (self % h / 6.0_pf) * (k1_q + 2.0_pf * k2_q + 2.0_pf * k3_q + k4_q)
-  P1 = P + (self % h / 6.0_pf) * (k1_p + 2.0_pf * k2_p + 2.0_pf * k3_p + k4_p)
+  R1 = R + (self % h / 6) * (k1_q + 4.0_pf * k2_q + k3_q)
+  P1 = P + (self % h / 6) * (k1_p + 4.0_pf * k2_p + k3_p)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
 
 END FUNCTION metodo
 
-END module rungekutta4
+END module rungekutta3

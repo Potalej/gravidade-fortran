@@ -18,10 +18,10 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2)
   REAL(pf) :: distancia, distancia_inv
   REAL(pf), DIMENSION(N, dim) :: forcas_par, forcas_local
   
-  forcas_par(:,:) = 0
+  forcas_par(:,:) = 0.0_pf
 
   !$OMP PARALLEL SHARED(forcas_par) PRIVATE(forcas_local, Fab, Rab, distancia, distancia_inv, a, b)
-    forcas_local(:,:) = 0
+    forcas_local(:,:) = 0.0_pf
     !$OMP DO
     DO a = 2, N
       DO b = 1, a-1

@@ -20,16 +20,19 @@ MODULE simulacao
   USE arquivos
   ! Metodos de integracao numerica
   USE integrador
+  USE rungekutta2
+  USE rungekutta3
   USE rungekutta4
+  USE euler_simp
   USE verlet
-  USE eulersimp
   USE ruth3
   USE ruth4
   USE rkn551
   USE rkn671
   USE svcp8s15
   USE svcp10s35
-  USE euler
+  USE euler_exp
+  USE euler_imp
   ! Para configuracoes
   USE leitura
 
@@ -39,7 +42,9 @@ MODULE simulacao
 
   ! Tipos de metodo de integracao
   TYPE(integracao_verlet),    TARGET, SAVE :: INT_VERLET
-  TYPE(integracao_eulersimp), TARGET, SAVE :: INT_EULERSIMP
+  TYPE(integracao_euler_simp), TARGET, SAVE :: INT_EULER_SIMP
+  TYPE(integracao_rk2),       TARGET, SAVE :: INT_RK2
+  TYPE(integracao_rk3),       TARGET, SAVE :: INT_RK3
   TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
   TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
   TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
@@ -47,7 +52,8 @@ MODULE simulacao
   TYPE(integracao_rkn671),    TARGET, SAVE :: INT_RKN671
   TYPE(integracao_svcp8s15),  TARGET, SAVE :: INT_SVCP8S15
   TYPE(integracao_svcp10s35), TARGET, SAVE :: INT_SVCP10S35
-  TYPE(integracao_euler),     TARGET, SAVE :: INT_EULER
+  TYPE(integracao_euler_exp), TARGET, SAVE :: INT_EULER_EXP
+  TYPE(integracao_euler_imp), TARGET, SAVE :: INT_EULER_IMP
 
   ! Classe de simulacao
   TYPE :: simular
@@ -113,8 +119,9 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   CLASS(simular), INTENT(INOUT) :: self
   CLASS(preset_config) :: configs
   REAL(pf), allocatable :: M(:), R0(:,:), P0(:,:)
-  REAL(pf) :: h
+  REAL(pf) :: h, colmd
   INTEGER :: a, i
+  REAL(pf) :: PI = 4.D0*DATAN(1.D0)
 
   self % passos_antes_salvar = configs % passos_antes_salvar
   
@@ -165,10 +172,12 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % corrigir = configs%corretor
   self % corrigir_margem_erro = configs%corretor_margem_erro
   self % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
-  
+
   ! Salva as colisoes
   self % colidir  = configs%colisoes
-  self % colisoes_max_distancia = configs%colisoes_max_distancia
+  colmd = (0.75_pf / (PI * configs%colisoes_max_distancia))**(1.0_pf/3.0_pf)
+  self % colisoes_max_distancia = colmd
+  WRITE(*,*) 'COLMD: ', colmd
 
   ! Salva o uso de paralelizacao
   self % paralelo = configs%paralelo
@@ -192,7 +201,7 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % corrigir_margem_erro, &
   self % corrigir_max_num_tentativas, &
   self % colidir,  &
-  self % colisoes_max_distancia,  &
+  configs%colisoes_max_distancia,  &
   self % passos_antes_salvar, &
   configs % paralelo)
 
@@ -247,22 +256,26 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
+  REAL(pf) :: E
   INTEGER  :: timestep_inv
 
   ! Definicao dinamica do metodo
   WRITE (*,'(a)') 'METODO: ', self % metodo
   
   SELECT CASE (TRIM(self % metodo))
-    CASE ('verlet');    integrador => INT_VERLET
-    CASE ('rk4');       integrador => INT_RK4
-    CASE ('eulersimp'); integrador => INT_EULERSIMP
-    CASE ('ruth3');     integrador => INT_RUTH3
-    CASE ('ruth4');     integrador => INT_RUTH4
-    CASE ('rkn551');    integrador => INT_RKN551
-    CASE ('rkn671');    integrador => INT_RKN671
-    CASE ('svcp8s15');  integrador => INT_SVCP8S15
-    CASE ('svcp10s35'); integrador => INT_SVCP10S35
-    CASE ('euler');     integrador => INT_EULER
+    CASE ('verlet');     integrador => INT_VERLET
+    CASE ('rk2');        integrador => INT_RK2
+    CASE ('rk3');        integrador => INT_RK3
+    CASE ('rk4');        integrador => INT_RK4
+    CASE ('euler_simp'); integrador => INT_EULER_SIMP
+    CASE ('ruth3');      integrador => INT_RUTH3
+    CASE ('ruth4');      integrador => INT_RUTH4
+    CASE ('rkn551');     integrador => INT_RKN551
+    CASE ('rkn671');     integrador => INT_RKN671
+    CASE ('svcp8s15');   integrador => INT_SVCP8S15
+    CASE ('svcp10s35');  integrador => INT_SVCP10S35
+    CASE ('euler_exp');  integrador => INT_EULER_EXP
+    CASE ('euler_imp');  integrador => INT_EULER_IMP
     
     ! Por padrao, sera o VERLET
     CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
@@ -282,7 +295,7 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
   WRITE(*,*) qntdPassos * timestep_inv
-  DO WHILE (i .le. qntdPassos * timestep_inv)
+  DO WHILE (i < ABS(qntdPassos * timestep_inv))
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
@@ -293,8 +306,10 @@ SUBROUTINE rodar (self, qntdPassos)
     tempo_total = tempo_total + tf - t0
 
     CALL self % Arq % escrever((/R1, P1/))
+
     IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', energia_total(self % G, self % M, R1, P1), ' / Tempo: ', tempo_total
+      E = energia_total(self % G, self % M, R1, P1)
+      WRITE (*,*) '     -> Passo:', i, ' / Energia:', E, ' / Tempo: ', tempo_total
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*timestep_inv, tempo_total)
     ENDIF
 

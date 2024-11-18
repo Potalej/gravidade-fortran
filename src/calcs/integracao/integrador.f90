@@ -7,7 +7,7 @@
 !   dimensao, massas, se corrige ou nao, se colide ou nao, etc.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   10 de novembro de 2024
 !
 ! Autoria:
 !   oap
@@ -50,9 +50,7 @@ MODULE integrador
     ! Se vai ou nao usar paralelizacao
     LOGICAL :: paralelo = .FALSE.
 
-    ! vetores para aplicar a correcao
-    REAL(pf), ALLOCATABLE :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
-
+    ! Vetor de forcas
     PROCEDURE(forcas_funcbase), POINTER, NOPASS :: forcas_funcao => NULL()
 
     CONTAINS
@@ -127,13 +125,6 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % colidir = colidir
   self % colmd = colmd
 
-  ! Alocando variaveis de correcao
-  ! ALLOCATE(self%grads(10, 6*self%N))
-  ! ALLOCATE(self%gradsT(6*self%N,10))
-  ALLOCATE(self%grads(4, 6*self%N))
-  ALLOCATE(self%gradsT(6*self%N,4))
-  ALLOCATE(self%vetorCorrecao(1:6*self%N))
-
   ! Codigo paralelo
   self % paralelo = paralelo
   IF (paralelo) THEN
@@ -161,7 +152,7 @@ END FUNCTION forcas
 !   Aplica o metodo iterativamente N vezes.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   10 de novembro de 2024
 !
 ! Autoria:
 !   oap
@@ -209,21 +200,30 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
 
     ! se tiver colisoes, aplica
     IF (self % colidir) THEN
-      CALL verificar_e_colidir(self % m, R1, P1, self % colmd)
+      CALL verificar_e_colidir(self % m, R1, P1, self % colmd, self % paralelo)
     ENDIF
   END DO
 
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
   IF (self%corrigir) THEN
     E = energia_total(self % G, self % m, R1, P1)
-    J = momento_angular_total(R1, P1)
-    IF (ABS(E - E0) > self%corme .OR. NORM2(J - J0) > self%corme) THEN
+        
+    IF (ABS(E - E0) >= self%corme) THEN
+      
       t0_cor = omp_get_wtime()
-      CALL corrigir(self%corme,self%cormnt,self % G, self % m, R1, P1,self%grads,self%gradsT,self%vetorCorrecao, corrigiu, E0, J0)
+
+      ! Correcao com energia total e momento angular total (desativado)
+      ! CALL corrigir(self%corme,self%cormnt,self % G,self % m,R1,P1,corrigiu,E0,J0)
+
+      ! Corrige somente a energia total
+      CALL corrigir_apenas_energia(self%corme,self%cormnt,self % G,self % m,R1,P1,corrigiu,E0,J0)
+      
       IF (corrigiu) THEN
         contagem_correcao = contagem_correcao + 1
       END IF
+      
       tempo_correcao = tempo_correcao + (omp_get_wtime() - t0_cor)
+
     END IF
   ENDIF
 

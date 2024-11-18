@@ -12,28 +12,28 @@ G 1.0
 N 1000
 
 ! Intervalos para geracao
-Intervalo-Massas    1000.0, 10000.0
-Intervalo-Posicoes -100.0, 100.0
-Intervalo-Momentos -1.0,1.0
+Intervalo-Massas    100.0, 100.0
+Intervalo-Posicoes -1.0, 1.0
+Intervalo-Momentos -100.0,100.0
 
-! Sobre a integracao (verlet / rk4)
+! Sobre a integracao
 integrador verlet
-timestep   0.01
-soft 0.01
-passos     5
+timestep   0.04
+soft 0.04
+passos  10
 
 ! Intervalo de integracao
 t0    0
-tf    500
+tf    1000
 
 ! Usar paralelisacao nas forcas
 paralelo T
 
 ! Correcao numerica
 corretor T
-margem_erro 0.01
-max_num_tentativas 150
+margem_erro 0.001
+max_num_tentativas 1
 
 ! Colisoes
 colisoes F
-max_distancia 0.1
+max_distancia 0.08

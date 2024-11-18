@@ -1,20 +1,20 @@
 ! Configs
 modo vi
 nome "Lemniscata"
-integrador svcp10s35
-timestep   0.05
-potsoft 0.0
-passos     100
+integrador euler_exp
+timestep   0.001
+potsoft    0.0
+passos     1
 t0    0
-tf    1000
+tf    50
 
 ! Usar paralelisacao nas forcas
-paralelo T
+paralelo F
 
 ! Opcoes do corretor
-corretor F
-margem_erro 0.1
-max_num_tentativas 15
+corretor T
+margem_erro 1e-10
+max_num_tentativas 1
 
 ! Opcoes de colisao
 colisoes F

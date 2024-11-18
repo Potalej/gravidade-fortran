@@ -129,8 +129,7 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, 
       END DO
 
       ! Ve se esta na margem de erro
-      ! IF (ABS(MINVAL(vetorCorrecao)) .le. 1.0E-20_pf .AND. ABS(MAXVAL(vetorCorrecao)) .le. 1.0E-20_pf) THEN
-      IF (NORM2(vetorCorrecao) .le. corme) THEN
+      IF (ABS(MINVAL(vetorCorrecao)) .le. 1.0E-20_pf .AND. ABS(MAXVAL(vetorCorrecao)) .le. 1.0E-20_pf) THEN
         ! Se estiver, manda embora porque a correcao sera desnecessaria
         ! WRITE(*,*) "dentro da margem aceitavel"
         EXIT
