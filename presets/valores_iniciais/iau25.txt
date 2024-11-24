@@ -9,10 +9,10 @@ t0    0
 tf    50
 
 ! Usar paralelisacao nas forcas
-paralelo T
+paralelo F
 
 ! Opcoes do corretor
-corretor T
+corretor F
 margem_erro 1e-10
 max_num_tentativas 1
 

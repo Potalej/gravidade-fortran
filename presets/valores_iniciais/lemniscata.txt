@@ -1,7 +1,7 @@
 ! Configs
 modo vi
 nome "Lemniscata"
-integrador euler_exp
+integrador verlet
 timestep   0.001
 potsoft    0.0
 passos     1
@@ -12,7 +12,7 @@ tf    50
 paralelo F
 
 ! Opcoes do corretor
-corretor T
+corretor F
 margem_erro 1e-10
 max_num_tentativas 1
 
