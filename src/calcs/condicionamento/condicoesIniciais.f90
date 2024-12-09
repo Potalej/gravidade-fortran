@@ -314,6 +314,95 @@ SUBROUTINE condicionar_ip (G, massas, posicoes, momentos, H, J, P)
 END SUBROUTINE condicionar_ip
 
 ! ************************************************************
+!! Condicionamento de integrais primeiras na forma direta
+!
+! Objetivos:
+!   Condiciona vetores ja existentes com valores desejados na
+!   forma direta, sem a necessidade de iteracoes.
+!
+! Modificado:
+!   17 de novembro de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE condicionar_ip_2 (G, m, Rs, Ps, H, J, P)
+  
+  IMPLICIT NONE
+  REAL(pf), INTENT(IN) :: G
+  REAL(pf), INTENT(INOUT) :: Rs(:,:), Ps(:,:), m(:)
+  REAL(pf) :: H, J(3), P(3), M_tot_inv
+  REAL(pf) :: ENERGIA, LINEAR(3), ANGULAR(3) ! Para medir a taxa de erro
+  INTEGER :: i, a = 0
+  REAL(pf) :: alpha, V0
+  REAL(pf) :: beta, S1, S2, tensorInercia(3,3), rot(3), rot_(3), rot_tot(3), K1a(3), K2a(3)
+  REAL(pf), ALLOCATABLE :: Rs1(:,:), Ps1(:,:)
+
+  ALLOCATE(Rs1(SIZE(m), 3))
+  ALLOCATE(Ps1(SIZE(m), 3))
+
+  ! Zera o centro de massas
+  CALL zerar_centroMassas(m, Rs)
+
+  ! Calcula as integrais primeiras
+  ENERGIA = energia_total(G, m, Rs, Ps)
+  LINEAR = momentoLinear_total(Ps)
+  ANGULAR = momento_angular_total(Rs, Ps)
+  M_tot_inv = 1.0_pf / SUM(m)
+  
+  WRITE (*,*) 
+  WRITE (*,*) ' > integrais primeiras iniciais'
+  WRITE (*,*) '   * E   =', ENERGIA
+  WRITE (*,*) '   * J   =', ANGULAR
+  WRITE (*,*) '   * P   =', LINEAR
+  WRITE (*,*) '   * Qcm =', centro_massas(m, Rs)
+
+  ! Calculo do alpha
+  V0 = energia_potencial(G, m, Rs)
+  alpha = 1.0_pf + H / V0
+
+  ! Calculo do beta
+  tensorInercia = tensor_inercia_geral(m, Rs)
+  rot     = sistema_linear3(tensorInercia, ANGULAR)
+  rot_    = sistema_linear3(tensorInercia, J) * alpha
+  
+  S1 = 0.0_pf
+  S2 = 0.0_pf
+
+  DO a = 1, SIZE(m)
+
+    K1a = Ps(a,:) - m(a) * LINEAR * M_tot_inv - m(a) * produto_vetorial(Rs(a,:), rot)
+    S1 = S1 + 0.5_pf * DOT_PRODUCT(K1a, K1a) / m(a)
+
+    K2a = m(a) * P * M_tot_inv + m(a) * produto_vetorial(Rs(a,:), rot_)
+    S2 = S2 + 0.5_pf * DOT_PRODUCT(K2a, K2a) / m(a)
+
+  END DO
+
+  beta = SQRT((-V0 - S2)/S1)
+
+  WRITE (*,*)
+  WRITE (*,*) ' > coeficientes:'
+  WRITE (*,*) '   * alpha =', alpha
+  WRITE (*,*) '   * beta  =', beta
+  WRITE (*,*) '   * S1    =', S1
+  WRITE (*,*) '   * S2    =', S2
+
+  ! Transforma as coordenadas
+  rot_tot = sistema_linear3(tensorInercia, ANGULAR - J * alpha / beta)
+
+  Rs1 = Rs / alpha
+
+  DO a = 1, SIZE(m)
+    Ps1(a,:) = beta * (Ps(a,:) - m(a) * M_tot_inv * (LINEAR - P / beta) - m(a) * produto_vetorial(Rs(a,:), rot_tot))
+  END DO
+
+  Rs = Rs1
+  Ps = Ps1
+
+END SUBROUTINE condicionar_ip_2
+
+! ************************************************************
 !! Gera valores condicionados pelas integrais primeiras
 !
 ! Objetivos:
@@ -401,13 +490,11 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   WRITE (*,'(a)') '  > condicionando... (HENON)'
 
   CALL condicionar_ip (1.0_pf, massas, posicoes, momentos, -0.25_pf, (/0.0_pf,0.0_pf,0.0_pf/), (/0.0_pf,0.0_pf,0.0_pf/))
-    
+
   ! AGORA EU QUERO QUE V ~ -0.5, OU SEJA, V = 2 * V
   EP = energia_potencial(1.0_pf, massas, posicoes)
-  WRITE (*,*) '    * V antes =', EP
   posicoes = posicoes * EP * 2.0_pf
   EP = energia_potencial(1.0_pf, massas, posicoes)
-  WRITE (*,*) '    * V   =', EP
 
   ! AGORA QUERO QUE T/(-V) = 0.5, LOGO v = sqrt(-V/M)
   ! momentos = SQRT(0.5 / 3) / N
@@ -417,6 +504,9 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   momentos = momentos * 1/SQRT(2.0_pf * N * P_normas)
 
   EC = energia_cinetica(massas, momentos)
+  WRITE (*,*)
+  WRITE (*,*) ' > novos valores:'
+  WRITE (*,*) '    * V   =', EP
   WRITE (*,*) '    * T   =', EC
   WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
   WRITE (*,*) '    * Q   =', EC/ABS(EP)

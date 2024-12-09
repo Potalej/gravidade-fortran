@@ -144,16 +144,17 @@ FUNCTION sistema_linear3 (A, b)
 
   IMPLICIT NONE
   REAL(pf) :: A(3,3), b(3)
-  REAL(pf) :: sistema_linear3(3)
+  REAL(pf) :: sistema_linear3(3), matriz(3,3)
   INTEGER  :: PIVOS(3), INFO
 
-  CALL dgesv(3,1,A,3,PIVOS,b,3,INFO)
+  sistema_linear3 = b
+  matriz = A
 
-  IF (INFO == 0) THEN
-    sistema_linear3 = b
-  ELSE IF (INFO < 0) THEN
+  CALL dgesv(3,1,matriz,3,PIVOS,sistema_linear3,3,INFO)
+
+  IF (INFO < 0) THEN
     WRITE (*, '(a)') 'O ', -INFO, '-ÉSIMO PARAMETRO TEM UM VALOR ILEGAL'
-  ELSE
+  ELSE IF (INFO > 0) then
     WRITE (*, '(a)') 'MATRIZ SINGULAR! SEM SOLUCAO'
   ENDIF
 END FUNCTION sistema_linear3
