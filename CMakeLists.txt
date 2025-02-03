@@ -48,11 +48,6 @@ ENDIF()
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
 
-# RANDOM
-add_library(random 
-  "./src/libs/random.f90" 
-)
-
 # Mecanica
 add_library(mecanica 
   "./src/calcs/mecanica.f90" 
@@ -97,9 +92,6 @@ add_library(integracao
   "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90" 
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" 
   
-  # Mikkola (leapfrog regularizado)
-  "./src/calcs/integracao/simpleticos/mikkola.f90" 
-
   # Euler (explicito, tradicional)
   "./src/calcs/integracao/euler_exp.f90" 
   # Euler (implicito, tradicional)
@@ -165,7 +157,6 @@ target_link_libraries(gravidade
   mecanica
   python_lib
   condicionamento
-  random
 )
 
 # ----------------------------------------------------------------------------

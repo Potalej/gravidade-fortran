@@ -120,14 +120,14 @@ SUBROUTINE colidir (ma, Ra, Pa, mb, Rb, Pb)
   u1 = DOT_PRODUCT(ua, Normal_)
   u2 = DOT_PRODUCT(ub, Normal_)
 
-  # se a componente n3_ for nao nula e nao estiver na reta y = -x
+  ! se a componente n3_ for nao nula e nao estiver na reta y = -x
   IF (Normal_(3) .NE. 0.0_pf .AND. Normal_(1) .NE. - Normal_(2)) THEN
     ! Entao para calcular o plano tangente, tome T = (n3_, n3_, -n1_-n_2)
     T(1) =   Normal_(3)
     T(2) =   Normal_(3)
     T(3) = - Normal_(1) - Normal_(2)
   
-  # caso contrario, precisamos de um vetor T diferente
+  ! caso contrario, precisamos de um vetor T diferente
   ELSE
     ! para calcular o plano tangente, tome T = (-n2_, n1_, 0)
     T(1) = - Normal_(2)
