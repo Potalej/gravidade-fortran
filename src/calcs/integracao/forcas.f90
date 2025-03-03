@@ -1,6 +1,7 @@
 MODULE funcoes_forca
 
     USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+    USE OMP_LIB
     IMPLICIT NONE
     PUBLIC
 
@@ -14,39 +15,36 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2)
   REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
   
   REAL(pf), DIMENSION(dim) :: Fab, Rab
-  INTEGER :: a, b
+  INTEGER :: a, b, tid
   REAL(pf) :: distancia, distancia_inv
   REAL(pf), DIMENSION(N, dim) :: forcas_par, forcas_local
   
-  forcas_par(:,:) = 0.0_pf
+  forcas_par = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas_par) PRIVATE(forcas_local, Fab, Rab, distancia, distancia_inv, a, b)
-    forcas_local(:,:) = 0.0_pf
-    !$OMP DO
-    DO a = 2, N
-      DO b = 1, a-1
-        ! distancia entre os corpos
-        Rab = R(b,:) - R(a,:)
-        distancia = norm2(Rab)
-        IF (potsoft .NE. 0) THEN
-          distancia = SQRT(distancia*distancia + potsoft2)
-        ENDIF
-        distancia_inv = 1.0_pf/distancia
-        distancia_inv = distancia_inv**3
+  !$OMP PARALLEL SHARED(forcas_par) PRIVATE(Fab, Rab, distancia, distancia_inv, a, b, tid)
+  !$OMP DO
+  DO a = 1, N
+    DO b = 1, N
+      IF (a==b) THEN
+        CYCLE
+      ENDIF
+      ! distancia entre os corpos
+      Rab = R(b,:) - R(a,:)
+      distancia = norm2(Rab)
+      IF (potsoft .NE. 0) THEN
+        distancia = SQRT(distancia*distancia + potsoft2)
+      ENDIF
+      distancia_inv = 1.0_pf/distancia
+      distancia_inv = distancia_inv**3
 
-        ! forca entre os corpos a e b
-        Fab = G * m(a) * m(b) * Rab * distancia_inv
-        
-        ! Adiciona na matriz
-        forcas_local(a,:) = forcas_local(a,:) + Fab
-        forcas_local(b,:) = forcas_local(b,:) - Fab
-      END DO
+      ! forca entre os corpos a e b
+      Fab = G * m(a) * m(b) * Rab * distancia_inv
+      
+      ! Adiciona na matriz      
+      forcas_par(a,:) = forcas_par(a,:) + Fab
     END DO
-    !$OMP END DO
-
-    !$OMP CRITICAL
-      forcas_par = forcas_par + forcas_local
-    !$OMP END CRITICAL
+  END DO
+  !$OMP END DO
   !$OMP END PARALLEL
 
 END FUNCTION forcas_par

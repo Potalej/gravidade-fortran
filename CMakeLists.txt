@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.1
+project("gravidade" VERSION 0.2.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -47,6 +47,11 @@ ENDIF()
 # ----------------------------------------------------------------------------
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
+
+# ALEATORIO
+add_library(aleatorio 
+  "./src/libs/aleatorio.f90" 
+)
 
 # Mecanica
 add_library(mecanica 
@@ -157,6 +162,7 @@ target_link_libraries(gravidade
   mecanica
   python_lib
   condicionamento
+  aleatorio
 )
 
 # ----------------------------------------------------------------------------
