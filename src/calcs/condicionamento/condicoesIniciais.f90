@@ -5,7 +5,7 @@
 !   Funcoes para o condicionamento de particulas.
 ! 
 ! Modificado:
-!   15 de marco de 2024
+!   15 de janeiro de 2025
 ! 
 ! Autoria:
 !   oap
@@ -14,6 +14,7 @@ MODULE condicoesIniciais
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   USE mecanica
   USE auxiliares
+  USE aleatorio
   IMPLICIT NONE
 CONTAINS
 
@@ -24,32 +25,65 @@ CONTAINS
 !   Gera vetores 3d utilizados para as posicoes e velocidades.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   15 de janeiro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-FUNCTION gerar_vetores3d (N, min, max)
+FUNCTION gerar_vetores3d (N, min, max, vid, vire, vira)
 
-  INTEGER, INTENT(IN)      :: N
+  INTEGER, INTENT(INOUT)   :: N
   REAL(pf), INTENT(IN)     :: min, max
   REAL(pf), DIMENSION(N,3) :: gerar_vetores3d
-  INTEGER, DIMENSION(N,3)  :: ajuste
   INTEGER :: i, j
   REAL(pf) :: maior_valor = 1.0_pf
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
 
-  ajuste(:,:) = min
-
-  CALL RANDOM_SEED()
-  CALL RANDOM_NUMBER(gerar_vetores3d)
-
-  ! Agora condiciona no intervalo
-  gerar_vetores3d = gerar_vetores3d * (max - min + 1) + ajuste
-  
-  ! Arruma
-  gerar_vetores3d = TRANSPOSE(RESHAPE(gerar_vetores3d, (/3,N/)))
+  SELECT CASE (TRIM(vid))
+    ! Uniforme (0,1)
+    CASE ("uniforme"); CALL uniforme(gerar_vetores3d, N, 0.0_pf, min, max, vire, vira)
+    ! Normal (0,1)
+    CASE ("normal"); CALL normal(gerar_vetores3d, N, 0.0_pf, min, max, vire, vira)
+    ! Cauchy
+    CASE ("cauchy"); CALL cauchy(gerar_vetores3d, N, 0.0_pf, min, max, vire, vira)
+  END SELECT
 
 END FUNCTION gerar_vetores3d
+
+! ************************************************************
+!! Gera vetores 3d intervalado
+!
+! Objetivos:
+!   Gera vetores 3d intervalados, ou seja, com uma distancia minima
+!   entre eles.
+!
+! Modificado:
+!   15 de janeiro de 2025
+!
+! Autoria:
+!   oap
+! 
+FUNCTION gerar_vetores3d_intervalado (N, min, max, distmin, vid, vire, vira)
+
+  INTEGER, INTENT(INOUT)   :: N
+  REAL(pf), INTENT(IN)     :: min, max
+  REAL(pf), DIMENSION(N,3) :: gerar_vetores3d_intervalado
+  INTEGER :: i, j
+  REAL(pf), INTENT(IN) :: distmin ! distancia minima
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
+
+  SELECT CASE (TRIM(vid))
+    ! Uniforme (0,1)
+    CASE ("uniforme"); CALL uniforme(gerar_vetores3d_intervalado, N, distmin, min, max, vire, vira)
+    ! Normal (0,1)
+    CASE ("normal"); CALL normal(gerar_vetores3d_intervalado, N, distmin, min, max, vire, vira)
+    ! Cauchy
+    CASE ("cauchy"); CALL cauchy(gerar_vetores3d_intervalado, N, distmin, min, max, vire, vira)
+  END SELECT
+
+END FUNCTION gerar_vetores3d_intervalado
 
 ! ************************************************************
 !! Gera vetor de massas
@@ -68,7 +102,7 @@ FUNCTION gerar_massas (N, min, max)
   INTEGER, INTENT(IN)    :: N
   REAL(pf), INTENT(IN)   :: min, max
   REAL(pf), DIMENSION(N) :: gerar_massas
-  INTEGER                :: ajuste(N)
+  REAL(pf)               :: ajuste(N)
 
   ajuste(:) = min
 
@@ -92,12 +126,15 @@ END FUNCTION gerar_massas
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE gerarValores (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+SUBROUTINE gerarValores (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, vid, vire, vira)
 
   IMPLICIT NONE
-  INTEGER, INTENT(IN)      :: N
-  REAL(pf), DIMENSION(2), INTENT(IN) :: int_posicoes, int_momentos, int_massas
+  INTEGER, INTENT(INOUT)      :: N
+  REAL(pf), DIMENSION(2), INTENT(IN) :: int_momentos, int_massas
+  REAL(pf), DIMENSION(3), INTENT(IN) :: int_posicoes
   REAL(pf), INTENT(INOUT) :: posicoes(N,3), momentos(N,3), massas(N)
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
 
   ! Gera massas
   WRITE (*,*) '    * gerando massas'
@@ -105,11 +142,13 @@ SUBROUTINE gerarValores (N, massas, posicoes, momentos, int_posicoes, int_moment
 
   ! Gera as posições
   WRITE (*,*) '    * gerando posicoes'
-  posicoes = gerar_vetores3d(N, int_posicoes(1), int_posicoes(2))
+  WRITE (*,*) '       * Distribuicao:', vid, vire, vira, int_posicoes(3)
+  posicoes = gerar_vetores3d_intervalado(N, int_posicoes(1), int_posicoes(2), int_posicoes(3), vid, vire, vira)
 
   ! Gera os momentos
   WRITE (*,*) '    * gerando momentos'
-  momentos = gerar_vetores3d(N, int_momentos(1), int_momentos(2))
+  WRITE (*,*) '       * Distribuicao:', vid, vire, vira
+  momentos = gerar_vetores3d(N, int_momentos(1), int_momentos(2), vid, 'cubo                ', vira)
 
 END SUBROUTINE gerarValores
 
@@ -410,37 +449,40 @@ END SUBROUTINE condicionar_ip_2
 !   informados.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   03 de fevereiro de 2024
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE gerar_condicionado_ip (G, N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, H, J, P)
+SUBROUTINE gerar_condicionado_ip (G, N, massas, pos, mom, int_pos, int_mom, int_massas, H, J, P, vid, vire, vira)
 
   IMPLICIT NONE
-  INTEGER, INTENT(IN)     :: N
-  REAL(pf), DIMENSION(2), INTENT(IN) :: int_posicoes, int_momentos, int_massas
+  INTEGER, INTENT(INOUT)  :: N
+  REAL(pf), DIMENSION(2), INTENT(IN) :: int_mom, int_massas
+  REAL(pf), DIMENSION(3), INTENT(IN) :: int_pos
   REAL(pf), INTENT(INOUT) :: G, H, J(3), P(3)
-  REAL(pf), INTENT(INOUT), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf), INTENT(INOUT), allocatable :: massas(:), pos(:,:), mom(:,:)
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
 
   WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS"
   
   ! Gera os valores
   WRITE (*,'(a)') '  > gerando valores...'
   ALLOCATE(massas (N))
-  ALLOCATE(posicoes (N, 3))
-  ALLOCATE(momentos (N, 3))
-  CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+  ALLOCATE(pos (N, 3))
+  ALLOCATE(mom (N, 3))
+  CALL gerarValores(N, massas, pos, mom, int_pos, int_mom, int_massas, vid, vire, vira)
 
   ! Condiciona
   WRITE (*,'(a)') '  > condicionando...'
-  CALL condicionar_ip(G, massas, posicoes, momentos, H, J, P)
+  CALL condicionar_ip(G, massas, pos, mom, H, J, P)
 
   ! Exibe as integrais primeiras do sistema
-  WRITE (*,*) '    * H   =', energia_total(G,massas,posicoes,momentos) 
-  WRITE (*,*) '    * Rcm =', centro_massas(massas,posicoes) 
-  WRITE (*,*) '    * P   =', momentoLinear_total(momentos) 
-  WRITE (*,*) '    * J   =', momento_angular_total(posicoes,momentos) 
+  WRITE (*,*) '    * H   =', energia_total(G,massas,pos,mom) 
+  WRITE (*,*) '    * Rcm =', centro_massas(massas,pos) 
+  WRITE (*,*) '    * P   =', momentoLinear_total(mom) 
+  WRITE (*,*) '    * J   =', momento_angular_total(pos,mom) 
 
   WRITE (*,'(a)') '  > condicoes iniciais geradas!'
   WRITE (*,*)
@@ -456,20 +498,26 @@ END SUBROUTINE gerar_condicionado_ip
 !   informados.
 !
 ! Modificado:
-!   10 de novembro de 2024
+!   03 de fevereiro de 2024
 !
 ! Autoria:
 !   oap
-! 
-! DE FATO, NAO USAREI G, H, J E P
-SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+!
+SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, vid, vire, vira)
   IMPLICIT NONE
-  INTEGER, INTENT(IN) :: N
-  REAL(pf), DIMENSION(2), INTENT(IN) :: int_posicoes, int_momentos, int_massas
+  INTEGER, INTENT(INOUT) :: N
+  REAL(pf), DIMENSION(2), INTENT(IN) :: int_momentos, int_massas
+  REAL(pf), DIMENSION(3), INTENT(IN) :: int_posicoes
   REAL(pf), INTENT(INOUT), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
   REAL(pf) :: beta, EP, EC, Qvir ! AARSETH
   REAL(pf) :: P_normas = 0.0_pf ! Soma dos quadrados das normas dos momentos lineares
-  integer :: a, m
+  REAL(pf) :: E, dist_min, pv ! energia, disstancia minima, proporcao de virial
+  integer :: a, b, m
+
+  E = -0.25_pf ! Energia total final
+  pv = 0.5_pf  ! Raio de virial
 
   WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS (HENON)"
   
@@ -478,7 +526,7 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   ALLOCATE(massas (N))
   ALLOCATE(posicoes (N, 3))
   ALLOCATE(momentos (N, 3))
-  CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas)
+  CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, vid, vire, vira)
 
   m = SUM(massas)
   do a = 1, N
@@ -489,19 +537,28 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   ! Condiciona
   WRITE (*,'(a)') '  > condicionando... (HENON)'
 
-  CALL condicionar_ip (1.0_pf, massas, posicoes, momentos, -0.25_pf, (/0.0_pf,0.0_pf,0.0_pf/), (/0.0_pf,0.0_pf,0.0_pf/))
+  CALL condicionar_ip (1.0_pf, massas, posicoes, momentos, E, (/0.0_pf,0.0_pf,0.0_pf/), (/0.0_pf,0.0_pf,0.0_pf/))
 
   ! AGORA EU QUERO QUE V ~ -0.5, OU SEJA, V = 2 * V
   EP = energia_potencial(1.0_pf, massas, posicoes)
-  posicoes = posicoes * EP * 2.0_pf
+  ! posicoes = posicoes * EP * 2.0_pf
+  posicoes = posicoes * EP / (E * 2.0_pf) 
   EP = energia_potencial(1.0_pf, massas, posicoes)
 
   ! AGORA QUERO QUE T/(-V) = 0.5, LOGO v = sqrt(-V/M)
-  ! momentos = SQRT(0.5 / 3) / N
-  DO a = 1, N
-    P_normas = P_normas + NORM2(momentos(a,:))**2
+  EC = energia_cinetica(massas, momentos)
+  momentos = momentos * SQRT(- pv * EP / EC)
+
+  dist_min = 10000.0_pf
+  DO a = 2, N
+    DO b = 1, a-1
+      IF (dist_min .gt. NORM2(posicoes(a,:) - posicoes(b,:))) THEN
+        dist_min = NORM2(posicoes(a,:) - posicoes(b,:))
+      ENDIF
+    END DO
   END DO
-  momentos = momentos * 1/SQRT(2.0_pf * N * P_normas)
+
+  WRITE(*,*) 'Menor distancia:', dist_min
 
   EC = energia_cinetica(massas, momentos)
   WRITE (*,*)
@@ -509,6 +566,99 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   WRITE (*,*) '    * V   =', EP
   WRITE (*,*) '    * T   =', EC
   WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
+  WRITE (*,*) '    * qm  =', dist_min
+  WRITE (*,*) '    * I   =', momento_inercia(massas,posicoes)
+  WRITE (*,*) '    * Q   =', EC/ABS(EP)
+  WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2.0_pf * EP)
+  WRITE (*,*) '    * P   =', momentoLinear_total(momentos)
+  WRITE (*,*) '    * J   =', momento_angular_total(posicoes, momentos)
+
+END SUBROUTINE
+
+! ************************************************************
+!! Gera valores condicionados pelo modelo de Henon usando
+!  o algoritmo de Aarseth
+!
+! Objetivos:
+!   Gera vetores aleatorios e os condicionado para valores
+!   informados.
+!
+! Modificado:
+!   14 de janeiro de 2025
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE gerar_condicionado_aarseth (N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, vid, vire, vira)
+  IMPLICIT NONE
+  INTEGER, INTENT(INOUT) :: N
+  REAL(pf), DIMENSION(2), INTENT(IN) :: int_momentos, int_massas
+  REAL(pf), DIMENSION(3), INTENT(IN) :: int_posicoes
+  REAL(pf), INTENT(INOUT), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  CHARACTER(20), INTENT(IN) :: vid, vire ! vi_dist, vi_regiao
+  REAL(pf), INTENT(IN)  :: vira ! vi_raio
+  REAL(pf) :: beta, Qv, EP, EC, Qvir ! AARSETH
+  REAL(pf) :: P_normas = 0.0_pf ! Soma dos quadrados das normas dos momentos lineares
+  REAL(pf) :: E, dist_min, pv ! energia, disstancia minima, proporcao de virial
+  integer :: a, b, m
+
+  E = -0.25_pf
+  pv = 0.5_pf
+
+  WRITE (*,'(a)') "GERACAO DAS CONDICOES INICIAIS (AARSETH)"
+  
+  ! Gera os valores
+  WRITE (*,'(a)') '  > gerando valores...'
+  ALLOCATE(massas (N))
+  ALLOCATE(posicoes (N, 3))
+  ALLOCATE(momentos (N, 3))
+  CALL gerarValores(N, massas, posicoes, momentos, int_posicoes, int_momentos, int_massas, vid, vire, vira)
+
+  m = SUM(massas)
+  do a = 1, N
+    massas(a) = (1.0_pf / N)
+  end do
+  WRITE (*,*) "M:", SUM(massas)
+
+  ! Condiciona
+  WRITE (*,'(a)') '  > condicionando... (AARSETH)'
+
+  CALL condicionar_ip (1.0_pf, massas, posicoes, momentos, E, (/0.0_pf,0.0_pf,0.0_pf/), (/0.0_pf,0.0_pf,0.0_pf/))
+
+  WRITE (*,*) '    * I   =', momento_inercia(massas,posicoes)
+
+  EP = energia_potencial(1.0_pf, massas, posicoes)
+  EC = energia_cinetica(massas, momentos)
+
+  ! agora aplicamos o metodo de Aarseth
+  Qvir = 0.5_pf
+  Qv = SQRT(Qvir * ABS(EP)/EC)
+  momentos = momentos * Qv
+  beta = (1.0_pf - Qvir) * EP / E
+  posicoes = posicoes * beta
+  momentos = momentos / SQRT(beta)
+
+  dist_min = 10000.0_pf
+  DO a = 2, N
+    DO b = 1, a-1
+      IF (dist_min .gt. NORM2(posicoes(a,:) - posicoes(b,:))) THEN
+        dist_min = NORM2(posicoes(a,:) - posicoes(b,:))
+      ENDIF
+    END DO
+  END DO
+
+  WRITE(*,*) 'Menor distancia:', dist_min
+
+  EP = energia_potencial(1.0_pf, massas, posicoes)
+  EC = energia_cinetica(massas, momentos)
+  WRITE (*,*)
+  WRITE (*,*) ' > novos valores:'
+  WRITE (*,*) '    * V   =', EP
+  WRITE (*,*) '    * T   =', EC
+  WRITE (*,*) '    * H   =', energia_total(1.0_pf,massas,posicoes,momentos) 
+  WRITE (*,*) '    * qm  =', dist_min
+  WRITE (*,*) '    * I   =', momento_inercia(massas,posicoes)
+  WRITE (*,*) '    * D   =', momento_dilatacao(posicoes,momentos)
   WRITE (*,*) '    * Q   =', EC/ABS(EP)
   WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2.0_pf * EP)
   WRITE (*,*) '    * P   =', momentoLinear_total(momentos)

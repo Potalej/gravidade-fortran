@@ -20,6 +20,7 @@ MODULE integrador
   USE mecanica
   USE correcao
   USE colisao
+  USE octree
   IMPLICIT NONE
   PRIVATE
   PUBLIC integracao
@@ -44,14 +45,19 @@ MODULE integrador
     INTEGER  :: cormnt ! max num tentativas
 
     ! Se vai ou nao colidir
-    LOGICAL :: colidir = .FALSE.
-    REAL(pf) :: colmd ! max dist colisoes
+    LOGICAL       :: colidir = .FALSE.
+    CHARACTER(10) :: colisoes_modo
+    REAL(pf)      :: colmd ! max dist colisoes
+    REAL(pf), ALLOCATABLE :: raios(:)
 
     ! Se vai ou nao usar paralelizacao
     LOGICAL :: paralelo = .FALSE.
 
     ! Vetor de forcas
     PROCEDURE(forcas_funcbase), POINTER, NOPASS :: forcas_funcao => NULL()
+
+    ! Arvore octree
+    TYPE(arvore_octo), ALLOCATABLE :: arvore
 
     CONTAINS
       PROCEDURE :: Iniciar, aplicarNVezes, metodo, forcas
@@ -89,7 +95,8 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   class(integracao), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h
-  LOGICAL,INTENT(IN) :: corrigir, colidir, paralelo
+  LOGICAL,INTENT(IN) :: corrigir, paralelo
+  CHARACTER(10) :: colidir
   REAL(pf) :: corme, potsoft, colmd
   INTEGER :: cormnt
   INTEGER :: a, i
@@ -122,8 +129,18 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % cormnt = cormnt
 
   ! Se vai ou nao colidir
-  self % colidir = colidir
+  self % colisoes_modo = colidir
+  IF (TRIM(colidir) == 'F') THEN
+    self % colidir = .FALSE.
+  ELSE
+    self % colidir = .TRUE.
+  ENDIF
+
   self % colmd = colmd
+  ALLOCATE(self % raios(self % N))
+  DO a = 1, self % N
+    self % raios(a) = self % colmd * massas(a)**(1.0_pf / 3.0_pf)
+  END DO
 
   ! Codigo paralelo
   self % paralelo = paralelo
@@ -200,7 +217,8 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
 
     ! se tiver colisoes, aplica
     IF (self % colidir) THEN
-      CALL verificar_e_colidir(self % m, R1, P1, self % colmd, self % paralelo)
+      CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
+                               self%raios, self%arvore, self%colisoes_modo)
     ENDIF
   END DO
 

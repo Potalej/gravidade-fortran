@@ -68,7 +68,23 @@ SUBROUTINE simular_sorteio (arquivo)
       momentos,  &
       configs%int_posicoes, & ! Intervalo de posicoes
       configs%int_momentos, & ! Intervalo de momentos
-      configs%int_massas)     ! Intervalo de massas 
+      configs%int_massas,   & ! Intervalo de massas
+      configs%vi_dist,      & ! Distribuicao
+      configs%vi_regiao,    & ! Regiao
+      configs%vi_raio)        ! Raio
+      
+  ELSE IF (configs%modo == "sorteio_aarseth") THEN
+    ! Gera conforme as configuracoes de Henon via metodo de Aarseth
+    CALL gerar_condicionado_aarseth(configs%N, &
+      massas,    &
+      posicoes,  &
+      momentos,  &
+      configs%int_posicoes, & ! Intervalo de posicoes
+      configs%int_momentos, & ! Intervalo de momentos
+      configs%int_massas,   & ! Intervalo de massas
+      configs%vi_dist,      & ! Distribuicao
+      configs%vi_regiao,    & ! Regiao
+      configs%vi_raio)        ! Raio
   ELSE
     ! Gera os valores a partir das integrais primeiras
     CALL gerar_condicionado_ip(configs%G, &
@@ -81,7 +97,10 @@ SUBROUTINE simular_sorteio (arquivo)
         configs%int_massas,   & ! Intervalo de massas 
         configs%Etot,         & ! Energia total
         configs%Jtot,         & ! Momento angular total
-        configs%Ptot )          ! Momento angular total
+        configs%Ptot,         & ! Momento linear total
+        configs%vi_dist,      & ! Distribuicao
+        configs%vi_regiao,    & ! Regiao
+        configs%vi_raio)        ! Raio
   ENDIF
 
   CALL diretorio_out()
@@ -181,7 +200,22 @@ SUBROUTINE sorteio_salvar (dir)
       momentos,  &
       configs%int_posicoes, & ! Intervalo de posicoes
       configs%int_momentos, & ! Intervalo de momentos
-      configs%int_massas)     ! Intervalo de massas 
+      configs%int_massas,   & ! Intervalo de massas
+      configs%vi_dist,      & ! Distribuicao
+      configs%vi_regiao,    & ! Regiao
+      configs%vi_raio)        ! Raio
+  ELSE IF (configs%modo == "sorteio_aarseth") THEN
+    ! Gera conforme as configuracoes de Henon via metodo de Aarseth
+    CALL gerar_condicionado_aarseth(configs%N, &
+      massas,    &
+      posicoes,  &
+      momentos,  &
+      configs%int_posicoes, & ! Intervalo de posicoes
+      configs%int_momentos, & ! Intervalo de momentos
+      configs%int_massas,   & ! Intervalo de massas
+      configs%vi_dist,      & ! Distribuicao
+      configs%vi_regiao,    & ! Regiao
+      configs%vi_raio)        ! Raio
   ELSE
     ! Gera os valores a partir das integrais primeiras
     CALL gerar_condicionado_ip(configs%G, &
@@ -194,7 +228,10 @@ SUBROUTINE sorteio_salvar (dir)
         configs%int_massas,   & ! Intervalo de massas 
         configs%Etot,         & ! Energia total
         configs%Jtot,         & ! Momento angular total
-        configs%Ptot )          ! Momento angular total
+        configs%Ptot,         & ! Momento linear total
+        configs%vi_dist,      & ! Distribuicao
+        configs%vi_regiao,    & ! Regiao
+        configs%vi_raio)        ! Raio
   ENDIF
 
   ! Gera o nome
@@ -225,7 +262,7 @@ SUBROUTINE sorteio_salvar (dir)
     configs % corretor,   &
     configs % corretor_margem_erro, &
     configs % corretor_max_num_tentativas, &
-    configs % colisoes,   &
+    configs % colisoes_modo,   &
     configs % colisoes_max_distancia,   &
     configs % passos_antes_salvar, &
     configs % paralelo)

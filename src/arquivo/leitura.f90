@@ -6,7 +6,7 @@
 !   alguns metodos "ajudadores" e outros prontos para uso.
 ! 
 ! Modificado:
-!   15 de marco de 2024
+!   16 de marco de 2025
 ! 
 ! Autoria:
 !   oap
@@ -28,7 +28,8 @@ MODULE leitura
     ! Constantes
     REAL(pf) :: G
     ! Intervalos para geracao
-    REAL(pf), DIMENSION(2) :: int_massas, int_posicoes, int_momentos
+    REAL(pf), DIMENSION(2) :: int_massas, int_momentos
+    REAL(pf), DIMENSION(3) :: int_posicoes
     ! Integrador numerico
     CHARACTER(10) :: integrador
     ! Modo
@@ -49,11 +50,17 @@ MODULE leitura
     INTEGER  :: corretor_max_num_tentativas
 
     ! Uso de colisoes
-    LOGICAL  :: colisoes
+    LOGICAL        :: colisoes
+    CHARACTER(10)  :: colisoes_modo
     REAL(pf) :: colisoes_max_distancia
 
     ! Uso de paralelisacao
     LOGICAL  :: paralelo
+
+    ! Geracao dos valores iniciais
+    CHARACTER(20) :: vi_dist
+    CHARACTER(20) :: vi_regiao
+    REAL(pf)      :: vi_raio
 
     ! Massas, posicoes e momentos
     REAL(pf), allocatable :: R(:,:), P(:,:), massas(:)
@@ -73,7 +80,7 @@ CONTAINS
 !   Le um preset de condicoes iniciais para geracao (sorteio).
 !
 ! Modificado:
-!   26 de maio de 2024
+!   03 de fevereiro de 2025
 !
 ! Autoria:
 !   oap
@@ -151,8 +158,21 @@ SUBROUTINE config (self, arquivo)
   READ(unidade,*) ! Comentario  
 
   ! Colisoes
-  READ(unidade,*) atributo, self % colisoes
+  READ(unidade,*) atributo, self % colisoes_modo
+  IF (TRIM(self % colisoes_modo) == 'F') THEN
+    self % colisoes = .FALSE.
+  ELSE
+    self % colisoes = .TRUE.
+  ENDIF
   READ(unidade,*) atributo, self % colisoes_max_distancia
+
+  READ(unidade,*) ! Espaco
+  READ(unidade,*) ! Comentario  
+
+  ! Valores iniciais
+  READ(unidade,*) atributo, self % vi_dist
+  READ(unidade,*) atributo, self % vi_regiao
+  READ(unidade,*) atributo, self % vi_raio
 
   CLOSE(2)
 
@@ -243,7 +263,12 @@ SUBROUTINE valores_iniciais (self, arquivo)
   READ(unidade,*) ! Comentario
 
   ! Colisoes
-  READ(unidade,*) atributo, self % colisoes 
+  READ(unidade,*) atributo, self % colisoes_modo
+  IF (TRIM(self % colisoes_modo) == 'F') THEN
+    self % colisoes = .FALSE.
+  ELSE
+    self % colisoes = .TRUE.
+  ENDIF
   READ(unidade,*) atributo, self % colisoes_max_distancia
 
   READ(unidade,*) ! Espaco

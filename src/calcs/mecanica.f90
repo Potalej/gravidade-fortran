@@ -146,4 +146,50 @@ FUNCTION energia_total (G, m, R, P)
   energia_total = energia_cinetica(m,P) + energia_potencial(G,m,R)
 END FUNCTION energia_total
 
+! ************************************************************
+!! Momento de dilatacao
+!
+! Objetivos:
+!   Calcula o momento de dilatacao.
+!
+! Modificado:
+!   05 de janeiro de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION momento_dilatacao (R, P)
+  IMPLICIT NONE
+  REAL(pf) :: R(:,:), P(:,:)
+  REAL(pf) :: momento_dilatacao
+  INTEGER  :: i
+  momento_dilatacao=0.0_pf
+  DO i=1, SIZE(R,1)
+    momento_dilatacao = momento_dilatacao + DOT_PRODUCT(R(i,:),P(i,:))
+  END DO
+END FUNCTION momento_dilatacao
+
+! ************************************************************
+!! Momento de inercia
+!
+! Objetivos:
+!   Calcula o momento de inercia.
+!
+! Modificado:
+!   07 de janeiro de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION momento_inercia (m, R)
+  IMPLICIT NONE
+  REAL(pf) :: m(:), R(:,:)
+  REAL(pf) :: momento_inercia
+  INTEGER  :: i
+  momento_inercia=0.0_pf
+  DO i=1, SIZE(R,1)
+    momento_inercia = momento_inercia + m(i) * DOT_PRODUCT(R(i,:),R(i,:))
+  END DO
+END FUNCTION momento_inercia
+
 END MODULE mecanica

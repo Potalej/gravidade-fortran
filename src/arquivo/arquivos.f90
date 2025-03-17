@@ -363,7 +363,8 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, pas
   INTEGER, INTENT(IN)          :: N, t0, t1, passos_inst
   REAL(pf), INTENT(IN)         :: G, h, potsoft
   CHARACTER(len=*), INTENT(IN) :: metodo
-  LOGICAL                      :: cor, col ! correcao, colisao
+  LOGICAL                      :: cor ! correcao
+  CHARACTER(10)                :: col ! colisao
   REAL(pf)                     :: corme, colmd
   INTEGER                      :: cormnt
   LOGICAL                      :: fp ! forcas paralelas
@@ -634,7 +635,8 @@ SUBROUTINE salvar_sorteio (onde,subdir,arq,nome,G,massas,R,P,t0,tf,timestep,pots
   CHARACTER(LEN=*)      :: onde, subdir, arq, metodo, nome
   CHARACTER(LEN=256)    :: dir_arquivo 
   CHARACTER(LEN=3)      :: num_arquivo
-  LOGICAL               :: cor, colisoes, diretorio_existe, arquivo_existe
+  LOGICAL               :: cor, diretorio_existe, arquivo_existe
+  CHARACTER(10)         :: colisoes
   REAL(pf)              :: G, timestep, potsoft, colmd
   INTEGER               :: t0, tf
   REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)

@@ -49,7 +49,8 @@ CONTAINS
 SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
   IMPLICIT NONE
   CLASS(integracao_rk4), INTENT(INOUT) :: self
-  LOGICAL,INTENT(IN) :: corrigir, colidir, paralelo
+  LOGICAL,INTENT(IN) :: corrigir, paralelo
+  CHARACTER(10) :: colidir
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd
   INTEGER :: a, i
@@ -75,7 +76,12 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % cormnt = cormnt
 
   ! Se vai ou nao colidir
-  self % colidir = colidir
+  self % colisoes_modo = colidir
+  IF (TRIM(colidir) == 'F') THEN
+    self % colidir = .FALSE.
+  ELSE
+    self % colidir = .TRUE.
+  ENDIF
   self % colmd = colmd
   
   ! Inicia o base do RK 

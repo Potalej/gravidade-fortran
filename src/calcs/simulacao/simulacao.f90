@@ -90,6 +90,7 @@ MODULE simulacao
     REAL(pf) :: corrigir_margem_erro = 0.1_pf
     INTEGER :: corrigir_max_num_tentativas = 5
     REAL(pf) :: colisoes_max_distancia = 0.1
+    CHARACTER(10) :: colisoes_modo
 
     !> Arquivo
     TYPE(arquivo) :: Arq
@@ -175,6 +176,7 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
 
   ! Salva as colisoes
   self % colidir  = configs%colisoes
+  self % colisoes_modo = configs%colisoes_modo
   colmd = (0.75_pf / (PI * configs%colisoes_max_distancia))**(1.0_pf/3.0_pf)
   self % colisoes_max_distancia = colmd
   WRITE(*,*) 'COLMD: ', colmd
@@ -200,7 +202,7 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % corrigir, &
   self % corrigir_margem_erro, &
   self % corrigir_max_num_tentativas, &
-  self % colidir,  &
+  self % colisoes_modo,  &
   configs%colisoes_max_distancia,  &
   self % passos_antes_salvar, &
   configs % paralelo)
@@ -222,7 +224,7 @@ SUBROUTINE inicializar_metodo (self)
   CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
     self%t0, self%tf, self % passos_antes_salvar, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia, self % paralelo)
+    self%colisoes_modo, self%colisoes_max_distancia, self % paralelo)
 
   ! Condicoes iniciais
   CALL self % Arq % escrever((/self % R, self % P/))
@@ -256,7 +258,7 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
-  REAL(pf) :: E
+  REAL(pf) :: E, Icm, Ec
   INTEGER  :: timestep_inv
 
   ! Definicao dinamica do metodo
@@ -284,7 +286,7 @@ SUBROUTINE rodar (self, qntdPassos)
   ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_max_distancia, self%paralelo)
+    self%colisoes_modo, self%colisoes_max_distancia, self%paralelo)
 
   ! Condicoes iniciais
   R1 = self % R
@@ -309,7 +311,9 @@ SUBROUTINE rodar (self, qntdPassos)
 
     IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
       E = energia_total(self % G, self % M, R1, P1)
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', E, ' / Tempo: ', tempo_total
+      Ec = energia_cinetica(self % M, P1)
+      Icm = momento_inercia(self % M, R1)
+      WRITE (*,*) '     -> Passo:', i, ' / Energia:', E, ' / Virial:', Ec/(Ec - E), ' / I: ', Icm, ' / Tempo: ', tempo_total
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*timestep_inv, tempo_total)
     ENDIF
 

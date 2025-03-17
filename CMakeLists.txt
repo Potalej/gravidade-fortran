@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.2.1
+project("gravidade" VERSION 0.3.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -53,12 +53,17 @@ add_library(aleatorio
   "./src/libs/aleatorio.f90" 
 )
 
+# ARVORE BINARIA
+add_library(octree 
+  "./src/libs/octree.f90"
+)
+
 # Mecanica
 add_library(mecanica 
   "./src/calcs/mecanica.f90" 
   "./src/calcs/auxiliares.f90" 
   "./src/calcs/mecanica/correcao.f90" 
-  "./src/calcs/mecanica/colisao.f90" 
+  "./src/calcs/mecanica/colisao.f90"
 )
 target_link_libraries(mecanica
   ${OpenBLAS_LIB} # utilizada no corretor
@@ -163,6 +168,7 @@ target_link_libraries(gravidade
   python_lib
   condicionamento
   aleatorio
+  octree
 )
 
 # ----------------------------------------------------------------------------
