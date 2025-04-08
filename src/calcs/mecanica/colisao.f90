@@ -186,7 +186,7 @@ END SUBROUTINE verificar_e_colidir_direto
 !   particulas A e B.
 !
 ! Modificado:
-!   16 de marco de 2025
+!   08 de abril de 2025
 !
 ! Autoria:
 !   oap
@@ -194,51 +194,22 @@ END SUBROUTINE verificar_e_colidir_direto
 SUBROUTINE colidir (ma, Ra, Pa, mb, Rb, Pb)
   IMPLICIT NONE
   REAL(pf) :: ma, mb, Ra(3), Pa(3), Rb(3), Pb(3)
-  REAL(pf) :: ua(3), ub(3), Normal(3), Normal_(3), u1, u2, ua_p(3), ub_p(3)
-  REAL(pf) :: S(3), T(3)
-
-  ! separa as velocidades
-  ua = Pa/ma
-  ub = Pb/mb
+  REAL(pf) :: Normal(3), Normal_(3), u1, u2, k
 
   ! vetor normal e normal unitario
   Normal = Rb - Ra
   Normal_ = Normal/norm2(Normal)
 
-  ! calcula a componente tangente
-  u1 = DOT_PRODUCT(ua, Normal_)
-  u2 = DOT_PRODUCT(ub, Normal_)
+  ! calcula a componente normal
+  u1 = DOT_PRODUCT(Pa, Normal_) / ma
+  u2 = DOT_PRODUCT(Pb, Normal_) / mb
 
-  ! se a componente n3_ for nao nula e nao estiver na reta y = -x
-  IF (Normal_(3) .NE. 0.0_pf .AND. Normal_(1) .NE. - Normal_(2)) THEN
-    ! Entao para calcular o plano tangente, tome T = (n3_, n3_, -n1_-n_2)
-    T(1) =   Normal_(3)
-    T(2) =   Normal_(3)
-    T(3) = - Normal_(1) - Normal_(2)
-  
-  ! caso contrario, precisamos de um vetor T diferente
-  ELSE
-    ! para calcular o plano tangente, tome T = (-n2_, n1_, 0)
-    T(1) = - Normal_(2)
-    T(2) =   Normal_(1)
-    T(3) =   0.0_pf
-  ENDIF
+  ! agora calcula o componente de angulo
+  k = 2.0_pf * (u2 - u1) * ma * mb / (ma + mb)
 
-  T = T / norm2(T)
-
-  ! e S = N_ x T
-  S(1) =   Normal_(2) * T(3) - T(2) * Normal_(3)
-  S(2) = - Normal_(1) * T(3) + T(1) * Normal_(3)
-  S(3) =   Normal_(1) * T(2) - T(1) * Normal_(2)
-  S = S / norm2(S)
-  
-  ! calcula as componentes do plano
-  ua_p = DOT_PRODUCT(ua, S) * S + DOT_PRODUCT(ua, T) * T
-  ub_p = DOT_PRODUCT(ub, S) * S + DOT_PRODUCT(ub, T) * T
-
-  ! obtem as novas velocidades
-  Pa = ma * (ua_p + (u1*(ma-mb)+2.0_pf*mb*u2)/(ma+mb) * Normal_)
-  Pb = mb * (ub_p + (u2*(mb-ma)+2.0_pf*ma*u1)/(ma+mb) * Normal_)
+  ! por fim, aplica a colisao
+  Pa = Pa + k * Normal_
+  Pb = Pb - k * Normal_
 
 END SUBROUTINE colidir
 
