@@ -258,8 +258,9 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
-  REAL(pf) :: E, Icm, Ec
-  INTEGER  :: timestep_inv
+  REAL(pf) :: E, Icm, Ec, ati, virial = 0.0_pf, difE, av
+  REAL(pf) :: Ec_media = 0.0_pf, V_media = 0.0_pf, inst_t = 0.0_pf
+  INTEGER  :: timestep_inv, inst = 0
 
   ! Definicao dinamica do metodo
   WRITE (*,'(a)') 'METODO: ', self % metodo
@@ -297,7 +298,11 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
   WRITE(*,*) qntdPassos * timestep_inv
+
   DO WHILE (i < ABS(qntdPassos * timestep_inv))
+    ! Instante
+    inst_t = inst_t + self % passos_antes_salvar * self % h
+
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
@@ -310,10 +315,27 @@ SUBROUTINE rodar (self, qntdPassos)
     CALL self % Arq % escrever((/R1, P1/))
 
     IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
+      ! Energia
       E = energia_total(self % G, self % M, R1, P1)
+      difE = E - self%E0
       Ec = energia_cinetica(self % M, P1)
+
+      ! virial
+      Ec_media = (inst * Ec_media + Ec) / (inst + 1)
+      V_media = (inst * V_media + Ec - E) / (inst + 1)
+      virial = (Ec_media + Ec_media)/(-V_media) + 1
+
+      ! anisotropia
+      ati = anisotropia_tensor_inercia(self % M, R1)
+      av = anisotropia_velocidades(self % M, R1, P1)
+
+      ! tamanho do sistema
       Icm = momento_inercia(self % M, R1)
-      WRITE (*,*) '     -> Passo:', i, ' / Energia:', E, ' / Virial:', Ec/(Ec - E), ' / I: ', Icm, ' / Tempo: ', tempo_total
+
+      WRITE (*,*) '     -> Passo:', i, ' / Tempo: ', tempo_total, ' / t = ', inst_t
+      WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm, ' / ati: ', ati, ' / av: ', av
+      WRITE (*,*)
+      inst = inst + 1
       CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*timestep_inv, tempo_total)
     ENDIF
 

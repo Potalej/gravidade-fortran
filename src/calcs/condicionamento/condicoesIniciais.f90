@@ -483,6 +483,7 @@ SUBROUTINE gerar_condicionado_ip (G, N, massas, pos, mom, int_pos, int_mom, int_
   WRITE (*,*) '    * Rcm =', centro_massas(massas,pos) 
   WRITE (*,*) '    * P   =', momentoLinear_total(mom) 
   WRITE (*,*) '    * J   =', momento_angular_total(pos,mom) 
+  WRITE (*,*) '    * trh =', tempo_relaxacao_rh(massas, pos)
 
   WRITE (*,'(a)') '  > condicoes iniciais geradas!'
   WRITE (*,*)
@@ -572,6 +573,7 @@ SUBROUTINE gerar_condicionado_henon (N, massas, posicoes, momentos, int_posicoes
   WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2.0_pf * EP)
   WRITE (*,*) '    * P   =', momentoLinear_total(momentos)
   WRITE (*,*) '    * J   =', momento_angular_total(posicoes, momentos)
+  WRITE (*,*) '    * trh =', tempo_relaxacao_rh(massas, posicoes)
 
 END SUBROUTINE
 
@@ -601,6 +603,7 @@ SUBROUTINE gerar_condicionado_aarseth (N, massas, posicoes, momentos, int_posico
   REAL(pf) :: P_normas = 0.0_pf ! Soma dos quadrados das normas dos momentos lineares
   REAL(pf) :: E, dist_min, pv ! energia, disstancia minima, proporcao de virial
   integer :: a, b, m
+  REAL(pf) :: trh, ati
 
   E = -0.25_pf
   pv = 0.5_pf
@@ -659,10 +662,14 @@ SUBROUTINE gerar_condicionado_aarseth (N, massas, posicoes, momentos, int_posico
   WRITE (*,*) '    * qm  =', dist_min
   WRITE (*,*) '    * I   =', momento_inercia(massas,posicoes)
   WRITE (*,*) '    * D   =', momento_dilatacao(posicoes,momentos)
-  WRITE (*,*) '    * Q   =', EC/ABS(EP)
+  WRITE (*,*) '    * Q   =', 2*EC/ABS(EP)
   WRITE (*,*) '    * R   =', - 1.0_pf * SUM(massas)**2 / (2.0_pf * EP)
   WRITE (*,*) '    * P   =', momentoLinear_total(momentos)
   WRITE (*,*) '    * J   =', momento_angular_total(posicoes, momentos)
+  trh = tempo_relaxacao_rh(massas, posicoes)
+  WRITE (*,*) '    * trh =', trh
+  ati = anisotropia_tensor_inercia(massas, posicoes)
+  WRITE(*,*) '     * ati =', ati
 
 END SUBROUTINE
 

@@ -192,4 +192,85 @@ FUNCTION momento_inercia (m, R)
   END DO
 END FUNCTION momento_inercia
 
+! ************************************************************
+!! Raio de meia massa (half-mass ratio)
+!
+! Objetivos:
+!   Calcula o raio de meia massa.
+!
+! Modificado:
+!   30 de abril de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION raio_meia_massa (m, R)
+  IMPLICIT NONE
+  REAL(pf) :: m(:), R(:,:)
+  REAL(pf) :: raio_meia_massa, M_met, M_soma, qcm(3)
+  INTEGER :: i, j
+  INTEGER, ALLOCATABLE :: idx_ord(:)
+  REAL(pf), ALLOCATABLE :: raios(:)
+
+  ALLOCATE(idx_ord(SIZE(m)))
+  ALLOCATE(raios(SIZE(m)))
+  raios = 0.0_pf
+  
+  ! Calcula os raios
+  qcm = centro_massas(m, R)
+  DO i=1, SIZE(m)
+    raios(i) = NORM2(R(i,:) - qcm)
+  END DO
+
+  ! Ordena a lista em ordem crescente
+  idx_ord = ordenar_lista_crescente(raios)
+
+  ! Agora vai pegando as massas ate chegar na metade
+  M_met = 0.5_pf * SUM(m)
+  M_soma = 0.0_pf
+  DO i=1, SIZE(m)
+    j = idx_ord(i)
+    M_soma = M_soma + m(j)
+    IF (M_soma .GE. M_met) THEN
+      raio_meia_massa = raios(j)
+      EXIT
+    END IF
+  END DO
+
+END FUNCTION raio_meia_massa
+
+! ************************************************************
+!! Tempo de relaxacao do raio de meia massa t_rh
+!
+! Objetivos:
+!   Calcula o tempo de relaxacao do raio de meia massa t_rh
+!
+! Modificado:
+!   30 de abril de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION tempo_relaxacao_rh (m, R)
+  IMPLICIT NONE
+  REAL(pf) :: G=1.0_pf, m(:), R(:,:), tempo_relaxacao_rh
+  REAL(pf) :: rh, m_media, log_coulomb
+  INTEGER :: N
+  
+  N = SIZE(m)
+  ! Calcula o raio de meia massa
+  rh = raio_meia_massa(m, R)
+  WRITE(*,*) 'rh:', rh
+
+  ! Media das massas
+  m_media = SUM(m) / N
+
+  ! Logaritmo de coulomb
+  log_coulomb = LOG(0.4_pf * N)
+
+  ! Aproximacao do valor de t_rh
+  tempo_relaxacao_rh = (0.138_pf * N / log_coulomb) * SQRT(rh*rh*rh / G*m_media)
+
+END FUNCTION tempo_relaxacao_rh
+
 END MODULE mecanica

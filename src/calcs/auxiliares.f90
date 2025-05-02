@@ -15,6 +15,7 @@ MODULE auxiliares
   USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
   IMPLICIT NONE
   EXTERNAL dgesv
+  EXTERNAL dsyev
 CONTAINS
 
 ! ************************************************************
@@ -212,5 +213,134 @@ FUNCTION momentoLinear_total (momentos)
   END DO
 
 END FUNCTION momentoLinear_total
+
+! ************************************************************
+!! Ordenacao de lista indexada do menor ao maior (via bubble)
+!
+! Objetivos:
+!   Indexar uma lista e retornar a lista de indices
+!
+! Modificado:
+!   30 de abril de 2025
+!
+! Autoria:
+!   oap
+! 
+FUNCTION ordenar_lista_crescente (valores)
+
+  IMPLICIT NONE
+  REAL(pf), INTENT(IN)   :: valores(:)
+  REAL(pf) :: valor_temp
+  INTEGER, ALLOCATABLE :: ordenar_lista_crescente(:), idx(:)
+  INTEGER :: N, i, j
+
+  N = SIZE(valores)
+  ALLOCATE(idx(N))
+  ALLOCATE(ordenar_lista_crescente(N))
+
+  DO i = 1, N
+    idx(i) = i
+  END DO
+
+  DO i = 1, N-1
+    DO j = i+1, N
+      IF (valores(idx(j)) < valores(idx(i))) THEN
+        valor_temp = idx(i)
+        idx(i) = idx(j)
+        idx(j) = valor_temp
+      ENDIF
+    END DO
+  END DO
+
+  ordenar_lista_crescente = idx
+
+END FUNCTION ordenar_lista_crescente
+
+! ************************************************************
+!! Anisotropia do tensor de inércia
+!
+! Objetivos:
+!   Calcula a anisotropia do tensor de inercia, indicando a
+!   esfericidade do sistema.
+!
+! Modificado:
+!   30 de abril de 2025
+!
+! Autoria:
+!   oap
+! 
+FUNCTION anisotropia_tensor_inercia (m, R)
+
+  IMPLICIT NONE
+  REAL(pf), INTENT(IN)   :: m(:), R(:,:)
+  INTEGER, parameter :: N = 3
+  REAL(pf) :: tensor(N,N), autovalores(N), l1, l2, l3
+  REAL(pf), ALLOCATABLE :: workspace(:)
+  INTEGER :: info, lwork, idx(3)
+  REAL(pf) :: anisotropia_tensor_inercia 
+
+  tensor = -tensor_inercia_geral(m, R)
+
+  ! Call DSYEV to compute eigenvalues and eigenvectors
+  lwork = -1
+  ALLOCATE(workspace(1))
+  call DSYEV('N', 'U', N, tensor, N, autovalores, workspace, lwork, info)
+  lwork = INT(workspace(1))
+  DEALLOCATE(workspace)
+  ALLOCATE(workspace(lwork))
+
+  CALL dsyev('N', 'U', N, tensor, N, autovalores, workspace, lwork, info)
+
+  ! Ordena
+  idx = ordenar_lista_crescente(autovalores)
+  l1 = autovalores(idx(3))
+  l2 = autovalores(idx(2))
+  l3 = autovalores(idx(1))
+
+  ! WRITE(*,*) 'Autovalores do tensor de inércia inicial: ', l3, l2, l1
+  
+  ! WRITE(*,*) '1o estimador de anisotropia: ', (l1 - l3)/l1
+  anisotropia_tensor_inercia = (l2 - l3)/l1
+
+END FUNCTION anisotropia_tensor_inercia
+
+! ************************************************************
+!! Anisotropia via velocidades radial e tangencial
+!
+! Objetivos:
+!  Anisotropia via velocidades radial e tangencial
+!
+! Modificado:
+!   30 de abril de 2025
+!
+! Autoria:
+!   oap
+! 
+FUNCTION anisotropia_velocidades (m, R, P)
+
+  IMPLICIT NONE
+  REAL(pf) :: anisotropia_velocidades
+  REAL(pf), INTENT(IN) :: m(:), R(:,:), P(:,:)
+  REAL(pf) :: P_radial, P_tangente
+  REAL(pf) :: media_radial, media_tangente
+  INTEGER :: a
+
+  media_radial = 0.0_pf
+  media_tangente = 0.0_pf
+
+  DO a=1, SIZE(m)
+    P_radial = DOT_PRODUCT(P(a,:), R(a,:)) / NORM2(R(a,:))
+    P_tangente = SQRT(DOT_PRODUCT(P(a,:), P(a,:)) - P_radial**2)
+
+    media_radial = media_radial + P_radial * P_radial / m(a)
+    media_tangente = media_tangente + P_tangente * P_tangente / m(a)
+  END DO
+
+  media_radial = media_radial / SUM(m)
+  media_tangente = media_tangente / SUM(m)
+
+  anisotropia_velocidades = 1 - media_tangente / (media_radial + media_radial)
+
+END FUNCTION anisotropia_velocidades
 
 END MODULE auxiliares
