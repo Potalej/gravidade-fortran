@@ -16,7 +16,6 @@ PROGRAM main
   USE OMP_LIB
   USE simulacao_sorteio
   USE simulacao_vi
-  USE leitura
   USE condicoesIniciais
   USE plot
   IMPLICIT NONE

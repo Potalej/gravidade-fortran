@@ -36,14 +36,15 @@ sh helpers/compilar_gerar.sh
 Com base em um preset modelo disponível em "presets/", escreva seu preset e rode com:
 
 ```
-./gravidade -s SEU_ARQUIVO.txt
+./gravidade -s SEU_ARQUIVO.json
 ```
 
-Há dois modos para geração aleatória no momento:
-- `modo sorteio`: Gera valores aleatórios no intervalo desejado e os condiciona conforme as integrais primeiras;
-- `modo sorteio_henon`: Gera valores aleatórios no intervalo desejado, mas aplica as condições iniciais de Henón, ignorando as integrais primeiras informadas. Para mais informações, veja a [wiki](https://github.com/Potalej/gravidade-fortran/wiki/Rodando).
+Há três modos para geração aleatória no momento, que geram valores iniciais aleatórios e os condicionam:
+- `sorteio_ip_iterativo`: Condicionamento iterativo;
+- `sorteio_ip_direto`: Condicionamento direto;
+- `sorteio_aarseth`: Condiciona diretamente e depois aplica o proposto por (Aarseth, 2003) para obter o equilíbrio de virial.
 
-Confira [aqui](/presets/condicionar/exemplo.txt) um exemplo de arquivo de valores para sorteio.
+Confira [aqui](/presets/condicionar/exemplo.json) um exemplo de arquivo de valores para sorteio.
 
 ### Valores iniciais
 Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através da opção `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
@@ -51,10 +52,10 @@ Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível
 Para rodar este caso, utilize:
 
 ```
-./gravidade -vi SEU_ARQUIVO.txt
+./gravidade -vi SEU_ARQUIVO.json
 ```
 
-Confira [aqui](/presets/valores_iniciais/lemniscata.txt) um exemplo de arquivo de valores iniciais.
+Confira [aqui](/presets/valores_iniciais/exemplo_vi.json) um exemplo de arquivo de valores iniciais.
 
 ### Visualizando
 Além disso, é possível também visualizar as simulações feitas através da opção `-e` ou `--exibir`. É uma visualização simples das trajetórias, mas pode ajudar a conferir resultados rapidamente.
@@ -67,6 +68,8 @@ Além disso, é possível também visualizar as simulações feitas através da 
 Os métodos de integração implementados são:
 
 - Métodos de Runge-Kutta:
+    - [Runge-Kutta de ordem 2 (RK2)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta);
+    - [Runge-Kutta de ordem 3 (RK3)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta);
     - [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem);
     - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method) (INDISPONÍVEL);
 - Métodos simpléticos:
@@ -80,7 +83,7 @@ Os métodos de integração implementados são:
 Também há três aplicações para modificar soluções:
 
 1. Um corretor numérico baseado na [condição de 1ª ordem de Karush-Kuhn-Tucker](https://en.wikipedia.org/wiki/Karush%E2%80%93Kuhn%E2%80%93Tucker_conditions). Bastante útil para simulações com muitos corpos;
-2. Colisões perfeitamente elásticas entre os corpos. Interessante para casos com poucos corpos e baixas velocidades;
+2. Colisões perfeitamente elásticas entre os corpos.
 3. Um amortecedor no potencial, que impede aproximações muito intensas. Para poucos corpos pode gerar instabilidades, mas é útil para grandes quantidades de corpos.
 
 As massas, posições e momentos lineares são armazenados em arquivos .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vv.csv", onde "v" se refere à versão do dia, iniciando em 001 e indo até 999.
@@ -90,6 +93,7 @@ A análise dos dados pode ser feita com Python através de [gravidade-analise](h
 
 ## Referências
 
+* AARSETH, Sverre. Gravitational N-Body Simulations: Tools and Algorithms. Cambridge: Cambridge University Press, 2003.
 * VOLCHAN, Sérgio. Uma Introdução à Mecânica Celeste. Rio de Janeiro: Instituto Nacional de Matemática Pura e Aplicada - IMPA, 2007.
 * BERTSEKAS, Dmitri Panteli. Nonlinear Programming. 3ed. Nashua: Athena Scientific, 2016.
 * HAIRER, Ernst; WANNER, Gerhard; LUBICH, Christian. Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations. Heidelberg: Springer-Verlag, 2006. DOI: 10.1007/3-540-30666-8. Disponível em: https://doi.org/10.1007/3-540-30666-8.

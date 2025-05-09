@@ -206,11 +206,11 @@ SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos
     gradE = gradE * alpha
 
     ! Ve se esta na margem de erro
-    IF (MAXVAL(gradE) .le. 1E-8) THEN
-      ! Se estiver, manda embora porque a correcao sera desnecessaria
-      WRITE(*,*) "dentro da margem aceitavel: ", NORM2(gradE)
-      EXIT
-    END IF
+    ! IF (MAXVAL(gradE) .le. 1E-8) THEN
+    !   ! Se estiver, manda embora porque a correcao sera desnecessaria
+    !   ! WRITE(*,*) "dentro da margem aceitavel: ", NORM2(gradE)
+    !   EXIT
+    ! END IF
 
     ! aplica a correcao
     DO a = 1, N

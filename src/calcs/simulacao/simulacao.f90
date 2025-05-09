@@ -18,6 +18,7 @@ MODULE simulacao
   USE mecanica
   USE auxiliares
   USE arquivos
+  USE arquivos_json
   ! Metodos de integracao numerica
   USE integrador
   USE rungekutta2
@@ -34,11 +35,11 @@ MODULE simulacao
   USE euler_exp
   USE euler_imp
   ! Para configuracoes
-  USE leitura
+  USE json_utils_mod
 
   IMPLICIT NONE
   PRIVATE
-  PUBLIC simular
+  PUBLIC simular, rodar_simulacao
 
   ! Tipos de metodo de integracao
   TYPE(integracao_verlet),    TARGET, SAVE :: INT_VERLET
@@ -80,17 +81,17 @@ MODULE simulacao
     REAL(pf), DIMENSION(3) :: J0
 
     ! Metodo
-    CHARACTER(len=100) :: metodo
+    CHARACTER(LEN=:), ALLOCATABLE :: metodo
 
     ! Diretorio onde ficara salvo
-    CHARACTER(len=256) :: dir
+    CHARACTER(LEN=:), ALLOCATABLE :: dir
 
     ! Configuracoes
     LOGICAL :: corrigir=.FALSE., colidir=.FALSE., paralelo=.FALSE.
     REAL(pf) :: corrigir_margem_erro = 0.1_pf
     INTEGER :: corrigir_max_num_tentativas = 5
     REAL(pf) :: colisoes_max_distancia = 0.1
-    CHARACTER(10) :: colisoes_modo
+    CHARACTER(LEN=:), ALLOCATABLE :: colisoes_modo
 
     !> Arquivo
     TYPE(arquivo) :: Arq
@@ -100,8 +101,75 @@ MODULE simulacao
       
   END TYPE
 
+  ! Instanciamento da classe
+  TYPE(simular) :: Simulador
+
 CONTAINS
+
+
+SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
+  TYPE(json_value), POINTER :: infos
+  REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
+  INTEGER  :: t0, tf
+  REAL(pf) :: timestep
+
+  CALL json % get(infos, 'integracao.t0', t0)
+  CALL json % get(infos, 'integracao.tf', tf)
+  CALL json % get(infos, 'integracao.timestep', timestep)
+
+  IF (t0 < 0) THEN
+    IF (tf == 0) THEN
+      ! Roda apenas o passado
+      WRITE (*,*) " > Intervalo [", t0, ",", tf, "]"
+      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
+
+    ELSE IF (tf > 0) THEN     
+      ! Roda o passado e o futuro
+      WRITE (*,*) " > Intervalo [", t0, ",", 0, "]"
+      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
+      
+      WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
+      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
+
+    ENDIF
   
+  ! Se for positivo, apenas roda normal
+  ELSE
+    ! Roda apenas o futuro
+    WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
+    CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
+  ENDIF
+END SUBROUTINE rodar_simulacao
+
+SUBROUTINE rodar_simulacao_intervalo (infos, massas, posicoes, momentos, timestep, t0, tf)
+  TYPE(json_value), POINTER :: infos
+  REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf), INTENT(IN) :: timestep
+  INTEGER, INTENT(IN)  :: t0, tf
+  REAL(pf) :: timer_0, timer_1
+  INTEGER :: qntd_total_passos
+  CHARACTER(LEN=:), ALLOCATABLE :: metodo
+
+  qntd_total_passos = (tf - t0)/timestep
+
+  ! Timer
+  timer_0 = omp_get_wtime()
+  
+  ! Inicializando a classe de simulacao
+  CALL Simulador%Iniciar(infos, massas, posicoes, momentos, timestep)
+
+  ! Agora roda
+  CALL Simulador%rodar(tf - t0)
+
+  metodo = json_get_string(infos, 'integracao.metodo')
+
+  timer_1 = omp_get_wtime()
+  WRITE (*,*) ' * tempo ', metodo, ': ', timer_1 - timer_0
+  WRITE (*,*) ' * tempo por passo: ', (timer_1 - timer_0) / qntd_total_passos
+END SUBROUTINE rodar_simulacao_intervalo
+
+
+
 ! ************************************************************
 !! Metodo principal
 !
@@ -114,29 +182,28 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-! SUBROUTINE Iniciar (self, G, M, R0, P0, h, potsoft, passos_antes_salvar, metodo, t0, tf)
-SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
+SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
 
   CLASS(simular), INTENT(INOUT) :: self
-  CLASS(preset_config) :: configs
-  REAL(pf), allocatable :: M(:), R0(:,:), P0(:,:)
-  REAL(pf) :: h, colmd
-  INTEGER :: a, i
+  TYPE(json_value), POINTER :: infos
+  REAL(pf) :: M(:), R0(:,:), P0(:,:)
+  REAL(pf) :: h, colmd, densidade
+  INTEGER  :: a, i
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
 
-  self % passos_antes_salvar = configs % passos_antes_salvar
+  CALL json % get(infos, 'integracao.passos_por_rodada', self % passos_antes_salvar)
   
   ! Salva o tamanho dos passos
-  self % h = h
+  CALL json % get(infos, 'integracao.timestep', self % h)
 
   ! Salva o softening do potencial
-  self % potsoft = configs % potsoft
+  CALL json % get(infos, 'integracao.amortecedor', self % potsoft)
 
   ! Salva a gravidade
-  self % G = configs % G
+  CALL json % get(infos, 'G', self % G)
 
   ! Salva as massas
-  self % M = M  
+  self % M = M
   
   ! Quantidade corpos no sistema
   self % N = SIZE(M)
@@ -164,49 +231,32 @@ SUBROUTINE Iniciar (self, configs, M, R0, P0, h)
   self % Rcm = centro_massas(self % M, self % R)
 
   ! Salva o metodo
-  self % metodo = configs % integrador
-
-  self % t0 = configs % t0
-  self % tf = configs % tf
-
+  self % metodo = json_get_string(infos, 'integracao.metodo')
+  CALL json % get(infos, 'integracao.t0', self % t0)
+  CALL json % get(infos, 'integracao.tf', self % tf)
+  
   ! Salva o corretor
-  self % corrigir = configs%corretor
-  self % corrigir_margem_erro = configs%corretor_margem_erro
-  self % corrigir_max_num_tentativas = configs%corretor_max_num_tentativas
+  CALL json % get(infos, 'correcao.corrigir', self % corrigir)
+  CALL json % get(infos, 'correcao.margem_erro', self % corrigir_margem_erro)
+  CALL json % get(infos, 'correcao.max_num_tentativas', self % corrigir_max_num_tentativas)
 
   ! Salva as colisoes
-  self % colidir  = configs%colisoes
-  self % colisoes_modo = configs%colisoes_modo
-  colmd = (0.75_pf / (PI * configs%colisoes_max_distancia))**(1.0_pf/3.0_pf)
+  CALL json % get(infos, 'colisoes.colidir', self % colidir)
+  self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
+  CALL json % get(infos, 'colisoes.densidade', densidade)
+  colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
   self % colisoes_max_distancia = colmd
   WRITE(*,*) 'COLMD: ', colmd
 
   ! Salva o uso de paralelizacao
-  self % paralelo = configs%paralelo
+  CALL json % get(infos, 'paralelo', self % paralelo)
 
   ! Inicializa o metodo
   CALL self % inicializar_metodo()
 
   ! Copia o arquivo de valores iniciais
-  CALL salvar_sorteio('out/data/', self % Arq % dirarq//"/", 'valint.txt', &
-  "Sorteio_"//self % Arq % dirarq, &
-  self % G,        &
-  self % M,        &
-  self % R,        &
-  self % P,        &
-  configs % t0,    &
-  configs % tf,    &
-  ABS(self % h),   &
-  self % potsoft,  &
-  self % metodo,   &
-  self % corrigir, &
-  self % corrigir_margem_erro, &
-  self % corrigir_max_num_tentativas, &
-  self % colisoes_modo,  &
-  configs%colisoes_max_distancia,  &
-  self % passos_antes_salvar, &
-  configs % paralelo)
-
+  CALL diretorio_data()
+  CALL salvar_vi_json('out/data/'//self % Arq % dirarq//'/vi', infos, M, R0, P0, .FALSE.)
 END SUBROUTINE Iniciar
 
 SUBROUTINE inicializar_metodo (self)
@@ -286,8 +336,9 @@ SUBROUTINE rodar (self, qntdPassos)
 
   ! inicializa o integrador 
   CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
+    self % E0, self % J0, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colisoes_modo, self%colisoes_max_distancia, self%paralelo)
+    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo)
 
   ! Condicoes iniciais
   R1 = self % R
@@ -306,7 +357,7 @@ SUBROUTINE rodar (self, qntdPassos)
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar, self % E0, self % J0)
+    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar)
     
     ! timer
     tf = omp_get_wtime()

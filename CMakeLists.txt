@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.3.2
+project("gravidade" VERSION 0.4.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -29,7 +29,7 @@ add_executable(gravidade
   "./src/calcs/simulacao/simulacao_vi.f90"
   "./src/calcs/simulacao/simulacao.f90"
 
-  "./src/arquivo/leitura.f90"
+  "./src/arquivo/arquivos_json.f90"
   "./src/arquivo/arquivos.f90"
   "./src/arquivo/plot.f90"
 )
@@ -45,8 +45,23 @@ IF (NOT OpenBLAS_LIB)
 ENDIF()
 
 # ----------------------------------------------------------------------------
+# Procura pelo JSONFortran
+# ----------------------------------------------------------------------------
+find_package(JsonFortran REQUIRED)
+
+include_directories(${JSONFortran_INCLUDE_DIRS})
+IF (NOT JSONFortran_LIB)
+  message(FATAL_ERROR "JSON Fortran nao encontrado!!!")
+ENDIF()
+
+# ----------------------------------------------------------------------------
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
+
+# JSON-FILE-MOD
+add_library(json_utils_mod 
+  "./src/arquivo/json_utils_mod.f90"
+)
 
 # ALEATORIO
 add_library(aleatorio 
@@ -72,6 +87,7 @@ target_link_libraries(mecanica
 # Condicionamento de valores iniciais
 add_library(condicionamento
   "./src/calcs/condicionamento/condicoesIniciais.f90"  
+  "./src/calcs/condicionamento/condicionamento.f90"  
 )
 target_link_libraries(condicionamento
   mecanica
@@ -169,6 +185,8 @@ target_link_libraries(gravidade
   condicionamento
   aleatorio
   octree
+  ${JSONFortran_LIBRARIES}
+  json_utils_mod
 )
 
 # ----------------------------------------------------------------------------

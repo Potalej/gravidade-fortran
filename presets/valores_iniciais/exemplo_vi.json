@@ -1,0 +1,43 @@
+{
+    "modo": "vi",
+    "nome": "Lemniscata",
+    
+    "G": 1.0,
+    "N": 100,
+    "paralelo": false,
+
+    "integracao": {
+        "metodo": "svcp10s35",
+        "timestep": 0.001,
+        "amortecedor": 0.005,
+        "t0": 0,
+        "tf": 50,
+        "passos_por_rodada": 10
+    },
+    
+    "colisoes": {
+        "colidir": true,
+        "metodo": "direto",
+        "densidade": 37301.93978716296
+    },
+    
+    "correcao": {
+        "corrigir": false,
+        "margem_erro": 0.001,
+        "max_num_tentativas": 1
+    },
+    
+    "valores_iniciais": {
+        "massas": [1.0, 1.0, 1.0],
+        "posicoes": [
+            [-0.97000436,  0.24308753, 0.0],
+            [0.0,         0.0,        0.0],
+            [0.97000436, -0.24308753, 0.0]
+        ],
+        "momentos": [
+            [0.4662036850, 0.4323657300, 0.0],
+            [-0.93240737,  -0.86473146,   0.0],
+            [ 0.4662036850, 0.4323657300, 0.0]
+        ]
+    }
+}

@@ -33,7 +33,9 @@ MODULE integrador
     ! h: Passo de integracao
     ! G: Constante de gravitacao
     ! potsoft: Softening do potencial
-    REAL(pf) :: h, G, potsoft, potsoft2
+    ! E0: Energia total inicial
+    ! J0: Momento angular total inicial
+    REAL(pf) :: h, G, potsoft, potsoft2, E0, J0(3)
 
     ! dim: Dimensao do problema
     ! N: Quantidade de partículas
@@ -46,7 +48,7 @@ MODULE integrador
 
     ! Se vai ou nao colidir
     LOGICAL       :: colidir = .FALSE.
-    CHARACTER(10) :: colisoes_modo
+    CHARACTER(:), ALLOCATABLE :: colisoes_modo
     REAL(pf)      :: colmd ! max dist colisoes
     REAL(pf), ALLOCATABLE :: raios(:)
 
@@ -90,13 +92,14 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
-  REAL(pf)              :: G, h
+  REAL(pf)              :: G, h, E0, J0(3)
   LOGICAL,INTENT(IN) :: corrigir, paralelo
-  CHARACTER(10) :: colidir
+  LOGICAL, INTENT(IN) :: colidir
+  CHARACTER(LEN=*), INTENT(IN) :: colmodo
   REAL(pf) :: corme, potsoft, colmd
   INTEGER :: cormnt
   INTEGER :: a, i
@@ -123,19 +126,18 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % potsoft = potsoft
   self % potsoft2 = potsoft*potsoft
 
+  ! Valores iniciais
+  self % E0 = E0
+  self % J0 = J0
+
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
   self % corme = corme
   self % cormnt = cormnt
 
   ! Se vai ou nao colidir
-  self % colisoes_modo = colidir
-  IF (TRIM(colidir) == 'F') THEN
-    self % colidir = .FALSE.
-  ELSE
-    self % colidir = .TRUE.
-  ENDIF
-
+  self % colidir = colidir
+  self % colisoes_modo = colmodo
   self % colmd = colmd
   ALLOCATE(self % raios(self % N))
   DO a = 1, self % N
@@ -174,16 +176,14 @@ END FUNCTION forcas
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
+SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar)
 
   IMPLICIT NONE
   class (integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
   INTEGER, INTENT(IN) :: passos_antes_salvar
-  REAL(pf), INTENT(IN) :: E0
   REAL(pf)             :: E
   REAL(pf), DIMENSION(3) :: J
-  REAL(pf), DIMENSION(3), INTENT(IN) :: J0
   ! Para cada passo
   INTEGER :: i
   ! para verificar se corrigiu
@@ -226,7 +226,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
   IF (self%corrigir) THEN
     E = energia_total(self % G, self % m, R1, P1)
         
-    IF (ABS(E - E0) >= self%corme) THEN
+    IF (ABS(E - self%E0) >= self%corme) THEN
       
       t0_cor = omp_get_wtime()
 
@@ -234,7 +234,8 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar, E0, J0)
       ! CALL corrigir(self%corme,self%cormnt,self % G,self % m,R1,P1,corrigiu,E0,J0)
 
       ! Corrige somente a energia total
-      CALL corrigir_apenas_energia(self%corme,self%cormnt,self % G,self % m,R1,P1,corrigiu,E0,J0)
+      CALL corrigir_apenas_energia(self % corme, self % cormnt, self % G, &
+                                  self % m, R1, P1, corrigiu, self % E0, self % J0)
       
       IF (corrigiu) THEN
         contagem_correcao = contagem_correcao + 1

@@ -40,7 +40,7 @@ SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo)
   REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
   LOGICAL  :: paralelo
   REAL(pf) :: raios(size(m))
-  CHARACTER(10) :: modo
+  CHARACTER(LEN=*), INTENT(IN) :: modo
 
   ! Aplica colisoes conforme o modo
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN

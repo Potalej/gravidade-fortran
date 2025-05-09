@@ -54,7 +54,7 @@ FUNCTION testar_regiao (vetor3d, raio, regiao)
 
   REAL(pf), INTENT(IN), DIMENSION(3) :: vetor3d
   REAL(pf), INTENT(IN) :: raio
-  CHARACTER(20),INTENT(IN) :: regiao
+  CHARACTER(LEN=*),INTENT(IN) :: regiao
   LOGICAL :: testar_regiao
 
   SELECT CASE (TRIM(regiao))
@@ -94,38 +94,36 @@ END SUBROUTINE condiciona_esfera
 !   da subrotina padrao do Fortran.
 !
 ! Modificado:
-!   15 de janeiro de 2025
+!   02 de maio de 2025
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE uniforme (vetor, N, distmin, vmin, vmax, regiao, raio)
 
-  INTEGER,  INTENT(INOUT) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
-  REAL(pf), INTENT(IN)     :: vmin, vmax, raio, distmin
-  CHARACTER(20),INTENT(IN) :: regiao
-  REAL(pf), DIMENSION(3)   :: u
-  INTEGER :: a
-  REAL(pf), DIMENSION(3) :: ajuste
+  CHARACTER(LEN=*), INTENT(IN) :: regiao
+  INTEGER,  INTENT(IN) :: N
+  REAL(pf), INTENT(IN) :: raio, distmin, vmin, vmax
+  REAL(pf) :: u(3), ajuste(3)
+  INTEGER :: i
+
   ajuste(:) = vmin
-
   CALL RANDOM_SEED()
-
-  DO a=1, N
+  DO i=1, N
     DO
       ! Sorteia e ajusta no intervalo
       CALL RANDOM_NUMBER(u)
       u = raio * (u * (vmax - vmin) + ajuste)
 
       IF (testar_regiao(u, raio, regiao)) THEN
-        IF (a >= 1 .AND. distmin > 0) THEN
-          vetor(a,:) = u
-          IF (testar_distancias(vetor, N, distmin, a)) THEN
+        IF (i >= 1 .AND. distmin > 0) THEN
+          vetor(i,:) = u
+          IF (testar_distancias(vetor, N, distmin, i)) THEN
             EXIT
           ENDIF
         ELSE
-          vetor(a,:) = u
+          vetor(i,:) = u
           EXIT
         ENDIF
       END IF 
@@ -151,9 +149,9 @@ END SUBROUTINE uniforme
 ! 
 SUBROUTINE normal (vetor, N, distmin, vmin, vmax, regiao, raio)
 
-  INTEGER,  INTENT(INOUT) :: N
+  INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
-  CHARACTER(20), INTENT(IN)     :: regiao
+  CHARACTER(LEN=*), INTENT(IN)     :: regiao
   REAL(pf), INTENT(IN)     :: vmin, vmax, raio, distmin
   REAL(pf), DIMENSION(N,3) :: ajuste
   REAL(pf) :: x, y, z
@@ -213,10 +211,10 @@ END SUBROUTINE normal
 ! 
 SUBROUTINE cauchy (vetor, N, distmin, vmin, vmax, regiao, raio)
 
-  INTEGER,  INTENT(INOUT) :: N
+  INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
   REAL(pf), INTENT(IN)     :: vmin, vmax, raio, distmin
-  CHARACTER(20),INTENT(IN) :: regiao
+  CHARACTER(LEN=*),INTENT(IN) :: regiao
   REAL(pf), DIMENSION(3)   :: u
   REAL(pf) :: PI = 3.14159265358979_pf
   INTEGER :: a

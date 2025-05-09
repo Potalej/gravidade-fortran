@@ -1,0 +1,52 @@
+{
+    "modo": "sorteio_aarseth",
+    
+    "G": 1.0,
+    "N": 100,
+    "paralelo": false,
+
+    "sorteio": {
+        "integrais": {
+            "energia_total": -0.25,
+            "angular_total": [0.0, 0.0, 0.0],
+            "linear_total":  [0.0, 0.0, 0.0]
+        },
+        "massas": {
+            "intervalo": [1.0, 1.0],
+            "distribuicao": "uniforme"
+        },
+        "posicoes": {
+            "intervalo": [-5.0, 5.0, 0.5],
+            "distribuicao": "uniforme",
+            "regiao":       "esfera",
+            "raio":         5.0
+        },
+        "momentos": {
+            "intervalo": [-1.0, 1.0],
+            "distribuicao": "normal",
+            "regiao":       "cubo",
+            "raio":         1.0
+        }
+    },
+
+    "integracao": {
+        "metodo": "rkn671",
+        "timestep": 0.01,
+        "amortecedor": 0.0,
+        "t0": 0,
+        "tf": 100,
+        "passos_por_rodada": 10
+    },
+
+    "colisoes": {
+        "colidir": true,
+        "metodo": "direto",
+        "densidade": 37301.93978716296
+    },
+
+    "correcao": {
+        "corrigir": true,
+        "margem_erro": 1e-3,
+        "max_num_tentativas": 1
+    }
+}

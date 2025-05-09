@@ -10,21 +10,21 @@ def build (buildar:bool=False, os:str="Linux"):
 def sortear_salvar (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
-    rodar('gravidade.exe -sv ./presets/condicionar/exemplo.txt')
+    rodar('gravidade.exe -sv ./presets/condicionar/exemplo.json')
   elif os == "Linux":
     rodar('./gravidade -sv ./presets/condicionar/exemplo.txt')
 
 def sortear_simular (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
-    rodar('gravidade.exe -s ./presets/condicionar/exemplo.txt')
+    rodar('gravidade.exe -s ./presets/condicionar/exemplo.json')
   elif os == "Linux":
     rodar('./gravidade -s ./presets/condicionar/exemplo.txt')
 
 def lemniscata (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
-    rodar('gravidade.exe -vi ./presets/valores_iniciais/lemniscata.txt')
+    rodar('gravidade.exe -vi ./presets/valores_iniciais/exemplo_vi.json')
   elif os == "Linux":
     rodar('./gravidade -vi ./presets/valores_iniciais/lemniscata.txt')
 

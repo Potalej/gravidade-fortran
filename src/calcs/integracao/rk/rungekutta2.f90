@@ -46,13 +46,14 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidir, colmd, paralelo)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo)
   IMPLICIT NONE
   CLASS(integracao_rk2), INTENT(INOUT) :: self
   LOGICAL,INTENT(IN) :: corrigir, paralelo
-  CHARACTER(10) :: colidir
+  LOGICAL, INTENT(IN)          :: colidir
+  CHARACTER(LEN=*), INTENT(IN) :: colmodo
   REAL(pf), allocatable :: massas(:)
-  REAL(pf)              :: G, h, potsoft, colmd
+  REAL(pf)              :: G, h, potsoft, colmd, E0, J0(3)
   INTEGER :: a, i
   REAL(pf) :: corme
   INTEGER :: cormnt
@@ -75,13 +76,13 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, corrigir, corme, cormnt, colidi
   self % corme = corme
   self % cormnt = cormnt
 
+  ! Valores iniciais
+  self % E0 = E0
+  self % J0 = J0
+
   ! Se vai ou nao colidir
-  self % colisoes_modo = colidir
-  IF (TRIM(colidir) == 'F') THEN
-    self % colidir = .FALSE.
-  ELSE
-    self % colidir = .TRUE.
-  ENDIF
+  self % colidir = colidir
+  self % colisoes_modo = colmodo
   self % colmd = colmd
   
   ! Inicia o base do RK 

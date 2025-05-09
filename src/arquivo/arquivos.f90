@@ -21,8 +21,6 @@ MODULE arquivos
   USE OMP_LIB
 
   IMPLICIT NONE
-  PRIVATE
-  PUBLIC arquivo, ler_csv, criar_dir, salvar_sorteio, espacosVazios, capturar_unidade, diretorio_out
 
   ! classe de arquivo
   TYPE :: arquivo
@@ -37,19 +35,17 @@ MODULE arquivos
   CHARACTER(11) :: dir = "./out/data/"
   CHARACTER(5) :: dir_out = "./out"
   CHARACTER(4) :: dir_data = "data"
+  CHARACTER(16) :: dir_vi = "valores_iniciais"
   
   CONTAINS
     PROCEDURE :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
-                 diretorio_data, inicializar_arquivo_info, atualizar_arquivo_info, arquivo_bkp, excluir_bkp
+                 inicializar_arquivo_info, atualizar_arquivo_info, arquivo_bkp, excluir_bkp
   END TYPE
 
 CONTAINS
 
 ! ************************************************************
-!! Diretorio "out"
-!
-! Objetivos:
-!   Verifica se existe o diretorio "out". Se nao existir, cria.
+!! Verifica se o diretorio "out" existe, e caso nao, cria
 !
 ! Modificado:
 !   15 de marco de 2024
@@ -68,10 +64,7 @@ SUBROUTINE diretorio_out ()
 END SUBROUTINE diretorio_out
 
 ! ************************************************************
-!! Diretorio "data"
-!
-! Objetivos:
-!   Verifica se existe o diretorio "data". Se nao existir, cria.
+!! Verifica se o diretorio "out/data" existe, e caso nao, cria
 !
 ! Modificado:
 !   26 de maio de 2024
@@ -79,23 +72,43 @@ END SUBROUTINE diretorio_out
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE diretorio_data (self)
+SUBROUTINE diretorio_data ()
   IMPLICIT NONE
-  CLASS(arquivo), INTENT(INOUT) :: self
   LOGICAL :: existe = .TRUE.
+
+  ! Verifica se existe o diretorio 'out'
   CALL diretorio_out()
-  ! verifica se existe o diretorio "out"
-  INQUIRE(file=TRIM(self % dir_out), exist=existe)
-  IF (.NOT. existe) THEN
-    CALL criar_dir(TRIM(self % dir_out), './')
-  ENDIF
 
   ! verifica se existe o diretorio padrao
-  INQUIRE(file=TRIM(self % dir), exist=existe)
+  INQUIRE(file='./out/data', exist=existe)
   IF (.NOT. existe) THEN
-    CALL criar_dir(TRIM(self % dir_data), TRIM(self % dir_out))
+    CALL criar_dir('data', './out')
   ENDIF
 END SUBROUTINE diretorio_data
+
+! ************************************************************
+!! Verifica se o diretorio "out/valores_iniciais" existe, e 
+!! caso nao, cria
+!
+! Modificado:
+!   05 de maio de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE diretorio_vi ()
+  IMPLICIT NONE
+  LOGICAL :: existe = .TRUE.
+
+  ! Verifica se existe o diretorio 'out'
+  CALL diretorio_out()
+
+  ! verifica se existe o diretorio padrao
+  INQUIRE(file='./out/valores_iniciais', exist=existe)
+  IF (.NOT. existe) THEN
+    CALL criar_dir('valores_iniciais', './out')
+  ENDIF
+END SUBROUTINE diretorio_vi
 
 ! ************************************************************
 !! Nome do arquivo
@@ -126,7 +139,7 @@ SUBROUTINE nomeArquivo (self)
   CHARACTER(8) :: datahoje
 
   ! verifica se existe o diretorio padrao
-  CALL self % diretorio_data()
+  CALL diretorio_data()
 
   ! Por padrao, existe
   existe = .TRUE.
@@ -193,7 +206,7 @@ END SUBROUTINE criarFormato
 !
 ! Objetivos:
 !   Cria um arquivo .csv que se configura para fazer a formatacao
-!   de uma determinada quantidade de particulasd e uma determinada
+!   de uma determinada quantidade de particulas e uma determinada
 !   quantidade de dimensoes. O `idarq` eh utilizado como
 !   identificador unico do arquivo.
 !
@@ -615,123 +628,6 @@ SUBROUTINE criar_dir (dir, onde)
   DEALLOCATE(comando)
 
 END SUBROUTINE criar_dir
-
-! ************************************************************
-!! Salvamento de preset de sorteio
-!
-! Objetivos:
-!   Escreve um preset sorteado como um preset de valores 
-!   iniciais.
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-!
-SUBROUTINE salvar_sorteio (onde,subdir,arq,nome,G,massas,R,P,t0,tf,timestep,potsoft,metodo,cor,corme,cormnt,colisoes,colmd,pas,fp)
-
-  IMPLICIT NONE
-  CHARACTER(LEN=*)      :: onde, subdir, arq, metodo, nome
-  CHARACTER(LEN=256)    :: dir_arquivo 
-  CHARACTER(LEN=3)      :: num_arquivo
-  LOGICAL               :: cor, diretorio_existe, arquivo_existe
-  CHARACTER(10)         :: colisoes
-  REAL(pf)              :: G, timestep, potsoft, colmd
-  INTEGER               :: t0, tf
-  REAL(pf),allocatable  :: massas(:), R(:,:), P(:,:)
-  INTEGER               :: pas ! Passos antes de salvar
-  INTEGER               :: u, i, arq_i
-  REAL(pf)              :: corme ! MARGEM DE ERRO DO CORRETOR
-  INTEGER               :: cormnt ! MAXIMO DE NUMERO DE TENTATIVAS DO CORRETOR
-  LOGICAL               :: fp ! forcas paralelisadas
-
-  WRITE(*,'(a)') 'SALVAR SORTEIO:'
-
-  ! Verifica se o diretorio desejado existe
-  INQUIRE(file=onde//TRIM(subdir), exist=diretorio_existe)
-  IF (.NOT. diretorio_existe) THEN
-    CALL criar_dir (subdir, onde)
-  ENDIF
-
-  ! Agora verifica se o arquivo ja existe
-  dir_arquivo = TRIM(onde//subdir) // TRIM(arq)
-  INQUIRE(file=TRIM(dir_arquivo), exist=arquivo_existe)
-  IF (arquivo_existe) THEN
-    arq_i = 1
-    DO WHILE (arquivo_existe)
-      WRITE(num_arquivo, '(I3.3)') arq_i
-      INQUIRE(file=TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt", exist=arquivo_existe)
-    END DO
-    dir_arquivo = TRIM(dir_arquivo)//"_"//TRIM(num_arquivo)//".txt"
-  ENDIF
-
-  WRITE(*,'(a)') '  > arquivo: ' // TRIM(dir_arquivo)
-
-  ! Abre um arquivo
-  OPEN(newunit=u,file=dir_arquivo)
-
-  WRITE(u,'(*(g0,1x))') "! Configs"
-  WRITE(u,'(*(g0,1x))') "modo vi"
-  WRITE(u,'(*(g0,1x))') "nome ", nome
-  WRITE(u,'(*(g0,1x))') "integrador ", metodo
-  WRITE(u,'(*(g0,1x))') "timestep ", timestep
-  WRITE(u,'(*(g0,1x))') "potsoft ", potsoft
-  WRITE(u,'(*(g0,1x))') "passos ", pas ! Passos antes de salvar
-  WRITE(u,'(*(g0,1x))') "t0 ", t0
-  WRITE(u,'(*(g0,1x))') "tf ", tf
-  
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Usar paralelisacao nas forcas"
-  WRITE(u,'(*(g0,1x))') "paralelo ", fp
-
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Opcoes do corretor"
-  WRITE(u,'(*(g0,1x))') "corretor ", cor
-  WRITE(u,'(*(g0,1x))') "margem_erro ", corme
-  WRITE(u,'(*(g0,1x))') "max_num_tentativas ", cormnt
-
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Opcoes de colisao"
-  WRITE(u,'(*(g0,1x))') "colisoes ", colisoes
-  WRITE(u,'(*(g0,1x))') "max_distancia ", colmd
-
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Valores do problema"
-  WRITE(u,'(*(g0,1x))') "N ", SIZE(massas)
-  WRITE(u,'(*(g0,1x))') "G ", G
-  
-  WRITE(u,*) 
-
-  WRITE(u,'(*(g0,1x))') "! Massas"
-  DO i = 1, SIZE(massas)
-    WRITE(u,'(*(g0,1x))') massas(i)
-  END DO
-
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Posicoes"
-  DO i = 1, SIZE(massas)
-    WRITE(u,'(*(g0,1x,","))') R(i,:) 
-  END DO
-
-  WRITE(u,*)
-
-  WRITE(u,'(*(g0,1x))') "! Momentos"
-  DO i = 1, SIZE(massas)
-    WRITE(u,'(*(g0,1x,","))') P(i,:) 
-  END DO
-
-  CLOSE(u)
-
-  WRITE(*,'(a)') '  > arquivo salvo!'
-  WRITE(*,*)
-
-END SUBROUTINE salvar_sorteio
 
 ! ************************************************************
 !! Remocao de espacos vazios
