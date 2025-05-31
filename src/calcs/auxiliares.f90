@@ -12,7 +12,7 @@
 !   oap
 ! 
 MODULE auxiliares
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   IMPLICIT NONE
   EXTERNAL dgesv
   EXTERNAL dsyev
@@ -275,7 +275,7 @@ FUNCTION anisotropia_tensor_inercia (m, R)
   REAL(pf), INTENT(IN)   :: m(:), R(:,:)
   INTEGER, parameter :: N = 3
   REAL(pf) :: tensor(N,N), autovalores(N), l1, l2, l3
-  REAL(pf), ALLOCATABLE :: workspace(:)
+  REAL(pf64), ALLOCATABLE :: workspace(:)
   INTEGER :: info, lwork, idx(3)
   REAL(pf) :: anisotropia_tensor_inercia 
 

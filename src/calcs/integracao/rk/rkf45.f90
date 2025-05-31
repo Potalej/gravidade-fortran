@@ -12,7 +12,7 @@
 !   oap
 ! 
 MODULE rkf45
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE rungekutta
   USE correcao
   USE colisao

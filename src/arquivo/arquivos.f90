@@ -15,7 +15,7 @@
 !   oap
 ! 
 MODULE arquivos
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64, pf64=>real64
+  USE tipos
 
   ! OPENMP
   USE OMP_LIB

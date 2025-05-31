@@ -55,7 +55,7 @@
 !   oap
 ! 
 MODULE correcao
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE auxiliares
   USE mecanica
 
@@ -170,7 +170,7 @@ END SUBROUTINE corrigir
 ! Autoria:
 !   oap
 !
-SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, J)
+SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H0, J, H_atual)
   IMPLICIT NONE
   REAL(pf), INTENT(IN)    :: corme  ! CORrecao Margem Erro
   INTEGER,  INTENT(IN)    :: cormnt ! CORrecao Max Num Tentativas
@@ -178,7 +178,7 @@ SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
   LOGICAL,  INTENT(INOUT) :: corrigiu
   INTEGER                 :: N, a, b, contador = 0
-  REAL(pf)                :: H, J(3), gradE2, alpha
+  REAL(pf)                :: H0, J(3), gradE2, alpha, H_atual
   REAL(pf), ALLOCATABLE   :: gradE(:)
 
   N = SIZE(massas)
@@ -200,7 +200,7 @@ SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos
     gradE=gradiente_energia(G, massas, posicoes, momentos, N)
     gradE2 = DOT_PRODUCT(gradE,gradE)
 
-    alpha = (-energia_total(G, massas, posicoes, momentos) + H) / gradE2
+    alpha = (H0 - H_atual) / gradE2
 
     ! aplica a correcao
     gradE = gradE * alpha

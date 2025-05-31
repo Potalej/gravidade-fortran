@@ -12,7 +12,7 @@
 !   oap
 !  
 MODULE octree
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   IMPLICIT NONE
   PRIVATE
   PUBLIC gerar_octree, arvore_octo, verificar_colisao_octree, localizar

@@ -11,7 +11,7 @@
 !   oap
 ! 
 MODULE simulacao
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64, pf64=>real64
+  USE tipos
   USE OMP_LIB
 
   ! Auxiliares
@@ -115,7 +115,7 @@ SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
 
   CALL json % get(infos, 'integracao.t0', t0)
   CALL json % get(infos, 'integracao.tf', tf)
-  CALL json % get(infos, 'integracao.timestep', timestep)
+  timestep = json_get_float(infos, 'integracao.timestep')
 
   IF (t0 < 0) THEN
     IF (tf == 0) THEN
@@ -194,13 +194,13 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   CALL json % get(infos, 'integracao.passos_por_rodada', self % passos_antes_salvar)
   
   ! Salva o tamanho dos passos
-  CALL json % get(infos, 'integracao.timestep', self % h)
+  self % h = json_get_float(infos, 'integracao.timestep')
 
   ! Salva o softening do potencial
-  CALL json % get(infos, 'integracao.amortecedor', self % potsoft)
+  self % potsoft = json_get_float(infos, 'integracao.amortecedor')
 
   ! Salva a gravidade
-  CALL json % get(infos, 'G', self % G)
+  self % G = json_get_float(infos, 'G')
 
   ! Salva as massas
   self % M = M
@@ -237,13 +237,13 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   
   ! Salva o corretor
   CALL json % get(infos, 'correcao.corrigir', self % corrigir)
-  CALL json % get(infos, 'correcao.margem_erro', self % corrigir_margem_erro)
+  self % corrigir_margem_erro = json_get_float(infos, 'correcao.margem_erro')
   CALL json % get(infos, 'correcao.max_num_tentativas', self % corrigir_max_num_tentativas)
 
   ! Salva as colisoes
   CALL json % get(infos, 'colisoes.colidir', self % colidir)
   self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
-  CALL json % get(infos, 'colisoes.densidade', densidade)
+  densidade = json_get_float(infos, 'colisoes.densidade')
   colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
   self % colisoes_max_distancia = colmd
   WRITE(*,*) 'COLMD: ', colmd
@@ -308,9 +308,12 @@ SUBROUTINE rodar (self, qntdPassos)
   ! Variaveis locais
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
-  REAL(pf) :: E, Icm, Ec, ati, virial = 0.0_pf, difE, av
+  REAL(pf) :: E, Icm, Ep, Ec, ati, virial = 0.0_pf, difE, av
   REAL(pf) :: Ec_media = 0.0_pf, V_media = 0.0_pf, inst_t = 0.0_pf
-  INTEGER  :: timestep_inv, inst = 0
+  ! INTEGER  :: timestep_inv, inst = 0
+  INTEGER  :: inst = 0
+  INTEGER  :: qntd_checkpoints, qntd_por_rodada
+  REAL(pf) :: timestep_inv
 
   ! Definicao dinamica do metodo
   WRITE (*,'(a)') 'METODO: ', self % metodo
@@ -344,20 +347,27 @@ SUBROUTINE rodar (self, qntdPassos)
   R1 = self % R
   P1 = self % P
   CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = NINT(1/self % h)
+  timestep_inv = 1/self % h
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  WRITE(*,*) qntdPassos * timestep_inv
+  WRITE(*,*) self % passos_antes_salvar
 
-  DO WHILE (i < ABS(qntdPassos * timestep_inv))
+  ! PROVISORIO
+  ! QNTD_PASSOS_ANTES_DE_SALVAR = QNTD_ANOS / (TIMESTEP * QNTD_RODADAS)
+  ! POR AGORA VOU USAR O SELF % PASSOS_ANTES_SALVAR COMO QNTD_RODADAS
+  ! UMA RODADA EH TAMBEM UM CHECKPOINT. SE TENHO 50 RODADAS, TENHO 50 CHECKPOINTS
+  qntd_checkpoints = self % passos_antes_salvar
+  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / qntd_checkpoints)
+
+  DO WHILE (i < qntd_checkpoints)
     ! Instante
-    inst_t = inst_t + self % passos_antes_salvar * self % h
+    inst_t = inst_t + qntd_por_rodada * self % h
 
     ! timer
     t0 = omp_get_wtime()
     ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, self % passos_antes_salvar)
+    CALL integrador % aplicarNVezes(R1, P1, qntd_por_rodada)
     
     ! timer
     tf = omp_get_wtime()
@@ -365,35 +375,36 @@ SUBROUTINE rodar (self, qntdPassos)
 
     CALL self % Arq % escrever((/R1, P1/))
 
-    IF (mod(i, 10*self%passos_antes_salvar) == 0) THEN
+    ! IF (mod(i, 100*self%passos_antes_salvar) == 0) THEN
       ! Energia
-      E = energia_total(self % G, self % M, R1, P1)
-      difE = E - self%E0
-      Ec = energia_cinetica(self % M, P1)
+    Ep = energia_potencial(self % G, self % M, R1)
+    Ec = energia_cinetica(self % M, P1)
+    difE = Ec + Ep - self%E0
 
-      ! virial
-      Ec_media = (inst * Ec_media + Ec) / (inst + 1)
-      V_media = (inst * V_media + Ec - E) / (inst + 1)
-      virial = (Ec_media + Ec_media)/(-V_media) + 1
+    ! virial
+    Ec_media = (inst * Ec_media + Ec) / (inst + 1)
+    V_media = (inst * V_media + Ep) / (inst + 1)
+    virial = (Ec_media + Ec_media)/(V_media) + 1
 
-      ! anisotropia
-      ati = anisotropia_tensor_inercia(self % M, R1)
-      av = anisotropia_velocidades(self % M, R1, P1)
+    ! anisotropia
+    ! ati = anisotropia_tensor_inercia(self % M, R1)
+    ! av = anisotropia_velocidades(self % M, R1, P1)
 
-      ! tamanho do sistema
-      Icm = momento_inercia(self % M, R1)
+    ! tamanho do sistema
+    Icm = momento_inercia(self % M, R1)
 
-      WRITE (*,*) '     -> Passo:', i, ' / Tempo: ', tempo_total, ' / t = ', inst_t
-      WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm, ' / ati: ', ati, ' / av: ', av
-      WRITE (*,*)
-      inst = inst + 1
-      CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*timestep_inv, tempo_total)
-    ENDIF
+    WRITE (*,*) '     -> Passo:', i, ' / Tempo: ', tempo_total, ' / t = ', inst_t
+    ! WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm, ' / ati: ', ati, ' / av: ', av
+    WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm
+    WRITE (*,*)
+    inst = inst + 1
+    CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*NINT(timestep_inv), tempo_total)
+    ! ENDIF
 
-    i = i + self % passos_antes_salvar
+    i = i + 1
   END DO
 
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar*timestep_inv, tempo_total)
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar*NINT(timestep_inv), tempo_total)
   CALL self % Arq % excluir_bkp()
 
   WRITE (*, '(a)') '  > simulacao encerrada!'

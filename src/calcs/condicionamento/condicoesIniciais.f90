@@ -11,7 +11,7 @@
 !   oap
 ! 
 MODULE condicoesIniciais
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE mecanica
   USE auxiliares
   USE condicionamento ! Metodos gerais de restricao
@@ -44,7 +44,7 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
 
   CALL json % get(dados, "sorteio", sorteio)
   CALL json % get(dados, "N", N)
-  CALL json % get(dados, "G", G)
+  G = json_get_float(dados, "G")
   WRITE(*,'(a)') "GERACAO DAS VALORES INICIAIS ("//metodo//")"
 
   ! Sorteio dos valores na regiao e com distribuicao desejadas
@@ -55,9 +55,9 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
   CALL gerar_valores(N, sorteio, massas, posicoes, momentos)
 
   ! Captura as integrais primeiras
-  CALL json % get(sorteio, "integrais.energia_total", ed)
-  CALL json % get(sorteio, "integrais.linear_total", pd)
-  CALL json % get(sorteio, "integrais.angular_total", jd)
+  ed = json_get_float(sorteio, "integrais.energia_total")
+  pd = json_get_float_vec(sorteio, "integrais.linear_total")
+  jd = json_get_float_vec(sorteio, "integrais.angular_total")
 
   ! Agora faz o condicionamento de acordo com o metodo desejado
   WRITE(*,*) ""

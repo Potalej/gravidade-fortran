@@ -12,7 +12,7 @@
 ! 
 MODULE simulacao_vi
 
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE OMP_LIB
   USE simulacao
   USE arquivos_json
@@ -46,23 +46,22 @@ SUBROUTINE simular_vi (arquivo)
   TYPE(json_value), POINTER :: infos
   REAL(pf), ALLOCATABLE :: pos3(:), mom3(:)
   REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
-  INTEGER :: a
-  CHARACTER(32) :: a_string
+  INTEGER :: a, b
+  CHARACTER(32) :: a_string, b_string
 
   ! Le o arquivo de valores iniciais
   CALL ler_json(arquivo, infos)
 
   ! Le os valores iniciais
-  CALL json % get(infos, 'valores_iniciais.massas', massas)
+  massas = json_get_float_vec(infos, 'valores_iniciais.massas')
 
   ALLOCATE(posicoes(SIZE(massas),3))
   ALLOCATE(momentos(SIZE(massas),3))
 
   DO a=1, SIZE(massas)
     WRITE(a_string, *) a
-    CALL json % get(infos, 'valores_iniciais.posicoes['//a_string//']', pos3)
-    CALL json % get(infos, 'valores_iniciais.momentos['//a_string//']', mom3)
-
+    pos3 = json_get_float_vec(infos, 'valores_iniciais.posicoes['//a_string//']')
+    mom3 = json_get_float_vec(infos, 'valores_iniciais.momentos['//a_string//']')
     posicoes(a,:) = pos3
     momentos(a,:) = mom3
   END DO

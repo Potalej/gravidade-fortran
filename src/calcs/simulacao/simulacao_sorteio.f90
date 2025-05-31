@@ -12,7 +12,7 @@
 ! 
 MODULE simulacao_sorteio
 
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE OMP_LIB
   USE simulacao
   USE condicoesIniciais

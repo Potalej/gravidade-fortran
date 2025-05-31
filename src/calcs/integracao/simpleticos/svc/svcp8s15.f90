@@ -13,7 +13,7 @@
 !   oap
 !
 MODULE svcp8s15
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE OMP_LIB
   USE integrador
 

@@ -14,7 +14,7 @@
 ! 
 MODULE integrador
 
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE OMP_LIB
   USE funcoes_forca
   USE mecanica
@@ -185,7 +185,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar)
   REAL(pf)             :: E
   REAL(pf), DIMENSION(3) :: J
   ! Para cada passo
-  INTEGER :: i
+  INTEGER :: i, a, b
   ! para verificar se corrigiu
   LOGICAL :: corrigiu = .FALSE.
   ! Para as forcas e passos pos-integracao
@@ -235,7 +235,7 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar)
 
       ! Corrige somente a energia total
       CALL corrigir_apenas_energia(self % corme, self % cormnt, self % G, &
-                                  self % m, R1, P1, corrigiu, self % E0, self % J0)
+                                  self % m, R1, P1, corrigiu, self % E0, self % J0, E)
       
       IF (corrigiu) THEN
         contagem_correcao = contagem_correcao + 1

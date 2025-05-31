@@ -1,0 +1,6 @@
+MODULE tipos
+  IMPLICIT NONE
+  INTEGER, PARAMETER :: pf64  = SELECTED_REAL_KIND(15, 307)  ! double precision (~64 bits)
+  INTEGER, PARAMETER :: pf128 = SELECTED_REAL_KIND(33, 4931) ! quad precision (~128 bits)
+  integer, parameter :: pf = @PF_KIND@                       ! global (definido no cmake)
+END MODULE tipos

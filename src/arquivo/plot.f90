@@ -14,7 +14,7 @@
 !   oap
 ! 
 MODULE plot
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE arquivos
 CONTAINS    
 

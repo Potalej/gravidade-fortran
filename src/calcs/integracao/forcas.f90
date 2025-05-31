@@ -1,9 +1,9 @@
 MODULE funcoes_forca
 
-    USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
-    USE OMP_LIB
-    IMPLICIT NONE
-    PUBLIC
+  USE tipos
+  USE OMP_LIB
+  IMPLICIT NONE
+  PUBLIC
 
 CONTAINS
 

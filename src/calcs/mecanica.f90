@@ -16,7 +16,7 @@
 !   oap
 ! 
 MODULE mecanica
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE auxiliares
   IMPLICIT NONE
 CONTAINS

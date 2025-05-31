@@ -12,7 +12,8 @@
 !   oap
 ! 
 PROGRAM main
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE version
+  USE tipos
   USE OMP_LIB
   USE simulacao_sorteio
   USE simulacao_vi
@@ -73,6 +74,8 @@ CONTAINS
 
   ! Ajudador
   SUBROUTINE help
+    WRITE (*,*) 'v', version_string, ' (', build_date, ' ', build_time, ')'
+    WRITE (*,*)
     WRITE (*,*) 'SINOPSE:'
     WRITE (*,*) '   # ./gravidade [--help|-h]'
     WRITE (*,*) '   # ./gravidade [OPCAO] [ARQUIVO]'

@@ -5,7 +5,7 @@ def rodar (comando:str)->None:
   system(comando)
 
 def build (buildar:bool=False, os:str="Linux"):
-  rodar('cmake -B build -G Ninja && ninja -C build')
+  rodar('cmake -B build -DPRECISAO=128 -G Ninja && ninja -C build')
 
 def sortear_salvar (buildar:bool=False, os:str="Linux"):
   if buildar: build()

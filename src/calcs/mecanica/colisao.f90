@@ -12,7 +12,7 @@
 !   oap
 !  
 MODULE colisao
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE octree
   USE mecanica
   IMPLICIT NONE
@@ -133,7 +133,7 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios)
   REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
   INTEGER :: a, b
   LOGICAL :: paralelo, colidiram(size(m),size(m))
-  REAL(pf) :: m13a, m13b, fator, raios(size(m))
+  REAL(pf) :: m13a, m13b, fator, raios(size(m)), dist
 
   colidiram=.FALSE.
 
@@ -165,7 +165,9 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios)
         IF (a == b .OR. colidiram(a,b) .OR. colidiram(b,a)) THEN
           CYCLE
         ENDIF
-        IF (norm2(R(b,:)-R(a,:)) <= raios(a) + raios(b)) THEN
+        
+        dist = norm2(R(b,:)-R(a,:))
+        IF (dist <= raios(a) + raios(b)) THEN
           IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
             colidiram(a,b) = .TRUE.
             colidiram(b,a) = .TRUE.

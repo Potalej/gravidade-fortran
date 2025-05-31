@@ -13,7 +13,7 @@
 !   oap
 ! 
 MODULE aleatorio
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   IMPLICIT NONE
 CONTAINS
 

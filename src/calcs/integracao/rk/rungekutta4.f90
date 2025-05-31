@@ -12,7 +12,7 @@
 !   oap
 ! 
 MODULE rungekutta4
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE rungekutta
   USE funcoes_forca
   USE integrador

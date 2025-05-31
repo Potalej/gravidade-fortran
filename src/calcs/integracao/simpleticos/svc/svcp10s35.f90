@@ -13,7 +13,7 @@
 !   oap
 !
 MODULE svcp10s35
-  USE, INTRINSIC :: iso_fortran_env, only: pf=>real64
+  USE tipos
   USE OMP_LIB
   USE integrador
 
