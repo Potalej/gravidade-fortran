@@ -61,7 +61,7 @@ MODULE simulacao
   
     !> N: Quantidade de corpos
     !> dim: Dimensao do problema
-    INTEGER :: N, dim = 3, passos_antes_salvar, t0, tf
+    INTEGER :: N, dim = 3, qntd_checkpoints, t0, tf
 
     !> h: Tamanho do passo de integracao
     !> G: Constante de gravitacao universal
@@ -77,6 +77,8 @@ MODULE simulacao
     !> Ptot: Momento linear total do sistema
     !> Rcm: Centro de massas do sistema
     REAL(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:), Rcm(:)
+    REAL(pf) :: m_esc, m_inv, m2
+    LOGICAL :: mi ! Massas iguais
     
     REAL(pf), DIMENSION(3) :: J0
 
@@ -190,8 +192,9 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   REAL(pf) :: h, colmd, densidade
   INTEGER  :: a, i
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
+  LOGICAL :: encontrado
 
-  CALL json % get(infos, 'integracao.passos_por_rodada', self % passos_antes_salvar)
+  CALL json % get(infos, 'integracao.passos_por_rodada', self % qntd_checkpoints)
   
   ! Salva o tamanho dos passos
   self % h = json_get_float(infos, 'integracao.timestep')
@@ -210,6 +213,15 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
 
   ! Massa total do sistema
   self % mtot = SUM(self % M)
+
+  ! Salva se as massas sao iguais
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado) self % mi = .FALSE.
+  IF (self % mi) THEN
+    self % m_esc = self % M(1)
+    self % m2 = self % m_esc * self % m_esc
+    self % m_inv = 1 / self % m_esc
+  ENDIF
 
   ! Salva as posicoes e os momentos
   self % R = R0
@@ -272,7 +284,7 @@ SUBROUTINE inicializar_metodo (self)
 
   ! Salva as informacoes no info.txt
   CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
-    self%t0, self%tf, self % passos_antes_salvar, &
+    self%t0, self%tf, self % qntd_checkpoints, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
     self%colisoes_modo, self%colisoes_max_distancia, self % paralelo)
 
@@ -312,7 +324,7 @@ SUBROUTINE rodar (self, qntdPassos)
   REAL(pf) :: Ec_media = 0.0_pf, V_media = 0.0_pf, inst_t = 0.0_pf
   ! INTEGER  :: timestep_inv, inst = 0
   INTEGER  :: inst = 0
-  INTEGER  :: qntd_checkpoints, qntd_por_rodada
+  INTEGER  :: qntd_por_rodada
   REAL(pf) :: timestep_inv
 
   ! Definicao dinamica do metodo
@@ -341,7 +353,8 @@ SUBROUTINE rodar (self, qntdPassos)
   CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
     self % E0, self % J0, &
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo)
+    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo, &
+    self%mi)
 
   ! Condicoes iniciais
   R1 = self % R
@@ -351,16 +364,11 @@ SUBROUTINE rodar (self, qntdPassos)
 
   ! Roda
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  WRITE(*,*) self % passos_antes_salvar
+  WRITE(*,*) self % qntd_checkpoints
 
-  ! PROVISORIO
-  ! QNTD_PASSOS_ANTES_DE_SALVAR = QNTD_ANOS / (TIMESTEP * QNTD_RODADAS)
-  ! POR AGORA VOU USAR O SELF % PASSOS_ANTES_SALVAR COMO QNTD_RODADAS
-  ! UMA RODADA EH TAMBEM UM CHECKPOINT. SE TENHO 50 RODADAS, TENHO 50 CHECKPOINTS
-  qntd_checkpoints = self % passos_antes_salvar
-  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / qntd_checkpoints)
+  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / self % qntd_checkpoints)
 
-  DO WHILE (i < qntd_checkpoints)
+  DO WHILE (i < self % qntd_checkpoints)
     ! Instante
     inst_t = inst_t + qntd_por_rodada * self % h
 
@@ -375,10 +383,14 @@ SUBROUTINE rodar (self, qntdPassos)
 
     CALL self % Arq % escrever((/R1, P1/))
 
-    ! IF (mod(i, 100*self%passos_antes_salvar) == 0) THEN
-      ! Energia
-    Ep = energia_potencial(self % G, self % M, R1)
-    Ec = energia_cinetica(self % M, P1)
+    ! Energia
+    IF (self % mi) THEN
+      Ep = energia_potencial_esc(self % G, self % m2, R1)
+      Ec = energia_cinetica_esc(self % m_inv, P1)
+    ELSE
+      Ep = energia_potencial_vec(self % G, self % M, R1)
+      Ec = energia_cinetica_vec(self % M, P1)
+    ENDIF
     difE = Ec + Ep - self%E0
 
     ! virial
@@ -394,17 +406,15 @@ SUBROUTINE rodar (self, qntdPassos)
     Icm = momento_inercia(self % M, R1)
 
     WRITE (*,*) '     -> Passo:', i, ' / Tempo: ', tempo_total, ' / t = ', inst_t
-    ! WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm, ' / ati: ', ati, ' / av: ', av
     WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm
     WRITE (*,*)
     inst = inst + 1
-    CALL self % Arq % arquivo_bkp(i*self%passos_antes_salvar*NINT(timestep_inv), tempo_total)
-    ! ENDIF
+    CALL self % Arq % arquivo_bkp(i*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
 
     i = i + 1
   END DO
 
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%passos_antes_salvar*NINT(timestep_inv), tempo_total)
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
   CALL self % Arq % excluir_bkp()
 
   WRITE (*, '(a)') '  > simulacao encerrada!'

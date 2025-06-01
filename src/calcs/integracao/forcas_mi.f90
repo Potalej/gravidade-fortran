@@ -1,4 +1,4 @@
-MODULE funcoes_forca
+MODULE funcoes_forca_mi
 
   USE tipos
   USE OMP_LIB
@@ -7,11 +7,10 @@ MODULE funcoes_forca
 
 CONTAINS
 
-FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
+FUNCTION forcas_mi_par (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
-  REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
   
   REAL(pf), DIMENSION(dim) :: Fab, Rab
@@ -38,7 +37,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
       distancia_inv = distancia_inv**3
 
       ! forca entre os corpos a e b
-      Fab = G * m(a) * m(b) * Rab * distancia_inv
+      Fab = G * Rab * distancia_inv
       
       ! Adiciona na matriz      
       forcas(a,:) = forcas(a,:) + Fab
@@ -47,7 +46,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   !$OMP END DO
   !$OMP END PARALLEL
 
-END FUNCTION forcas_par
+END FUNCTION forcas_mi_par
 
 ! ************************************************************
 !! Matriz de forcas
@@ -62,11 +61,10 @@ END FUNCTION forcas_par
 ! Autoria:
 !   oap
 ! 
-FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
+FUNCTION forcas_mi_seq (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
-  REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
 
   REAL(pf), DIMENSION(dim) :: Fab, Rab
@@ -88,13 +86,13 @@ FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
       distancia_inv = distancia_inv**3
 
       ! forca entre os corpos a e b
-      Fab = G * m(a) * m(b) * (Rab) * distancia_inv
+      Fab = G * Rab * distancia_inv
       ! Adiciona na matriz
       forcas(a,:) = forcas(a,:) + Fab
       forcas(b,:) = forcas(b,:) - Fab
     END DO
   END DO
 
-END FUNCTION forcas_seq
+END FUNCTION forcas_mi_seq
 
-END MODULE funcoes_forca
+END MODULE funcoes_forca_mi

@@ -44,7 +44,7 @@ MODULE rkn551
   TYPE, EXTENDS(integracao) :: integracao_rkn551
 
     CONTAINS
-      PROCEDURE :: metodo
+      PROCEDURE :: metodo, metodo_mi
 
   END TYPE
 
@@ -70,7 +70,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   
-  INTEGER :: a, i, j
+  INTEGER :: i, j
 
   REAL(pf), DIMENSION(SIZE(c), self%N, self%dim) :: y, fi
 
@@ -99,13 +99,63 @@ FUNCTION metodo (self, R, P, FSomas_ant)
     P1 = P1 + self % h * g(i) * FSomas_prox
   END DO
 
-  ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
-
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
-  metodo(3,:,:) = FSomas_prox
+  metodo(3,:,:) = 0.0_pf
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico (massas iguais)
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   01 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+  IMPLICIT NONE
+  class(integracao_rkn551), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  
+  INTEGER :: i, j
+
+  REAL(pf), DIMENSION(SIZE(c), self%N, self%dim) :: y, fi
+
+  R1 = R + self % h * P * self % m_inv
+  P1 = P
+
+  DO i = 1, SIZE(c)
+
+    ! Calcula a base do yi
+    y(i,:,:) = R + c(i) * self % h * P * self % m_inv
+
+    ! Se i > 1, calcula os termos a mais
+    IF (i .GT. 1) THEN
+      ! Somatorio
+      DO j = 1, i-1
+        y(i,:,:) = y(i,:,:) + self % h * self % h * aij(i-1,j) * fi(j,:,:)
+      END DO
+    ENDIF
+
+    ! Calcula fi
+    FSomas_prox = self%forcas(y(i,:,:))
+    fi(i,:,:) = FSomas_prox * self % m_esc
+
+    ! Adiciona nas posicoes e momentos
+    R1 = R1 + self % h * self % h * b(i) * fi(i,:,:)
+    P1 = P1 + self % h * g(i) * (self % m2 * FSomas_prox)
+  END DO
+
+  metodo_mi(1,:,:) = R1
+  metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = 0.0_pf
+END FUNCTION metodo_mi
 
 END MODULE rkn551

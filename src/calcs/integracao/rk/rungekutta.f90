@@ -23,7 +23,12 @@ MODULE rungekutta
 
     ! m: Massas
     ! massasInvertidas : Matriz como inverso das massas para facilitar a integracao dos momentos
-    REAL(pf), ALLOCATABLE :: m(:), massasInvertidas(:,:)
+    REAL(pf), ALLOCATABLE :: m(:)
+    REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
+    
+    ! Massas iguais
+    LOGICAL  :: mi
+    REAL(pf) :: m_esc, m_inv, m2
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao

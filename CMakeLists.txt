@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.4.1
+project("gravidade" VERSION 0.4.2
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -146,6 +146,7 @@ target_link_libraries(condicionamento PRIVATE
 # Metodos de integracao
 add_library(integracao 
   "./src/calcs/integracao/forcas.f90" 
+  "./src/calcs/integracao/forcas_mi.f90" 
   
   "./src/calcs/integracao/integrador.f90" 
   "./src/calcs/integracao/rk/rungekutta.f90" 

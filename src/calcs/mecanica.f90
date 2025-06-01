@@ -19,6 +19,26 @@ MODULE mecanica
   USE tipos
   USE auxiliares
   IMPLICIT NONE
+
+  INTERFACE energia_cinetica
+    MODULE PROCEDURE energia_cinetica_vec
+    MODULE PROCEDURE energia_cinetica_esc
+  END INTERFACE
+
+  INTERFACE energia_potencial
+    MODULE PROCEDURE energia_potencial_vec
+    MODULE PROCEDURE energia_potencial_esc
+  END INTERFACE
+  
+  INTERFACE energia_total
+    MODULE PROCEDURE energia_total_vec
+    MODULE PROCEDURE energia_total_esc
+  END INTERFACE
+  
+  INTERFACE momento_inercia
+    MODULE PROCEDURE momento_inercia_vec
+    MODULE PROCEDURE momento_inercia_esc
+  END INTERFACE
 CONTAINS
 
 ! ************************************************************
@@ -79,16 +99,24 @@ END FUNCTION momento_angular_total
 ! Autoria:
 !   oap
 !
-FUNCTION energia_cinetica (m, P)
+FUNCTION energia_cinetica_vec (m, P) RESULT(ec)
   IMPLICIT NONE
-  REAL(pf) :: m(:), P(:,:), energia_cinetica
+  REAL(pf) :: m(:), P(:,:), ec
   INTEGER  :: i
-  energia_cinetica=0.0_pf
+  ec=0.0_pf
   DO i=1, SIZE(m)
-    energia_cinetica = energia_cinetica + NORM2(P(i,:))**2/m(i)
+    ec = ec + DOT_PRODUCT(P(i,:), P(i,:))/m(i)
   END DO
-  energia_cinetica = 0.5_pf * energia_cinetica
-END FUNCTION energia_cinetica
+  ec = 0.5_pf * ec
+END FUNCTION energia_cinetica_vec
+
+FUNCTION energia_cinetica_esc (m, P) RESULT(ec)
+  IMPLICIT NONE
+  REAL(pf) :: m ! nesse caso, m = m_inv
+  REAL(pf) :: P(:,:), ec
+  INTEGER  :: i
+  ec = 0.5_pf * sum(sum(P**2, dim=2)) * m
+END FUNCTION energia_cinetica_esc
 
 ! ************************************************************
 !! Energia potencial
@@ -106,21 +134,38 @@ END FUNCTION energia_cinetica
 ! Autoria:
 !   oap
 !
-FUNCTION energia_potencial (G,m,R)
+FUNCTION energia_potencial_vec (G,m,R) RESULT(ep)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:)
-  REAL(pf) :: distancia, G, energia_potencial, distancia_inv
+  REAL(pf) :: distancia, G, ep, distancia_inv
   INTEGER  :: i,j
-  energia_potencial=0.0_pf
+  ep=0.0_pf
   DO i=2, SIZE(m)
     DO j=1,i-1
       distancia = NORM2(R(i,:)-R(j,:))
       distancia_inv = 1.0_pf/distancia
-      energia_potencial = energia_potencial + m(i)*m(j)*distancia_inv
+      ep = ep + m(i)*m(j)*distancia_inv
     END DO
   END DO
-  energia_potencial = -G*energia_potencial
-END FUNCTION energia_potencial
+  ep = -G*ep
+END FUNCTION energia_potencial_vec
+
+FUNCTION energia_potencial_esc (G,m,R) RESULT(ep)
+  IMPLICIT NONE
+  REAL(pf) :: m ! aqui m = m*m
+  REAL(pf) :: R(:,:)
+  REAL(pf) :: distancia, G, ep, distancia_inv
+  INTEGER  :: i,j
+  ep=0.0_pf
+  DO i=2, SIZE(R,1)
+    DO j=1,i-1
+      distancia = NORM2(R(i,:)-R(j,:))
+      distancia_inv = 1.0_pf/distancia
+      ep = ep + distancia_inv
+    END DO
+  END DO
+  ep = -G*ep*m
+END FUNCTION energia_potencial_esc
 
 ! ************************************************************
 !! Energia total do problema de N corpos
@@ -139,12 +184,20 @@ END FUNCTION energia_potencial
 ! Autoria:
 !   oap
 !
-FUNCTION energia_total (G, m, R, P)
+FUNCTION energia_total_vec (G, m, R, P) RESULT(e_tot)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:), G
-  REAL(pf) :: energia_total
-  energia_total = energia_cinetica(m,P) + energia_potencial(G,m,R)
-END FUNCTION energia_total
+  REAL(pf) :: e_tot
+  e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
+END FUNCTION energia_total_vec
+
+FUNCTION energia_total_esc (G, m, R, P) RESULT(e_tot)
+  IMPLICIT NONE
+  REAL(pf) :: m
+  REAL(pf) :: R(:,:), P(:,:), G
+  REAL(pf) :: e_tot
+  e_tot = energia_cinetica(1/m,P) + energia_potencial(G,m*m,R)
+END FUNCTION energia_total_esc
 
 ! ************************************************************
 !! Momento de dilatacao
@@ -181,16 +234,24 @@ END FUNCTION momento_dilatacao
 ! Autoria:
 !   oap
 !
-FUNCTION momento_inercia (m, R)
+FUNCTION momento_inercia_vec (m, R) RESULT(momine)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:)
-  REAL(pf) :: momento_inercia
+  REAL(pf) :: momine
   INTEGER  :: i
-  momento_inercia=0.0_pf
+  momine=0.0_pf
   DO i=1, SIZE(R,1)
-    momento_inercia = momento_inercia + m(i) * DOT_PRODUCT(R(i,:),R(i,:))
+    momine = momine + m(i) * DOT_PRODUCT(R(i,:),R(i,:))
   END DO
-END FUNCTION momento_inercia
+END FUNCTION momento_inercia_vec
+
+FUNCTION momento_inercia_esc (m, R) RESULT(momine)
+  IMPLICIT NONE
+  REAL(pf) :: m, R(:,:)
+  REAL(pf) :: momine
+  INTEGER  :: i
+  momine=m*sum(R(:,1)**2 + R(:,2)**2 + R(:,3)**2)
+END FUNCTION momento_inercia_esc
 
 ! ************************************************************
 !! Raio de meia massa (half-mass ratio)

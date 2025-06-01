@@ -22,7 +22,7 @@ MODULE euler_simp
   TYPE, EXTENDS(integracao) :: integracao_euler_simp
 
     CONTAINS
-      PROCEDURE :: metodo
+      PROCEDURE :: metodo, metodo_mi
 
   END TYPE
   
@@ -64,5 +64,38 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   metodo(2,:,:) = P1
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico (massas iguais)
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   01 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+  IMPLICIT NONE
+  class(integracao_euler_simp), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  
+  ! Calcula as forcas
+  FSomas = self%forcas(R)
+
+  ! Integrando as velocidades
+  P1 = P + self%h * (self%m2 * FSomas)
+
+  ! Integrando as posicoes
+  R1 = R + self % h * P1 * self % m_inv
+
+  metodo_mi(1,:,:) = R1
+  metodo_mi(2,:,:) = P1
+
+END FUNCTION metodo_mi
 
 END MODULE euler_simp

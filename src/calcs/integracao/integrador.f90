@@ -17,6 +17,7 @@ MODULE integrador
   USE tipos
   USE OMP_LIB
   USE funcoes_forca
+  USE funcoes_forca_mi
   USE mecanica
   USE correcao
   USE colisao
@@ -28,7 +29,12 @@ MODULE integrador
   TYPE :: integracao
   
     ! m: Massas
-    REAL(pf), ALLOCATABLE :: m(:), massasInvertidas(:,:)
+    REAL(pf), ALLOCATABLE :: m(:)
+    REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
+    
+    ! Massas iguais
+    LOGICAL  :: mi
+    REAL(pf) :: m_esc, m_inv, m2
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
@@ -55,14 +61,15 @@ MODULE integrador
     ! Se vai ou nao usar paralelizacao
     LOGICAL :: paralelo = .FALSE.
 
-    ! Vetor de forcas
-    PROCEDURE(forcas_funcbase), POINTER, NOPASS :: forcas_funcao => NULL()
+    ! Funcao de forcas (aceleracao)
+    PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
+    PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
 
     ! Arvore octree
     TYPE(arvore_octo), ALLOCATABLE :: arvore
 
     CONTAINS
-      PROCEDURE :: Iniciar, aplicarNVezes, metodo, forcas
+      PROCEDURE :: Iniciar, aplicarNVezes, metodo, metodo_mi, forcas
   
   END TYPE integracao
 
@@ -76,6 +83,15 @@ MODULE integrador
         REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
+
+    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft, potsoft2)
+        IMPORT :: pf
+        IMPLICIT NONE
+        INTEGER,                     INTENT(IN) :: N, dim
+        REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
+        REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
+    END FUNCTION forcas_mi_funcbase
   END INTERFACE
 CONTAINS
 
@@ -92,7 +108,7 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo, mi)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
   REAL(pf), allocatable :: massas(:)
@@ -103,20 +119,29 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   REAL(pf) :: corme, potsoft, colmd
   INTEGER :: cormnt
   INTEGER :: a, i
+  LOGICAL :: mi
 
   ! Quantidade de particulas
   self % N = SIZE(massas)
-  ! Massas
-  ALLOCATE(self % m (self % N))
-  self % m = massas
   
-  ! vetor de massas invertidas
-  ALLOCATE(self % massasInvertidas (self % N, self % dim))
-  DO a = 1, self % N
-    DO i = 1, self % dim
-      self % massasInvertidas(a,i) = 1/(massas(a))
+  ! Massas
+  self % mi = mi
+  ALLOCATE(self % m(self % N))
+  self % m = massas
+
+  IF (mi) THEN
+    self % m_esc = massas(1)
+    self % m_inv = 1/self % m_esc
+    self % m2 = self % m_esc * self % m_esc
+  ELSE  
+    ! vetor de massas invertidas
+    ALLOCATE(self % massasInvertidas (self % N, self % dim))
+    DO a = 1, self % N
+      DO i = 1, self % dim
+        self % massasInvertidas(a,i) = 1/(massas(a))
+      END DO
     END DO
-  END DO
+  ENDIF  
 
   ! gravidade
   self % G = G
@@ -147,12 +172,19 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   ! Codigo paralelo
   self % paralelo = paralelo
   IF (paralelo) THEN
-    self % forcas_funcao => forcas_par
+    IF (mi) THEN
+      self % forcas_mi_funcao => forcas_mi_par
+    ELSE
+      self % forcas_funcao => forcas_par
+    ENDIF
   ELSE
-    self % forcas_funcao => forcas_seq
+    IF (mi) THEN
+      self % forcas_mi_funcao => forcas_mi_seq
+    ELSE
+      self % forcas_funcao => forcas_seq
+    ENDIF
   ENDIF
 END SUBROUTINE Iniciar
-
 
 FUNCTION forcas (self, R)
   IMPLICIT NONE
@@ -160,7 +192,11 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
-  forcas = self % forcas_funcao(self%m, R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
+  IF (self % mi) THEN
+    forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
+  ELSE
+    forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
+  ENDIF
 
 END FUNCTION forcas
 
@@ -176,12 +212,12 @@ END FUNCTION forcas
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar)
+SUBROUTINE aplicarNVezes (self, R, P, qntd_checkpoints)
 
   IMPLICIT NONE
   class (integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
-  INTEGER, INTENT(IN) :: passos_antes_salvar
+  INTEGER, INTENT(IN) :: qntd_checkpoints
   REAL(pf)             :: E
   REAL(pf), DIMENSION(3) :: J
   ! Para cada passo
@@ -206,21 +242,39 @@ SUBROUTINE aplicarNVezes (self, R, P, passos_antes_salvar)
   ! Calcula as forcas
   FSomas_ant = self%forcas(R)
 
-  ! Integrando
-  DO i = 1, passos_antes_salvar
-    ! Aplica o metodo
-    resultado = self % metodo(R1, P1, FSomas_ant)
+  ! Integrando (massas iguais)
+  IF (self % mi) THEN
+    DO i = 1, qntd_checkpoints
+      ! Aplica o metodo
+      resultado = self % metodo_mi(R1, P1, FSomas_ant)
 
-    R1 = resultado(1,:,:)
-    P1 = resultado(2,:,:)
-    FSomas_ant = resultado(3,:,:)
+      R1 = resultado(1,:,:)
+      P1 = resultado(2,:,:)
+      FSomas_ant = resultado(3,:,:)
 
-    ! se tiver colisoes, aplica
-    IF (self % colidir) THEN
-      CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
-                               self%raios, self%arvore, self%colisoes_modo)
-    ENDIF
-  END DO
+      ! se tiver colisoes, aplica
+      IF (self % colidir) THEN
+        CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
+                                self%raios, self%arvore, self%colisoes_modo)
+      ENDIF
+    END DO
+  ! Integrando (massas diferentes)
+  ELSE
+    DO i = 1, qntd_checkpoints
+      ! Aplica o metodo
+      resultado = self % metodo(R1, P1, FSomas_ant)
+
+      R1 = resultado(1,:,:)
+      P1 = resultado(2,:,:)
+      FSomas_ant = resultado(3,:,:)
+
+      ! se tiver colisoes, aplica
+      IF (self % colidir) THEN
+        CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
+                                self%raios, self%arvore, self%colisoes_modo)
+      ENDIF
+    END DO
+  ENDIF
 
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
   IF (self%corrigir) THEN
@@ -277,5 +331,28 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   WRITE (*,*) 'OPS'
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico (massas iguais)
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   01 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+  IMPLICIT NONE
+  class(integracao), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  
+  ! Cada integrador precisa ter um metodo definido, que substitui esta funcao vazia
+  WRITE (*,*) 'OPS'
+
+END FUNCTION metodo_mi
 
 END MODULE integrador

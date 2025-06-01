@@ -31,28 +31,32 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos)
+SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos, mi)
   TYPE(json_value), POINTER, INTENT(IN) :: sorteio
   INTEGER, INTENT(IN)         :: N
   TYPE(json_value), POINTER   :: sort_mas, sort_pos, sort_mom
   REAL(pf), INTENT(INOUT)     :: posicoes(:,:), momentos(:,:), massas(:)
+  LOGICAL, INTENT(IN)         :: mi ! massas iguais
 
   CALL json % get(sorteio, "massas", sort_mas)
   CALL json % get(sorteio, "posicoes", sort_pos)
   CALL json % get(sorteio, "momentos", sort_mom)
 
   ! Gera massas
-  WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
-  massas = gerar_massas(N, sort_mas)
+  IF (mi) THEN
+    WRITE (*,'(A)') '    * gerando massas (1/N)'
+    massas = 1/N
+  ELSE
+    WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
+    massas = gerar_massas(N, sort_mas)
+  ENDIF
 
   ! Gera as posições
   WRITE (*,'(A)', ADVANCE='no') '    * gerando posicoes'  
-  !   WRITE (*,*) '       * Distribuicao:', vid, vire, vira, int_posicoes(3)
   posicoes = gerar_vetores3d(N, sort_pos)
 
   ! Gera os momentos
   WRITE (*,'(A)', ADVANCE='no') '    * gerando momentos'
-  !   WRITE (*,*) '       * Distribuicao:', vid, vire, vira
   momentos = gerar_vetores3d(N, sort_mom)
 
 END SUBROUTINE gerar_valores

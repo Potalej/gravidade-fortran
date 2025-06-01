@@ -41,10 +41,14 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
   REAL(pf), DIMENSION(:), ALLOCATABLE :: pd, jd
   INTEGER  :: N
   REAL(pf) :: G
+  LOGICAL  :: mi, encontrado ! massas iguais
 
   CALL json % get(dados, "sorteio", sorteio)
   CALL json % get(dados, "N", N)
   G = json_get_float(dados, "G")
+  CALL json % get(dados, "massas_iguais", mi, encontrado)
+  IF (.NOT. encontrado) mi = .FALSE.
+
   WRITE(*,'(a)') "GERACAO DAS VALORES INICIAIS ("//metodo//")"
 
   ! Sorteio dos valores na regiao e com distribuicao desejadas
@@ -52,7 +56,7 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
   ALLOCATE(massas(N))
   ALLOCATE(posicoes(N,3))
   ALLOCATE(momentos(N,3))
-  CALL gerar_valores(N, sorteio, massas, posicoes, momentos)
+  CALL gerar_valores(N, sorteio, massas, posicoes, momentos, mi)
 
   ! Captura as integrais primeiras
   ed = json_get_float(sorteio, "integrais.energia_total")

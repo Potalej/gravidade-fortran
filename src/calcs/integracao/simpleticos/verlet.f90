@@ -22,7 +22,7 @@ MODULE verlet
   TYPE, EXTENDS(integracao) :: integracao_verlet
 
     CONTAINS
-      PROCEDURE :: metodo
+      PROCEDURE :: metodo, metodo_mi
 
   END TYPE
 
@@ -64,5 +64,42 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   metodo(3,:,:) = FSomas_prox
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   15 de marco de 2024
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+
+  IMPLICIT NONE
+  class(integracao_verlet), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  INTEGER :: a
+
+  ! Integrando as posicoes
+  R1 = P * self % m_inv + 0.5_pf * self%h * FSomas_ant * self % m_esc
+  R1 = R + self % h * R1
+
+  ! Calcula as novas forcas
+  FSomas_prox = self%forcas(R1)
+
+  ! Integrando as velocidades
+  P1 = P + 0.5_pf*self%h*self%m2*(FSomas_ant + FSomas_prox)
+
+  metodo_mi(1,:,:) = R1
+  metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = FSomas_prox
+
+END FUNCTION metodo_mi
 
 END MODULE verlet

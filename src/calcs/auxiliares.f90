@@ -281,10 +281,6 @@ FUNCTION anisotropia_tensor_inercia (m, R)
 
   tensor = -tensor_inercia_geral(m, R)
 
-  WRITE(*,*) 'tx:', tensor(1,1)
-  WRITE(*,*) 'ty:', tensor(2,2)
-  WRITE(*,*) 'tz:', tensor(3,3)
-
   ! Call DSYEV to compute eigenvalues and eigenvectors
   lwork = -1
   ALLOCATE(workspace(1))
@@ -301,9 +297,9 @@ FUNCTION anisotropia_tensor_inercia (m, R)
   l2 = autovalores(idx(2))
   l3 = autovalores(idx(1))
 
-  WRITE(*,*) 'Autovalores do tensor de inércia inicial: ', l3, l2, l1
+  WRITE (*,*) '     * T.I.  =', tensor(1,1), tensor(2,2), tensor(3,3)
+  WRITE (*,*) '     * Autovalores (T.I.): ', l3, l2, l1
   
-  ! WRITE(*,*) '1o estimador de anisotropia: ', (l1 - l3)/l1
   anisotropia_tensor_inercia = (l2 - l3)/l1
 
 END FUNCTION anisotropia_tensor_inercia

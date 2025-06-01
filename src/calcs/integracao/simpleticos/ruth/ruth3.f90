@@ -27,7 +27,7 @@ MODULE ruth3
   TYPE, EXTENDS(integracao) :: integracao_ruth3
 
     CONTAINS
-      PROCEDURE :: metodo
+      PROCEDURE :: metodo, metodo_mi
 
   END TYPE
   
@@ -75,5 +75,47 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   metodo(3,:,:) = FSomas_prox
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico (massas iguais)
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   01 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+  IMPLICIT NONE
+  class(integracao_ruth3), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  
+  ! i = 3
+  P1 = P + d3 * self % h * (self % m2 * FSomas_ant)
+  R1 = R + c3 * self % h * self % m_inv * P1
+
+  ! i = 2
+  FSomas_prox = self%forcas(R1)
+  P1 = P1 + d2 * self % h * (self % m2 * FSomas_prox)
+  R1 = R1 + c2 * self % h * self % m_inv * P1
+
+  ! i = 1
+  FSomas_prox = self%forcas(R1)
+  P1 = P1 + d1 * self % h * (self % m2 * FSomas_prox)
+  R1 = R1 + c1 * self % h * self % m_inv * P1
+
+  ! Calcula as novas forcas
+  FSomas_prox = self%forcas(R1)
+
+  metodo_mi(1,:,:) = R1
+  metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = FSomas_prox
+
+END FUNCTION metodo_mi
 
 END MODULE ruth3

@@ -15,6 +15,7 @@ MODULE rungekutta3
   USE tipos
   USE rungekutta
   USE funcoes_forca
+  USE funcoes_forca_mi
   USE integrador
 
   IMPLICIT NONE
@@ -27,7 +28,7 @@ MODULE rungekutta3
     TYPE(RK) :: baseRK
     ! Modulos adicionais
     CONTAINS
-      PROCEDURE :: Iniciar, metodo
+      PROCEDURE :: Iniciar, metodo, metodo_mi
 
   END TYPE integracao_rk3
 
@@ -46,23 +47,31 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo)
+SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo, mi)
   IMPLICIT NONE
   CLASS(integracao_rk3), INTENT(INOUT) :: self
   LOGICAL,INTENT(IN) :: corrigir, paralelo
-  LOGICAL, INTENT(IN) :: colidir
+  LOGICAL, INTENT(IN)          :: colidir
   CHARACTER(LEN=*), INTENT(IN) :: colmodo
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd, E0, J0(3)
   INTEGER :: a, i
   REAL(pf) :: corme
   INTEGER :: cormnt
+  LOGICAL :: mi
 
   ! quantidade de partículas
   self % N = SIZE(massas)
+  
   ! massas
+  self % mi = mi
   ALLOCATE(self % m (self % N))
   self % m = massas
+  IF (mi) THEN
+    self % m_esc = massas(1)
+    self % m_inv = 1/self % m_esc
+    self % m2 = self % m_esc * self % m_esc
+  ENDIF
 
   ! gravidade
   self % G = G
@@ -91,9 +100,17 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   ! Codigo paralelo
   self % paralelo = paralelo
   IF (paralelo) THEN
-    self % forcas_funcao => forcas_par
+    IF (mi) THEN
+      self % forcas_mi_funcao => forcas_mi_par
+    ELSE
+      self % forcas_funcao => forcas_par
+    ENDIF
   ELSE
-    self % forcas_funcao => forcas_seq
+    IF (mi) THEN
+      self % forcas_mi_funcao => forcas_mi_seq
+    ELSE
+      self % forcas_funcao => forcas_seq
+    ENDIF
   ENDIF
 
 END SUBROUTINE Iniciar
@@ -140,5 +157,28 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   metodo(2,:,:) = P1
 
 END FUNCTION metodo
+
+! ************************************************************
+!! Metodo numerico (massas iguais)
+!
+! Objetivos:
+!   Aplicacao do metodo em si.
+!
+! Modificado:
+!   01 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION metodo_mi (self, R, P, FSomas_ant)
+  IMPLICIT NONE
+  class(integracao_rk3), INTENT(IN) :: self
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  
+  ! Cada integrador precisa ter um metodo definido, que substitui esta funcao vazia
+  WRITE (*,*) 'OPS'
+
+END FUNCTION metodo_mi
 
 END module rungekutta3
