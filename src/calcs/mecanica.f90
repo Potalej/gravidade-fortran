@@ -112,10 +112,11 @@ END FUNCTION energia_cinetica_vec
 
 FUNCTION energia_cinetica_esc (m, P) RESULT(ec)
   IMPLICIT NONE
-  REAL(pf) :: m ! nesse caso, m = m_inv
+  REAL(pf) :: m, m_inv
   REAL(pf) :: P(:,:), ec
   INTEGER  :: i
-  ec = 0.5_pf * sum(sum(P**2, dim=2)) * m
+  m_inv = 1 / m
+  ec = 0.5_pf * sum(sum(P**2, dim=2)) * m_inv
 END FUNCTION energia_cinetica_esc
 
 ! ************************************************************
@@ -152,10 +153,11 @@ END FUNCTION energia_potencial_vec
 
 FUNCTION energia_potencial_esc (G,m,R) RESULT(ep)
   IMPLICIT NONE
-  REAL(pf) :: m ! aqui m = m*m
+  REAL(pf) :: m, m2
   REAL(pf) :: R(:,:)
   REAL(pf) :: distancia, G, ep, distancia_inv
   INTEGER  :: i,j
+  m2 = m * m
   ep=0.0_pf
   DO i=2, SIZE(R,1)
     DO j=1,i-1
@@ -164,7 +166,7 @@ FUNCTION energia_potencial_esc (G,m,R) RESULT(ep)
       ep = ep + distancia_inv
     END DO
   END DO
-  ep = -G*ep*m
+  ep = -G*ep*m2
 END FUNCTION energia_potencial_esc
 
 ! ************************************************************
@@ -196,7 +198,7 @@ FUNCTION energia_total_esc (G, m, R, P) RESULT(e_tot)
   REAL(pf) :: m
   REAL(pf) :: R(:,:), P(:,:), G
   REAL(pf) :: e_tot
-  e_tot = energia_cinetica(1/m,P) + energia_potencial(G,m*m,R)
+  e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
 END FUNCTION energia_total_esc
 
 ! ************************************************************
