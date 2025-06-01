@@ -385,8 +385,8 @@ SUBROUTINE rodar (self, qntdPassos)
 
     ! Energia
     IF (self % mi) THEN
-      Ep = energia_potencial_esc(self % G, self % m, R1)
-      Ec = energia_cinetica_esc(self % m, P1)
+      Ep = energia_potencial_esc(self % G, self % m_esc, R1)
+      Ec = energia_cinetica_esc(self % m_esc, P1)
     ELSE
       Ep = energia_potencial_vec(self % G, self % M, R1)
       Ec = energia_cinetica_vec(self % M, P1)
