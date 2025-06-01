@@ -5,6 +5,7 @@
     "G": 1.0,
     "N": 100,
     "paralelo": false,
+    "massas_iguais": true,
 
     "integracao": {
         "metodo": "svcp10s35",
