@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -302,7 +302,7 @@ END SUBROUTINE inicializar_metodo
 !   Roda uma simulacao com algum metodo numerico desejado.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -355,6 +355,9 @@ SUBROUTINE rodar (self, qntdPassos)
     self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
     self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo, &
     self%mi)
+
+  ! Atualiza as constantes se for necessario
+  CALL integrador % atualizar_constantes()
 
   ! Condicoes iniciais
   R1 = self % R

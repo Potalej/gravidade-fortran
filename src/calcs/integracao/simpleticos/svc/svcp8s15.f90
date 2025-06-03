@@ -7,7 +7,7 @@
 !   Referencia: (Hairer et al, 2006, p.157)
 !
 ! Modificado:
-!   17 de setembro de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -21,31 +21,63 @@ MODULE svcp8s15
   PRIVATE
   PUBLIC integracao_svcp8s15
 
-  REAL(pf), DIMENSION(15) :: s = (/  &
-        0.74167036435061295344822780_pf, &
-       -0.40910082580003159399730010_pf, &
-        0.19075471029623837995387626_pf, &
-       -0.57386247111608226665638773_pf, &
-        0.29906418130365592384446354_pf, &
-        0.33462491824529818378495798_pf, &
-        0.31529309239676659663205666_pf, &
-       -0.79688793935291635401978884_pf, &
-        0.31529309239676659663205666_pf, &
-        0.33462491824529818378495798_pf, &
-        0.29906418130365592384446354_pf, &
-       -0.57386247111608226665638773_pf, &
-        0.19075471029623837995387626_pf, &
-       -0.40910082580003159399730010_pf, &
-        0.74167036435061295344822780_pf /)
+  REAL(pf),    DIMENSION(15) :: s, a, b
+  REAL(pf128), DIMENSION(15) :: s_128
+
+  REAL(pf),    DIMENSION(14) :: a_consec
+  REAL(pf128), DIMENSION(14) :: s_consec
 
   TYPE, EXTENDS(integracao) :: integracao_svcp8s15
 
     CONTAINS
-      PROCEDURE :: metodo, metodo_mi
+      PROCEDURE :: metodo, metodo_mi, atualizar_constantes
 
   END TYPE
 
 CONTAINS
+
+! ************************************************************
+!! Atualizacao das constantes
+!
+! Modificado:
+!   03 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE atualizar_constantes (self)
+  IMPLICIT NONE
+  class(integracao_svcp8s15), INTENT(IN) :: self
+  INTEGER :: i
+
+  s_128 = (/0.74167036435061295344822780_pf128, &
+       -0.40910082580003159399730010_pf128, &
+        0.19075471029623837995387626_pf128, &
+       -0.57386247111608226665638773_pf128, &
+        0.29906418130365592384446354_pf128, &
+        0.33462491824529818378495798_pf128, &
+        0.31529309239676659663205666_pf128, &
+       -0.79688793935291635401978884_pf128, &
+        0.31529309239676659663205666_pf128, &
+        0.33462491824529818378495798_pf128, &
+        0.29906418130365592384446354_pf128, &
+       -0.57386247111608226665638773_pf128, &
+        0.19075471029623837995387626_pf128, &
+       -0.40910082580003159399730010_pf128, &
+        0.74167036435061295344822780_pf128 /)
+
+  IF (self % mi) THEN
+    a = self % m2_128 * (0.5_pf128 * s)
+    b = self % m_inv_128 * s
+
+    DO i = 1, SIZE(s)-1
+      s_consec(i) = s(i) + s(i+1)
+      a_consec(i) = self % m2_128 * (0.5_pf128 * s_consec(i))
+    END DO
+  ELSE
+    s = s_128
+  ENDIF
+END SUBROUTINE atualizar_constantes
 
 ! ************************************************************
 !! Metodo numerico
@@ -96,7 +128,7 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -106,22 +138,25 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   class(integracao_svcp8s15), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
+  REAL(pf), DIMENSION(self%N, self%dim) :: FSomas, F1, Pk
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
-  INTEGER :: i
-  REAL(pf) :: h ! tamanho de passo dinamico
+  INTEGER :: i  
 
   R1 = R
   P1 = P
-  FSomas = self%m2 * self%forcas(R1)
+  FSomas = self%forcas(R1)
 
-  DO i=size(s),1,-1
-    h = s(i) * self % h
+  i = size(s_128)
+  P_meio = P1 + self%h * (a(i) * FSomas)
+  R1 = R1 + self%h * b(i) * P_meio
+  FSomas = self%forcas(R1)
+  P1 = P_meio + self%h * (a(i) * FSomas)
 
-    P_meio = P1 + 0.5_pf * h * FSomas
-    R1 = R1 + h * P_meio * self % m_inv
-    FSomas = self%m2 * self%forcas(R1)
-    P1 = P_meio + 0.5_pf * h * FSomas
+  DO i=size(s_128)-1,1,-1
+    P_meio = P_meio + self%h * (a_consec(i) * FSomas)
+    R1 = R1 + self%h * b(i) * P_meio
+    FSomas = self%forcas(R1)
+    P1 = P_meio + self%h * (a(i) * FSomas)
   END DO
 
   metodo_mi(1,:,:) = R1

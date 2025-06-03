@@ -1,3 +1,16 @@
+! ************************************************************
+!! Matriz de forcas
+!
+! Objetivos:
+!   Calcula a matriz de forcas a partir das posicoes. Todos os metodos
+!   calculam as forcas do mesmo jeito.
+!
+! Modificado:
+!   03 de junho de 2025
+!
+! Autoria:
+!   oap
+! 
 MODULE funcoes_forca
 
   USE tipos
@@ -7,6 +20,7 @@ MODULE funcoes_forca
 
 CONTAINS
 
+! Paralelo
 FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
@@ -16,7 +30,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   
   REAL(pf), DIMENSION(dim) :: Fab, Rab
   INTEGER :: a, b, tid
-  REAL(pf) :: distancia, distancia_inv
+  REAL(pf) :: distancia, distancia3, distancia_inv
   REAL(pf), DIMENSION(N, dim) :: forcas
   
   forcas = 0.0_pf
@@ -34,8 +48,8 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
       IF (potsoft .NE. 0) THEN
         distancia = SQRT(distancia*distancia + potsoft2)
       ENDIF
-      distancia_inv = 1.0_pf/distancia
-      distancia_inv = distancia_inv**3
+      distancia3 = distancia * distancia * distancia
+      distancia_inv = 1.0_pf/distancia3
 
       ! forca entre os corpos a e b
       Fab = G * m(a) * m(b) * Rab * distancia_inv
@@ -49,19 +63,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
 
 END FUNCTION forcas_par
 
-! ************************************************************
-!! Matriz de forcas
-!
-! Objetivos:
-!   Calcula a matriz de forcas a partir das posicoes. Todos os metodos
-!   calculam as forcas do mesmo jeito.
-!
-! Modificado:
-!   14 de setembro de 2024
-!
-! Autoria:
-!   oap
-! 
+! Sequencial
 FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
@@ -71,7 +73,7 @@ FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
 
   REAL(pf), DIMENSION(dim) :: Fab, Rab
   INTEGER :: a, b
-  REAL(pf) :: distancia, distancia_inv
+  REAL(pf) :: distancia, distancia3, distancia_inv
   REAL(pf), DIMENSION(N, dim) :: forcas
 
   forcas(:,:) = 0.0_pf
@@ -84,8 +86,8 @@ FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
       IF (potsoft .NE. 0) THEN
         distancia = SQRT(distancia*distancia + potsoft2)
       ENDIF
-      distancia_inv = 1.0_pf/distancia
-      distancia_inv = distancia_inv**3
+      distancia3 = distancia * distancia * distancia
+      distancia_inv = 1.0_pf/distancia3
 
       ! forca entre os corpos a e b
       Fab = G * m(a) * m(b) * (Rab) * distancia_inv

@@ -7,7 +7,7 @@
 !   dimensao, massas, se corrige ou nao, se colide ou nao, etc.
 !
 ! Modificado:
-!   10 de novembro de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -35,6 +35,7 @@ MODULE integrador
     ! Massas iguais
     LOGICAL  :: mi
     REAL(pf) :: m_esc, m_inv, m2
+    REAL(pf128) :: m_esc_128, m_inv_128, m2_128
 
     ! h: Passo de integracao
     ! G: Constante de gravitacao
@@ -69,7 +70,7 @@ MODULE integrador
     TYPE(arvore_octo), ALLOCATABLE :: arvore
 
     CONTAINS
-      PROCEDURE :: Iniciar, aplicarNVezes, metodo, metodo_mi, forcas
+      PROCEDURE :: Iniciar, aplicarNVezes, metodo, metodo_mi, forcas, atualizar_constantes
   
   END TYPE integracao
 
@@ -103,7 +104,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -131,8 +132,33 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
 
   IF (mi) THEN
     self % m_esc = massas(1)
-    self % m_inv = 1/self % m_esc
+    self % m_inv = 1.0_pf/self % m_esc
     self % m2 = self % m_esc * self % m_esc
+
+    self % m_esc_128 = REAL(massas(1), KIND=pf128)
+    self % m_inv_128 = 1.0_pf128 / self % m_esc_128
+    self % m2_128 = self % m_esc_128 * self % m_esc_128
+    
+    ! Se 1/m - N < 1e-10, assume que m = 1/N
+    ! Nesse caso, podemos melhorar a precisao
+    IF (self % m_inv - self % N < 1E-10) THEN
+        self % m_esc = 1.0_pf / (self % N)
+        self % m2 = 1.0_pf / (self % N * self % N)
+        self % m_inv = self % N
+
+        self % m_esc_128 = 1.0_pf128 / (self % N)
+        self % m2_128 = 1.0_pf128 / (self % N * self % N)
+        self % m_inv_128 = self % N
+    ! Se m = 1
+    ELSE IF (self % m_esc - 1 < 1E-10) THEN
+      self % m_esc = 1.0_pf
+      self % m2 = 1.0_pf
+      self % m_inv = 1.0_pf
+
+      self % m_esc_128 = 1.0_pf128
+      self % m2_128 = 1.0_pf128
+      self % m_inv_128 = 1.0_pf128
+    ENDIF
   ELSE  
     ! vetor de massas invertidas
     ALLOCATE(self % massasInvertidas (self % N, self % dim))
@@ -207,7 +233,7 @@ END FUNCTION forcas
 !   Aplica o metodo iterativamente N vezes.
 !
 ! Modificado:
-!   10 de novembro de 2024
+!   03 de junho de 2025
 !
 ! Autoria:
 !   oap
@@ -243,7 +269,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_checkpoints)
   FSomas_ant = self%forcas(R)
 
   ! Integrando (massas iguais)
-  IF (self % mi) THEN
+  IF (self % mi) THEN  
     DO i = 1, qntd_checkpoints
       ! Aplica o metodo
       resultado = self % metodo_mi(R1, P1, FSomas_ant)
@@ -354,5 +380,19 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   WRITE (*,*) 'OPS'
 
 END FUNCTION metodo_mi
+
+! ************************************************************
+!! Atualiza as constantes se necessario
+!
+! Modificado:
+!   03 de junho de 2025
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE atualizar_constantes (self)
+  IMPLICIT NONE
+  class(integracao), INTENT(IN) :: self
+END SUBROUTINE atualizar_constantes
 
 END MODULE integrador
