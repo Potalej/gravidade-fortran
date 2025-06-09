@@ -3,21 +3,21 @@
     "nome": "Lemniscata",
     
     "G": 1.0,
-    "N": 100,
+    "N": 3,
     "paralelo": false,
     "massas_iguais": true,
 
     "integracao": {
-        "metodo": "svcp10s35",
+        "metodo": "ruth3",
         "timestep": 0.001,
-        "amortecedor": 0.005,
+        "amortecedor": 0.0,
         "t0": 0,
         "tf": 50,
         "passos_por_rodada": 10
     },
     
     "colisoes": {
-        "colidir": true,
+        "colidir": false,
         "metodo": "direto",
         "densidade": 37301.93978716296
     },

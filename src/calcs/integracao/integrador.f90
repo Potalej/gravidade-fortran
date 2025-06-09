@@ -141,16 +141,16 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
     
     ! Se 1/m - N < 1e-10, assume que m = 1/N
     ! Nesse caso, podemos melhorar a precisao
-    IF (self % m_inv - self % N < 1E-10) THEN
-        self % m_esc = 1.0_pf / (self % N)
-        self % m2 = 1.0_pf / (self % N * self % N)
-        self % m_inv = self % N
+    IF (ABS(self % m_inv - self % N) < 1E-10) THEN
+      self % m_esc = 1.0_pf / (self % N)
+      self % m2 = 1.0_pf / (self % N * self % N)
+      self % m_inv = self % N
 
-        self % m_esc_128 = 1.0_pf128 / (self % N)
-        self % m2_128 = 1.0_pf128 / (self % N * self % N)
-        self % m_inv_128 = self % N
+      self % m_esc_128 = 1.0_pf128 / (self % N)
+      self % m2_128 = 1.0_pf128 / (self % N * self % N)
+      self % m_inv_128 = self % N
     ! Se m = 1
-    ELSE IF (self % m_esc - 1 < 1E-10) THEN
+    ELSE IF (ABS(self % m_esc - 1) < 1E-10) THEN
       self % m_esc = 1.0_pf
       self % m2 = 1.0_pf
       self % m_inv = 1.0_pf
