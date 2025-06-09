@@ -207,7 +207,7 @@ IF(PYTHON)
   # Se nao achar, so da o WARNING
   IF(NOT EXIT_CODE EQUAL 0)
     IF(NOT EXIT_MATPLOTLIB EQUAL 0)
-      message(FATAL_ERROR "A dependencia 'matplotlib' nao foi encontrada. Nao sera possivel criar graficos.")
+      message(WARNING "A dependencia 'matplotlib' nao foi encontrada. Nao sera possivel criar graficos.")
     ENDIF()
   ENDIF()
 
@@ -216,7 +216,7 @@ IF(PYTHON)
   )
   message(STATUS "Python localizado.")
 ELSE()
-  message(FATAL_ERROR "Python nao encontrado! Nao sera possivel criar graficos.")
+  message(WARNING "Python nao encontrado! Nao sera possivel criar graficos.")
 ENDIF()
 
 # ----------------------------------------------------------------------------
