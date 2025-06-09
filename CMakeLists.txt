@@ -123,6 +123,7 @@ add_library(mecanica
 target_link_libraries(mecanica PRIVATE
   ${OpenBLAS_LIB} # utilizada no corretor
   tipos
+  octree
 )
 
 # Condicionamento de valores iniciais
@@ -133,6 +134,7 @@ add_library(condicionamento
 target_link_libraries(condicionamento PRIVATE
   mecanica
   ${OpenBLAS_LIB}
+  aleatorio
   tipos
   json_utils_mod
 )
