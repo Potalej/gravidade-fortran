@@ -91,7 +91,7 @@ add_subdirectory(lib/json-fortran)
 
 # Tipos
 add_library(tipos
-  "./src/tipos.f90"
+  "./src/tipos.F90"
 )
 
 # JSON-FILE-MOD
