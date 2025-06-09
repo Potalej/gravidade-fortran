@@ -27,22 +27,16 @@ FUNCTION json_get_float (dados, chave) RESULT(valor)
     TYPE(json_core) :: json
     TYPE(json_value), POINTER, INTENT(IN) :: dados
     CHARACTER(LEN=*), INTENT(IN) :: chave
-    REAL(pf64) :: valor64
     REAL(pf)   :: valor
-
-    CALL json % get(dados, chave, valor64)
-    valor = REAL(valor64, KIND=pf)
+    CALL json % get(dados, chave, valor)
 END FUNCTION json_get_float
 
 FUNCTION json_get_float_vec (dados, chave) RESULT(valor)
     TYPE(json_core) :: json
     TYPE(json_value), POINTER, INTENT(IN) :: dados
     CHARACTER(LEN=*), INTENT(IN) :: chave
-    REAL(pf64), ALLOCATABLE :: valor64(:)
     REAL(pf), ALLOCATABLE   :: valor(:)
-
-    CALL json % get(dados, chave, valor64)
-    valor = REAL(valor64, KIND=pf)
+    CALL json % get(dados, chave, valor)
 END FUNCTION json_get_float_vec
 
 END MODULE json_utils_mod

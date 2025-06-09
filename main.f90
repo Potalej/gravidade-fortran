@@ -74,7 +74,7 @@ CONTAINS
 
   ! Ajudador
   SUBROUTINE help
-    WRITE (*,*) 'v', version_string, ' (', build_date, ' ', build_time, ')'
+    WRITE (*,*) 'v', version_string, '_', precisao, ' (', build_date, ' ', build_time, ')'
     WRITE (*,*)
     WRITE (*,*) 'SINOPSE:'
     WRITE (*,*) '   # ./gravidade [--help|-h]'

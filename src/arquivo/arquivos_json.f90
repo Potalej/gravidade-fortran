@@ -103,7 +103,6 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
     CHARACTER(LEN=*), INTENT(IN) :: diretorio
     TYPE(json_value), POINTER :: infos_sorteio, dummy
     REAL(pf)                  :: massas(:), posicoes(:,:), momentos(:,:)
-    REAL(pf64), ALLOCATABLE   :: massas64(:), posicoes64(:,:), momentos64(:,:)
     TYPE(json_core)           :: json
     TYPE(json_value), POINTER :: modo, vi, ap, am
     LOGICAL, OPTIONAL :: gerar_nome
@@ -135,8 +134,7 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
         CALL json % add(infos_sorteio, vi)
 
         ! Adiciona as massas
-        massas64 = REAL(massas, KIND=pf64)
-        CALL json % add(vi, 'massas', massas64)
+        CALL json % add(vi, 'massas', massas)
         
         ! Adiciona as posicoes e os momentos
         CALL json % create_array(ap, 'posicoes')
@@ -144,12 +142,9 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
         CALL json % add(vi, ap)
         CALL json % add(vi, am)
         
-        posicoes64 = REAL(posicoes, KIND=pf64)
-        momentos64 = REAL(momentos, KIND=pf64)
-
         DO i=1, SIZE(massas)
-            CALL json % add(ap, 'posicoes', posicoes64(i,:))
-            CALL json % add(am, 'momentos', momentos64(i,:))
+            CALL json % add(ap, 'posicoes', posicoes(i,:))
+            CALL json % add(am, 'momentos', momentos(i,:))
         END DO   
     ENDIF
 

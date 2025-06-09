@@ -382,15 +382,6 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, H, J, P)
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
 
-  ! Condiciona o momento linear
-  CALL condicionar_momentoLinear(pd, massas, momentos)
-
-  ! Condiciona o momento angular
-  CALL condicionar_momentoAngular(jd, massas, posicoes, momentos)
-
-  ! Condiciona a energia total
-  CALL condicionar_energiaTotal(ed, G, massas, posicoes, momentos)
-
   ! Calcula as integrais primeiras
   energia = energia_total(G, massas, posicoes, momentos)
   linear = momentoLinear_total(momentos)

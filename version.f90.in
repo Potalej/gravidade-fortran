@@ -3,4 +3,5 @@ module version
   character(len=*), parameter :: version_string = "@PROJECT_VERSION@"
   character(len=*), parameter :: build_date = "@BUILD_DATE@"
   character(len=*), parameter :: build_time = "@BUILD_TIME@"
+  character(len=*), parameter :: precisao = "real@PRECISAO@"
 end module version

@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.4.4
+project("gravidade" VERSION 0.4.5
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -32,27 +32,16 @@ include_directories(${CMAKE_BINARY_DIR}/mod)
 set(PRECISAO "64" CACHE STRING "Escolha a precisão: 32, 64 ou 128")
 set_property(CACHE PRECISAO PROPERTY STRINGS 32 64 128)
 
-# Escolha da precisão
+# Define flags de pre-processador conforme a precisão
 if(PRECISAO STREQUAL "32")
-  set(PF_KIND "selected_real_kind(6, 37)")
+  add_compile_definitions(REAL32)
 elseif(PRECISAO STREQUAL "64")
-  set(PF_KIND "selected_real_kind(15, 300)")
+  add_compile_definitions(REAL64)
 elseif(PRECISAO STREQUAL "128")
-  set(PF_KIND "selected_real_kind(33, 4931)")
+  add_compile_definitions(REAL128)
 else()
   message(FATAL_ERROR "Precisão inválida: ${PRECISAO}. Use 32, 64 ou 128")
 endif()
-
-# Gera o módulo tipos.f90 automaticamente
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/tipos.f90.in
-  ${CMAKE_CURRENT_BINARY_DIR}/tipos.f90
-  @ONLY
-)
-
-add_library(tipos
-  ${CMAKE_CURRENT_BINARY_DIR}/tipos.f90
-)
 
 # ----------------------------------------------------------------------------
 # Versionamento
@@ -100,12 +89,17 @@ add_subdirectory(lib/json-fortran)
 # Bibliotecas locais
 # ----------------------------------------------------------------------------
 
+# Tipos
+add_library(tipos
+  "./src/tipos.f90"
+)
+
 # JSON-FILE-MOD
 add_library(json_utils_mod 
   "./src/arquivo/json_utils_mod.f90"
 )
 target_link_libraries(json_utils_mod PRIVATE tipos)
-target_link_libraries(json_utils_mod PRIVATE tipos jsonfortran)
+target_link_libraries(json_utils_mod PRIVATE jsonfortran)
 
 # ALEATORIO
 add_library(aleatorio 
