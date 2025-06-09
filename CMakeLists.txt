@@ -204,16 +204,10 @@ IF(PYTHON)
     OUTPUT_QUIET
   )
 
+  # Se nao achar, so da o WARNING
   IF(NOT EXIT_CODE EQUAL 0)
-    # instala o matplotlib
-    execute_process(
-      COMMAND ${Python_EXECUTABLE} -m pip install matplotlib
-      RESULT_VARIABLE EXIT_MATPLOTLIB
-      OUTPUT_QUIET
-    )
-
     IF(NOT EXIT_MATPLOTLIB EQUAL 0)
-      message(FATAL_ERROR "A depENDencia 'matplotlib' nao foi encontrada e houve um erro em sua instalacao. Nao sera possivel criar graficos.")
+      message(FATAL_ERROR "A dependencia 'matplotlib' nao foi encontrada. Nao sera possivel criar graficos.")
     ENDIF()
   ENDIF()
 
