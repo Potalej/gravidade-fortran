@@ -37,9 +37,11 @@ presets/auto_vi
 # Outros
 /outros
 
-* Para testes
+# Para testes
 teste/
 /tests
+pyutils/*
+presets/*
 
 # do Python
 __pycache__

@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.4.3
+project("gravidade" VERSION 0.4.4
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -22,6 +22,9 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
 message("\n***************************************")
 message("#       gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
 message("***************************************")
+
+# Diretorio para .mod
+include_directories(${CMAKE_BINARY_DIR}/mod)
 
 # ----------------------------------------------------------------------------
 # Precisao
@@ -89,14 +92,9 @@ IF (NOT OpenBLAS_LIB)
 ENDIF()
 
 # ----------------------------------------------------------------------------
-# Procura pelo JSONFortran
+# Inclui o JSONFortran
 # ----------------------------------------------------------------------------
-find_package(JsonFortran REQUIRED)
-
-include_directories(${JSONFortran_INCLUDE_DIRS})
-IF (NOT JSONFortran_LIB)
-  message(FATAL_ERROR "JSON Fortran nao encontrado!!!")
-ENDIF()
+add_subdirectory(lib/json-fortran)
 
 # ----------------------------------------------------------------------------
 # Bibliotecas locais
@@ -107,6 +105,7 @@ add_library(json_utils_mod
   "./src/arquivo/json_utils_mod.f90"
 )
 target_link_libraries(json_utils_mod PRIVATE tipos)
+target_link_libraries(json_utils_mod PRIVATE tipos jsonfortran)
 
 # ALEATORIO
 add_library(aleatorio 
@@ -141,6 +140,7 @@ target_link_libraries(condicionamento PRIVATE
   mecanica
   ${OpenBLAS_LIB}
   tipos
+  json_utils_mod
 )
 
 # Metodos de integracao
@@ -237,7 +237,7 @@ target_link_libraries(gravidade
   condicionamento
   aleatorio
   octree
-  ${JSONFortran_LIBRARIES}
+  jsonfortran
   json_utils_mod
 )
 
