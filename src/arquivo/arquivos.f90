@@ -620,8 +620,12 @@ SUBROUTINE criar_dir (dir, onde)
     ENDIF
   END DO
 
-  ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
-  comando = "cd "//onde//" && mkdir "// TRIM(res)
+  IF (PRESENT(onde)) THEN
+    ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
+    comando = "cd "//onde//" && mkdir "// TRIM(res)
+  ELSE
+    comando = "mkdir "//TRIM(res)
+  ENDIF
 
   CALL SYSTEM(comando)
 

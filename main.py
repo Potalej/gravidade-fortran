@@ -5,28 +5,28 @@ def rodar (comando:str)->None:
   system(comando)
 
 def build (buildar:bool=False, os:str="Linux"):
-  rodar('cmake -B build -DPRECISAO=128 -G Ninja && ninja -C build')
+  rodar('cmake -B build -DPRECISAO=64 -G Ninja && ninja -C build')
 
 def sortear_salvar (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
     rodar('gravidade.exe -sv ./presets/condicionar/exemplo.json')
   elif os == "Linux":
-    rodar('./gravidade -sv ./presets/condicionar/exemplo.txt')
+    rodar('./gravidade -sv ./presets/condicionar/exemplo.json')
 
 def sortear_simular (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
     rodar('gravidade.exe -s ./presets/condicionar/exemplo.json')
   elif os == "Linux":
-    rodar('./gravidade -s ./presets/condicionar/exemplo.txt')
+    rodar('./gravidade -s ./presets/condicionar/exemplo.json')
 
 def lemniscata (buildar:bool=False, os:str="Linux"):
   if buildar: build()
   if os == "Windows":
     rodar('gravidade.exe -vi ./presets/valores_iniciais/exemplo_vi.json')
   elif os == "Linux":
-    rodar('./gravidade -vi ./presets/valores_iniciais/lemniscata.txt')
+    rodar('./gravidade -vi ./presets/valores_iniciais/exemplo_vi.json')
 
 def trajetorias (buildar:bool=False, os:str="Linux"):
   if buildar: build()
