@@ -238,12 +238,12 @@ END FUNCTION forcas
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE aplicarNVezes (self, R, P, qntd_checkpoints)
+SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
 
   IMPLICIT NONE
   class (integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
-  INTEGER, INTENT(IN) :: qntd_checkpoints
+  INTEGER, INTENT(IN) :: qntd_passos
   REAL(pf)             :: E
   REAL(pf), DIMENSION(3) :: J
   ! Para cada passo
@@ -270,7 +270,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_checkpoints)
 
   ! Integrando (massas iguais)
   IF (self % mi) THEN  
-    DO i = 1, qntd_checkpoints
+    DO i = 1, qntd_passos
       ! Aplica o metodo
       resultado = self % metodo_mi(R1, P1, FSomas_ant)
 
@@ -286,7 +286,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_checkpoints)
     END DO
   ! Integrando (massas diferentes)
   ELSE
-    DO i = 1, qntd_checkpoints
+    DO i = 1, qntd_passos
       ! Aplica o metodo
       resultado = self % metodo(R1, P1, FSomas_ant)
 
