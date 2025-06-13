@@ -67,11 +67,11 @@ SUBROUTINE atualizar_constantes (self)
         0.74167036435061295344822780_pf128 /)
 
   IF (self % mi) THEN
-    a = self % m2_128 * (0.5_pf128 * s)
-    b = self % m_inv_128 * s
+    a = self % m2_128 * (0.5_pf128 * s_128)
+    b = self % m_inv_128 * s_128
 
     DO i = 1, SIZE(s)-1
-      s_consec(i) = s(i) + s(i+1)
+      s_consec(i) = s_128(i) + s_128(i+1)
       a_consec(i) = self % m2_128 * (0.5_pf128 * s_consec(i))
     END DO
   ELSE
