@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.4.6
+project("gravidade" VERSION 0.4.7
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -17,14 +17,28 @@ enable_language(Fortran)
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
 string(TIMESTAMP BUILD_TIME "%H:%M:%S")
 
+# ----------------------------------------------------------------------------
+# Compilacao
+# ----------------------------------------------------------------------------
 # Flags para compilacao
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
-message("\n***************************************")
-message("#       gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
-message("***************************************")
+message("\n******************************************")
+message("#        gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
+message("******************************************")
 
 # Diretorio para .mod
 include_directories(${CMAKE_BINARY_DIR}/mod)
+
+# ----------------------------------------------------------------------------
+# GProf
+# ----------------------------------------------------------------------------
+option(GPROF "Habilitar criacao de perfil gprof" OFF)
+
+if (GPROF)
+  message(STATUS "GNU Profiler (gprof) ativado")
+  add_compile_options(-pg)
+  add_link_options(-pg)
+endif()
 
 # ----------------------------------------------------------------------------
 # Precisao

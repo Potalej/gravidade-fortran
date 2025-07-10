@@ -43,5 +43,9 @@ teste/
 pyutils/*
 presets/*
 
+# GNU profiler
+gmon.out
+relatorio.txt
+
 # do Python
 __pycache__

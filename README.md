@@ -31,6 +31,22 @@ para compilar o programa. Se quiser compilar e rodar um exemplo de preset, use:
 sh helpers/compilar_gerar.sh
 ```
 
+### Flags
+
+Há duas flags disponíveis. A primeira é a PRECISAO, que pode ser 32, 64 (padrão) ou 128, e todas as variáveis de tipo `REAL(pf)` terão a precisão desejada. Exemplo de uso:
+```
+cmake -B build -DPRECISAO=64 ...
+```
+
+A outra flag é a do [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html), que ativa o GNU Profiler, utilizado para análise de desempenho. Para ativar, basta usar:
+```
+cmake -B build -DGPROF=ON ...
+```
+Após rodar uma simulação com o programa compilado com gprof, será gerado um arquivo "gmon.out" que fornece um relatório usando o comando:
+```
+gprof gravidade.exe gmon.out > relatorio.txt
+```
+
 ## 🧮 Simulando
 
 ### Presets para geração
