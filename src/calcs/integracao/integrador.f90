@@ -37,6 +37,9 @@ MODULE integrador
     REAL(pf) :: m_esc, m_inv, m2
     REAL(pf128) :: m_esc_128, m_inv_128, m2_128
 
+    ! Distancias entre os corpos
+    REAL(pf), ALLOCATABLE :: distancias(:)
+
     ! h: Passo de integracao
     ! G: Constante de gravitacao
     ! potsoft: Softening do potencial
@@ -75,22 +78,24 @@ MODULE integrador
   END TYPE integracao
 
   ABSTRACT INTERFACE
-    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft, potsoft2)
+    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft, potsoft2, distancias)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
 
-    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft, potsoft2)
+    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft, potsoft2, distancias)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
   END INTERFACE
@@ -181,6 +186,9 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   self % E0 = E0
   self % J0 = J0
 
+  ! Distancias
+  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
+
   ! Se vai ou nao corrigir
   self % corrigir = corrigir
   self % corme = corme
@@ -219,9 +227,11 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
   IF (self % mi) THEN
-    forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
+    forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
+                    self%potsoft, self%potsoft2, self%distancias)
   ELSE
-    forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, self%potsoft, self%potsoft2)
+    forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
+                    self%potsoft, self%potsoft2, self%distancias)
   ENDIF
 
 END FUNCTION forcas
@@ -281,7 +291,8 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
       ! se tiver colisoes, aplica
       IF (self % colidir) THEN
         CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
-                                self%raios, self%arvore, self%colisoes_modo)
+                                self%raios, self%arvore, self%colisoes_modo, &
+                                self%distancias)
       ENDIF
     END DO
   ! Integrando (massas diferentes)
@@ -297,14 +308,15 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
       ! se tiver colisoes, aplica
       IF (self % colidir) THEN
         CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
-                                self%raios, self%arvore, self%colisoes_modo)
+                                self%raios, self%arvore, self%colisoes_modo, &
+                                self%distancias)
       ENDIF
     END DO
   ENDIF
 
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
   IF (self%corrigir) THEN
-    E = energia_total(self % G, self % m, R1, P1)
+    E = energia_total(self % G, self % m, R1, P1, self % distancias)
         
     IF (ABS(E - self%E0) >= self%corme) THEN
       
@@ -322,7 +334,6 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
       END IF
       
       tempo_correcao = tempo_correcao + (omp_get_wtime() - t0_cor)
-
     END IF
   ENDIF
 

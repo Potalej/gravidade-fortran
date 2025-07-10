@@ -34,17 +34,18 @@ CONTAINS
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo)
+SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo, dists)
   IMPLICIT NONE
   TYPE(arvore_octo), ALLOCATABLE :: arvore
   REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
   LOGICAL  :: paralelo
   REAL(pf) :: raios(size(m))
   CHARACTER(LEN=*), INTENT(IN) :: modo
+  REAL(pf) :: dists(:)
 
   ! Aplica colisoes conforme o modo
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN
-    CALL verificar_e_colidir_direto(m, R, P, colmd, paralelo, raios)
+    CALL verificar_e_colidir_direto(m, R, P, colmd, paralelo, raios, dists)
   ELSE IF (TRIM(modo) == 'octree') THEN
     CALL verificar_e_colidir_octree(m, R, P, colmd, paralelo, raios, arvore)
   ELSE
@@ -128,12 +129,15 @@ END SUBROUTINE verificar_e_colidir_octree
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios)
+SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios, dists)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
   INTEGER :: a, b
   LOGICAL :: paralelo, colidiram(size(m),size(m))
   REAL(pf) :: m13a, m13b, fator, raios(size(m)), dist
+  
+  REAL(pf) :: dists(:)
+  INTEGER :: indice
 
   colidiram=.FALSE.
 
@@ -147,7 +151,8 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios)
           CYCLE
         ENDIF
         m13b = m(b) ** (1.0_pf/3.0_pf)
-        fator = norm2(R(b,:)-R(a,:)) / ABS(m13a + m13b)
+        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+        fator = dists(indice) / ABS(m13a + m13b)
         IF (fator <= colmd) THEN
           IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
             colidiram(a,b) = .TRUE.
@@ -166,7 +171,8 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios)
           CYCLE
         ENDIF
         
-        dist = norm2(R(b,:)-R(a,:))
+        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+        dist = dists(indice)
         IF (dist <= raios(a) + raios(b)) THEN
           IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
             colidiram(a,b) = .TRUE.

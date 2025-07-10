@@ -21,18 +21,22 @@ MODULE funcoes_forca_mi
 CONTAINS
 
 ! Paralelo
-FUNCTION forcas_mi_par (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
+FUNCTION forcas_mi_par (R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
   
+  REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+  INTEGER :: indice
+
   REAL(pf), DIMENSION(dim) :: Fab, Rab
   INTEGER :: a, b, tid
   REAL(pf) :: distancia, distancia3, distancia_inv
   REAL(pf), DIMENSION(N, dim) :: forcas
   
   forcas = 0.0_pf
+  indice = 1
 
   !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, Rab, distancia, distancia_inv, a, b, tid)
   !$OMP DO
@@ -44,6 +48,10 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
       ! distancia entre os corpos
       Rab = R(b,:) - R(a,:)
       distancia = norm2(Rab)
+
+      distancias(indice) = distancia
+      indice = indice + 1
+
       IF (potsoft .NE. 0) THEN
         distancia = SQRT(distancia*distancia + potsoft2)
       ENDIF
@@ -63,11 +71,14 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
 END FUNCTION forcas_mi_par
 
 ! Sequencial 
-FUNCTION forcas_mi_seq (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
+FUNCTION forcas_mi_seq (R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+
+  REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+  INTEGER :: indice
 
   REAL(pf), DIMENSION(dim) :: Fab, Rab
   INTEGER :: a, b
@@ -75,12 +86,17 @@ FUNCTION forcas_mi_seq (R, G, N, dim, potsoft, potsoft2) RESULT(forcas)
   REAL(pf), DIMENSION(N, dim) :: forcas
 
   forcas(:,:) = 0.0_pf
+  indice = 1
 
   DO a = 2, N
     DO b = 1, a - 1
       ! distancia entre os corpos
       Rab = R(b,:) - R(a,:)
       distancia = Rab(1)*Rab(1) + Rab(2)*Rab(2) + Rab(3)*Rab(3)
+      
+      distancias(indice) = SQRT(distancia)
+      indice = indice + 1
+      
       IF (potsoft .NE. 0) THEN
         distancia = distancia + potsoft2
       ENDIF

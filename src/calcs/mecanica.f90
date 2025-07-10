@@ -135,37 +135,57 @@ END FUNCTION energia_cinetica_esc
 ! Autoria:
 !   oap
 !
-FUNCTION energia_potencial_vec (G,m,R) RESULT(ep)
+FUNCTION energia_potencial_vec (G,m,R,dists) RESULT(ep)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:)
   REAL(pf) :: distancia, G, ep, distancia_inv
-  INTEGER  :: i,j
+  REAL(pf), OPTIONAL :: dists(:)
+  INTEGER  :: i,j,indice
   ep=0.0_pf
-  DO i=2, SIZE(m)
-    DO j=1,i-1
-      distancia = NORM2(R(i,:)-R(j,:))
-      distancia_inv = 1.0_pf/distancia
-      ep = ep + m(i)*m(j)*distancia_inv
+  indice = 1
+  IF (PRESENT(dists)) THEN
+    DO i=2, SIZE(m)
+      DO j=1,i-1        
+        distancia = dists(indice)
+        indice = indice + 1
+        distancia_inv = 1.0_pf/distancia
+        ep = ep + m(i)*m(j)*distancia_inv
+      END DO
     END DO
-  END DO
+  ELSE
+    DO i=2, SIZE(m)
+      DO j=1,i-1
+        distancia = NORM2(R(i,:)-R(j,:))
+        distancia_inv = 1.0_pf/distancia
+        ep = ep + m(i)*m(j)*distancia_inv
+      END DO
+    END DO
+  ENDIF
   ep = -G*ep
 END FUNCTION energia_potencial_vec
 
-FUNCTION energia_potencial_esc (G,m,R) RESULT(ep)
+FUNCTION energia_potencial_esc (G,m,R,dists) RESULT(ep)
   IMPLICIT NONE
   REAL(pf) :: m, m2
   REAL(pf) :: R(:,:)
   REAL(pf) :: distancia, G, ep, distancia_inv
+  REAL(pf), OPTIONAL :: dists(:)
   INTEGER  :: i,j
   m2 = m * m
   ep=0.0_pf
-  DO i=2, SIZE(R,1)
-    DO j=1,i-1
-      distancia = NORM2(R(i,:)-R(j,:))
-      distancia_inv = 1.0_pf/distancia
-      ep = ep + distancia_inv
+  IF (PRESENT(dists)) THEN
+    DO i = 1, SIZE(dists)
+      ep = ep + 1.0_pf / dists(i)
     END DO
-  END DO
+  ELSE
+    DO i=2, SIZE(R,1)
+      DO j=1,i-1
+        distancia = NORM2(R(i,:)-R(j,:))
+        distancia_inv = 1.0_pf/distancia
+        ep = ep + distancia_inv
+      END DO
+    END DO
+  ENDIF
   ep = -G*ep*m2
 END FUNCTION energia_potencial_esc
 
@@ -186,19 +206,29 @@ END FUNCTION energia_potencial_esc
 ! Autoria:
 !   oap
 !
-FUNCTION energia_total_vec (G, m, R, P) RESULT(e_tot)
+FUNCTION energia_total_vec (G, m, R, P, dists) RESULT(e_tot)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:), G
+  REAL(pf), OPTIONAL :: dists(:)
   REAL(pf) :: e_tot
-  e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
+  IF (PRESENT(dists)) THEN
+    e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R,dists)
+  ELSE
+    e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
+  ENDIF
 END FUNCTION energia_total_vec
 
-FUNCTION energia_total_esc (G, m, R, P) RESULT(e_tot)
+FUNCTION energia_total_esc (G, m, R, P, dists) RESULT(e_tot)
   IMPLICIT NONE
   REAL(pf) :: m
   REAL(pf) :: R(:,:), P(:,:), G
+  REAL(pf), OPTIONAL :: dists(:)
   REAL(pf) :: e_tot
-  e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
+  IF (PRESENT(dists)) THEN
+    e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R,dists)
+  ELSE
+    e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R)
+  ENDIF
 END FUNCTION energia_total_esc
 
 ! ************************************************************
