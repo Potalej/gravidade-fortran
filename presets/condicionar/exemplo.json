@@ -5,6 +5,7 @@
     "N": 100,
     "paralelo": false,
     "massas_iguais": true,
+    "exibir": false,
 
     "sorteio": {
         "integrais": {
@@ -36,7 +37,7 @@
         "amortecedor": 0.0,
         "t0": 0,
         "tf": 100,
-        "passos_por_rodada": 10
+        "checkpoints": 10
     },
 
     "colisoes": {

@@ -201,7 +201,7 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   LOGICAL :: encontrado
 
   ! Quantidade de checkpoints
-  CALL json % get(infos, 'integracao.passos_por_rodada', self % qntd_checkpoints)
+  CALL json % get(infos, 'integracao.checkpoints', self % qntd_checkpoints)
 
   ! Se quer ou nao plotar durante a simulacao 
   CALL json % get(infos, 'exibir', self % exibir)

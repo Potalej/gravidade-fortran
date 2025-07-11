@@ -6,6 +6,7 @@
     "N": 3,
     "paralelo": false,
     "massas_iguais": true,
+    "exibir": false,
 
     "integracao": {
         "metodo": "ruth3",
@@ -13,7 +14,7 @@
         "amortecedor": 0.0,
         "t0": 0,
         "tf": 50,
-        "passos_por_rodada": 10
+        "checkpoints": 10
     },
     
     "colisoes": {
