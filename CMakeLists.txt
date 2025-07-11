@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.4.7
+project("gravidade" VERSION 0.5.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -114,6 +114,14 @@ add_library(json_utils_mod
 )
 target_link_libraries(json_utils_mod PRIVATE tipos)
 target_link_libraries(json_utils_mod PRIVATE jsonfortran)
+
+# SOCKET PARA PLOT EM TEMPO REAL
+add_library(conexao_mod STATIC
+  "./src/socket/conexao.f90"
+  "./src/socket/server_mod.f90"
+  "./src/socket/wsa_mod.f90"
+)
+target_link_libraries(conexao_mod PRIVATE ws2_32)
 
 # ALEATORIO
 add_library(aleatorio 
@@ -243,6 +251,7 @@ target_link_libraries(gravidade
   octree
   jsonfortran
   json_utils_mod
+  conexao_mod
 )
 
 # ----------------------------------------------------------------------------

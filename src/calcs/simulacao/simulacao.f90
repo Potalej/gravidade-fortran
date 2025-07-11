@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   11 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -36,6 +36,8 @@ MODULE simulacao
   USE euler_imp
   ! Para configuracoes
   USE json_utils_mod
+  ! Para plot em tempo real
+  USE conexao
 
   IMPLICIT NONE
   PRIVATE
@@ -95,11 +97,15 @@ MODULE simulacao
     REAL(pf) :: colisoes_max_distancia = 0.1
     CHARACTER(LEN=:), ALLOCATABLE :: colisoes_modo
 
+    ! Exibir
+    LOGICAL :: exibir = .FALSE.
+
     !> Arquivo
     TYPE(arquivo) :: Arq
 
     CONTAINS
-      PROCEDURE :: Iniciar, inicializar_metodo, rodar
+      PROCEDURE :: Iniciar, inicializar_metodo, rodar, &
+                   inicializadores, output_passo
       
   END TYPE
 
@@ -194,8 +200,12 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
 
+  ! Quantidade de checkpoints
   CALL json % get(infos, 'integracao.passos_por_rodada', self % qntd_checkpoints)
-  
+
+  ! Se quer ou nao plotar durante a simulacao 
+  CALL json % get(infos, 'exibir', self % exibir)
+
   ! Salva o tamanho dos passos
   self % h = json_get_float(infos, 'integracao.timestep')
 
@@ -302,35 +312,198 @@ END SUBROUTINE inicializar_metodo
 !   Roda uma simulacao com algum metodo numerico desejado.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   11 de julho de 2025
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE rodar (self, qntdPassos)
+  CLASS(simular), INTENT(INOUT) :: self
+  INTEGER, INTENT(IN) :: qntdPassos
+
+  INTEGER :: i, t, sub_i
+  REAL(pf64) :: t0, tf, tempo_total
+  INTEGER :: qntd_por_rodada
+
+  ! Integrador
+  CLASS(integracao), POINTER :: integrador
+
+  ! Variaveis de estado
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
+  REAL(pf)   :: inst_t, timestep_inv
+  INTEGER :: inst
+
+  ! Para conexao, se for o caso
+  TYPE(conexao_socket) :: conexao
+
+  ! Definindo o metodo
+  CALL definir_metodo (integrador, self%metodo)
+
+  ! Inicializando tudo
+  CALL self % inicializadores(conexao, integrador)
+  
+  ! Condicoes iniciais
+  R1 = self % R
+  P1 = self % P
+  CALL self % Arq % escrever((/R1, P1/))
+  IF (self % exibir) CALL conexao % enviar(R1, P1)
+  timestep_inv = 1/self % h
+
+  ! Agora roda, enfim
+  WRITE (*, '(a)') '  > iniciando simulacao...'
+  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / self % qntd_checkpoints)
+  i = 0
+  tempo_total = 0
+  inst_t = 0
+
+  DO WHILE (i < self % qntd_checkpoints)
+    ! Atualizando o instante
+    inst_t = inst_t + qntd_por_rodada * self % h
+
+    ! Timer
+    t0 = omp_get_wtime()
+
+    ! Se for exibir, precisa mandar sinal
+    IF (self % exibir) THEN
+      DO sub_i = 1, qntd_por_rodada
+        CALL integrador % aplicarNVezes(R1, P1, 1)
+
+        IF (MOD(sub_i,2) == 0) THEN
+          CALL conexao % enviar(R1, P1)
+        ENDIF
+      END DO
+    
+    ! Se nao for exibir, roda tudo de uma vez
+    ELSE
+      CALL integrador % aplicarNVezes(R1, P1, qntd_por_rodada)
+    ENDIF
+
+    ! Timer
+    tf = omp_get_wtime()
+    tempo_total = tempo_total + (tf - t0)
+
+    ! Salvando o output
+    CALL self % Arq % escrever ((/R1, P1/))
+    CALL self % Arq % arquivo_bkp(i*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
+
+    call self % output_passo(i+1, tempo_total, inst_t, R1, P1)
+
+    inst = inst + 1
+    i = i + 1
+  END DO
+
+  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
+  CALL self % Arq % excluir_bkp()
+
+  IF (self % exibir) CALL conexao % encerrar_conexao()
+
+  WRITE (*, '(a)') '  > simulacao encerrada!'
+  WRITE (*,*)
+
+  CALL self % Arq % fechar()
+
+END SUBROUTINE rodar
+
+! ************************************************************
+!! Mensagens na tela que aparecem durante a simulacao
+!
+! Modificado:
+!   11 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE rodar (self, qntdPassos)
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN) :: qntdPassos  
-  ! Iterador e variavel de tempo
-  INTEGER :: i = 0, t
+SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
+  CLASS(simular), INTENT(INOUT) :: self
+  INTEGER :: i
+  REAL(pf64) :: tempo_total
+  REAL(pf) :: inst_t
+  REAL(pf), DIMENSION(self % N, 3) :: R, P
+
+  REAL(pf) :: EP, EC, errene
+  REAL(pf) :: virial
+  REAL(pf) :: momine, momdil
+  CHARACTER(100) :: char_real
+  CHARACTER(300) :: saida
+
+  ! Energia
+  IF (self % mi) THEN
+    Ep = energia_potencial_esc(self % G, self % m_esc, R)
+    Ec = energia_cinetica_esc(self % m_esc, P)
+  ELSE
+    Ep = energia_potencial_vec(self % G, self % M, R)
+    Ec = energia_cinetica_vec(self % M, P)
+  ENDIF
+
+  ! Erro na energia
+  errene = EC + EP - self % E0
+
+  ! Tamanho do sistema
+  momine = momento_inercia(self % M, R)
+  momdil = momento_dilatacao(R, P)
+
+  ! Virial
+  virial = (EC + EC) / (EP) + 1
   
-  ! Integrador, definido dinamicamente
-  CLASS(integracao), POINTER :: integrador
+  ! Montando a string de output
+  WRITE(saida, '(5X,A,I8,4X,A,F12.3,2X,A,F10.2)') '-> Passo:', i, ' / Tempo:', tempo_total, ' / t:', inst_t
+
+  WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', virial
+  saida = TRIM(saida)//char(10)//TRIM(char_real)
+
+  WRITE(char_real, '(A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil
+  saida = TRIM(saida)//" / "//TRIM(char_real)
   
-  ! Variaveis locais
-  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
-  REAL(pf64) :: t0, tf, tempo_total = 0.0_pf64
-  REAL(pf) :: E, Icm, Ep, Ec, ati, virial = 0.0_pf, difE, av
-  REAL(pf) :: Ec_media = 0.0_pf, V_media = 0.0_pf, inst_t = 0.0_pf
-  ! INTEGER  :: timestep_inv, inst = 0
-  INTEGER  :: inst = 0
-  INTEGER  :: qntd_por_rodada
-  REAL(pf) :: timestep_inv
+  WRITE (*,*) TRIM(saida)
+  WRITE (*,*)
+
+END SUBROUTINE
+
+! ************************************************************
+!! Inicializa o integrador e o socket
+!
+! Modificado:
+!   11 de julho de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE inicializadores (self, conexao, integrador)
+  CLASS(simular), INTENT(INOUT) :: self
+  TYPE(conexao_socket), INTENT(INOUT) :: conexao
+  CLASS(integracao), POINTER, INTENT(INOUT) :: integrador
+
+  ! Inicializando o integrador
+  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
+    self % E0, self % J0, &
+    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
+    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo, &
+    self%mi)
+
+  ! Atualizando as constantes se for necessario
+  CALL integrador % atualizar_constantes()
+
+  ! Se for plotar em tempo real, precisa inicializar tambem
+  IF (self % exibir) CALL conexao % inicializar_plot_tempo_real(self % N)
+END SUBROUTINE
+
+! ************************************************************
+!! Define o integrador a partir da string
+!
+! Modificado:
+!   11 de julho de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE definir_metodo (integrador, metodo)
+  CLASS(integracao), POINTER, INTENT(OUT) :: integrador
+  CHARACTER(LEN=*), INTENT(IN) :: metodo
 
   ! Definicao dinamica do metodo
-  WRITE (*,'(a)') 'METODO: ', self % metodo
+  WRITE (*,'(a)') 'METODO: ', metodo
   
-  SELECT CASE (TRIM(self % metodo))
+  SELECT CASE (TRIM(metodo))
     CASE ('verlet');     integrador => INT_VERLET
     CASE ('rk2');        integrador => INT_RK2
     CASE ('rk3');        integrador => INT_RK3
@@ -349,82 +522,6 @@ SUBROUTINE rodar (self, qntdPassos)
     CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
   END SELECT
 
-  ! inicializa o integrador 
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self % E0, self % J0, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo, &
-    self%mi)
-
-  ! Atualiza as constantes se for necessario
-  CALL integrador % atualizar_constantes()
-
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  timestep_inv = 1/self % h
-
-  ! Roda
-  WRITE (*, '(a)') '  > iniciando simulacao...'
-  WRITE(*,*) self % qntd_checkpoints
-
-  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / self % qntd_checkpoints)
-
-  DO WHILE (i < self % qntd_checkpoints)
-    ! Instante
-    inst_t = inst_t + qntd_por_rodada * self % h
-
-    ! timer
-    t0 = omp_get_wtime()
-    ! Integracao
-    CALL integrador % aplicarNVezes(R1, P1, qntd_por_rodada)
-    
-    ! timer
-    tf = omp_get_wtime()
-    tempo_total = tempo_total + tf - t0
-
-    CALL self % Arq % escrever((/R1, P1/))
-
-    ! Energia
-    IF (self % mi) THEN
-      Ep = energia_potencial_esc(self % G, self % m_esc, R1)
-      Ec = energia_cinetica_esc(self % m_esc, P1)
-    ELSE
-      Ep = energia_potencial_vec(self % G, self % M, R1)
-      Ec = energia_cinetica_vec(self % M, P1)
-    ENDIF
-    difE = Ec + Ep - self%E0
-
-    ! virial
-    Ec_media = (inst * Ec_media + Ec) / (inst + 1)
-    V_media = (inst * V_media + Ep) / (inst + 1)
-    virial = (Ec_media + Ec_media)/(V_media) + 1
-
-    ! anisotropia
-    ! ati = anisotropia_tensor_inercia(self % M, R1)
-    ! av = anisotropia_velocidades(self % M, R1, P1)
-
-    ! tamanho do sistema
-    Icm = momento_inercia(self % M, R1)
-
-    WRITE (*,*) '     -> Passo:', i, ' / Tempo: ', tempo_total, ' / t = ', inst_t
-    WRITE (*,*) '        E-E0:', difE, ' / Virial:', virial, ' / I: ', Icm
-    WRITE (*,*)
-    inst = inst + 1
-    CALL self % Arq % arquivo_bkp(i*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
-
-    i = i + 1
-  END DO
-
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
-  CALL self % Arq % excluir_bkp()
-
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
-
-  CALL self % Arq % fechar()
-
-END SUBROUTINE rodar
+END SUBROUTINE definir_metodo
 
 END module simulacao
