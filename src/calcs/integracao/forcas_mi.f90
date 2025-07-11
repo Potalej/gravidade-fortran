@@ -104,13 +104,15 @@ FUNCTION calcular_forca (G, R, a, b, potsoft2, dist) RESULT(Fab)
   REAL(pf), INTENT(IN) :: G, R(:,:), potsoft2
   INTEGER,  INTENT(IN) :: a, b
   REAL(pf), INTENT(OUT) :: dist
+  REAL(pf) :: dist_pot
   REAL(pf) :: distancia3, dist_inv, Fab(3), x,y,z
 
   Fab = R(b,:) - R(a,:)
   
-  dist = Fab(1)*Fab(1) + Fab(2)*Fab(2) + Fab(3)*Fab(3) + potsoft2
-  distancia3 = dist * SQRT(dist)
-  dist_inv = G * 1.0_pf/dist
+  dist = Fab(1)*Fab(1) + Fab(2)*Fab(2) + Fab(3)*Fab(3)
+  dist_pot = dist + potsoft2
+  distancia3 = dist_pot * SQRT(dist_pot)
+  dist_inv = G * 1.0_pf/distancia3
 
   Fab = Fab * dist_inv
 END FUNCTION calcular_forca
