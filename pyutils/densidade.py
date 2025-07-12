@@ -28,34 +28,48 @@ if escolha not in ["1", "2"]:
 
 escolha = int(escolha)
 
-if escolha == 1:
+if escolha == 2:
     densidade = input("\nInsira o valor da densidade:\n> ")
     try: densidade = float(densidade)
     except:
         print("\nValor estranho de densidade!")
         exit()
     
-    massa = input("Insira o valor da massa:\n> ")
-    try: massa = float(massa)
+    # massa = input("Insira o valor da massa:\n> ")
+    # try: massa = float(massa)
+    # except:
+    #     print("\nValor estranho de massa!")
+    #     exit()
+
+    N = input("Insira a quantidade de corpos:\n> ")
+    try: N = int(N)
     except:
-        print("\nValor estranho de massa!")
+        print("\nValor estranho de N!")
         exit()
+    massa = 1/N
 
     raio = (3 * massa / (4 * pi * densidade))**(1/3)
     print("\nRaio: ", raio)
 
-elif escolha == 2:
+elif escolha == 1:
     raio = input("\nInsira o valor do raio:\n> ")
     try: raio = float(raio)
     except:
         print("\nValor estranho de raio!")
         exit()
     
-    massa = input("\nInsira o valor da massa:\n> ")
-    try: massa = float(massa)
+    # massa = input("Insira o valor da massa:\n> ")
+    # try: massa = float(massa)
+    # except:
+    #     print("\nValor estranho de massa!")
+    #     exit()
+
+    N = input("Insira a quantidade de corpos:\n> ")
+    try: N = int(N)
     except:
-        print("\nValor estranho de massa!")
+        print("\nValor estranho de N!")
         exit()
+    massa = 1/N
 
     densidade = 3 * massa / (4 * pi * (raio**3))
     print("\nDensidade: ", densidade)

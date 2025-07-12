@@ -8,7 +8,7 @@
 !   Referencia: (Okunbor & Skeel, 1992, p.380)
 !
 ! Modificado:
-!   17 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -113,7 +113,7 @@ END SUBROUTINE atualizar_constantes
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   17 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -121,7 +121,7 @@ END SUBROUTINE atualizar_constantes
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_rkn671), INTENT(IN) :: self
+  class(integracao_rkn671), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(self%N, self%dim) :: P_prod
@@ -170,14 +170,14 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao_rkn671), INTENT(IN) :: self
+  class(integracao_rkn671), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi

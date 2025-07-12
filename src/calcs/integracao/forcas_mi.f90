@@ -6,7 +6,7 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   10 de julho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -27,7 +27,7 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft2
   
-  REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+  REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
   INTEGER :: indice
 
   REAL(pf), DIMENSION(dim) :: Fab
@@ -37,7 +37,7 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   
   forcas = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, distancia, a, b, indice)
+  !$OMP PARALLEL SHARED(forcas, distancias) PRIVATE(Fab, distancia, a, b, indice)
   !$OMP DO
   DO a = 1, N
     DO b = 1, N
@@ -71,7 +71,7 @@ FUNCTION forcas_mi_seq (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft2
 
-  REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+  REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
   INTEGER :: indice
 
   REAL(pf), DIMENSION(dim) :: Fab

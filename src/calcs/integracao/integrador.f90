@@ -7,7 +7,7 @@
 !   dimensao, massas, se corrige ou nao, se colide ou nao, etc.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -85,7 +85,7 @@ MODULE integrador
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft2
-        REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+        REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
 
@@ -95,7 +95,7 @@ MODULE integrador
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf),                    INTENT(IN) :: G, potsoft2
-        REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
+        REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
   END INTERFACE
@@ -109,7 +109,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -222,7 +222,7 @@ END SUBROUTINE Iniciar
 
 FUNCTION forcas (self, R)
   IMPLICIT NONE
-  class(integracao), INTENT(IN) :: self
+  class(integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
   
@@ -350,14 +350,14 @@ END SUBROUTINE aplicarNVezes
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao), INTENT(IN) :: self
+  class(integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   
@@ -373,14 +373,14 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao), INTENT(IN) :: self
+  class(integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
   

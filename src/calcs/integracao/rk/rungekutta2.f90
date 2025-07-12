@@ -6,7 +6,7 @@
 !   Estagios (RK2 ou RK22)
 !
 ! Modificado:
-!   17 de novembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -42,7 +42,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   17 de novembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -58,6 +58,7 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   REAL(pf) :: corme
   INTEGER :: cormnt
   LOGICAL :: mi
+  INTEGER :: a
 
   ! quantidade de partículas
   self % N = SIZE(massas)
@@ -79,6 +80,9 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   ! Softening do potencial
   self % potsoft = potsoft
 
+  ! Distancias
+  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
+
   ! Valores iniciais
   self % E0 = E0
   self % J0 = J0
@@ -92,6 +96,10 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   self % colidir = colidir
   self % colisoes_modo = colmodo
   self % colmd = colmd
+  ALLOCATE(self % raios(self % N))
+  DO a = 1, self % N
+    self % raios(a) = self % colmd * massas(a)**(1.0_pf / 3.0_pf)
+  END DO
   
   ! Inicia o base do RK 
   CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h, self % potsoft)
@@ -122,7 +130,7 @@ END SUBROUTINE Iniciar
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   17 de novembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -130,7 +138,7 @@ END SUBROUTINE Iniciar
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_rk2), INTENT(IN) :: self
+  class(integracao_rk2), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf), DIMENSION(3, self % N, self % dim) :: metodo
@@ -139,8 +147,8 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self % N, self % dim) :: k1_q
   REAL(pf), DIMENSION(self % N, self % dim) :: k1_p
 
-  k1_p = P + 0.5_pf * self % h * FSomas_ant
-  R1 = R + self % h * k1_p
+  k1_p = P * self % baseRK % massasInvertidas + 0.5_pf * self % h * FSomas_ant
+  R1 = R + self % h * k1_p 
   
   k1_q = R + 0.5_pf * self % h * P * self % baseRK % massasInvertidas
   P1 = P + self % h * self % forcas(k1_q)
@@ -158,19 +166,31 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao_rk2), INTENT(IN) :: self
+  class(integracao_rk2), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
+  REAL(pf), DIMENSION(self % N, self % dim) :: R1, P1
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
   
-  ! Cada integrador precisa ter um metodo definido, que substitui esta funcao vazia
-  WRITE (*,*) 'OPS'
+  ! componentes da integracao (kappas)
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p
+
+  k1_p = P * self % m_inv + 0.5_pf * self % h * FSomas_ant * self % m2
+  R1 = R + self % h * k1_p
+  
+  k1_q = R + 0.5_pf * self % h * P * self % m_inv
+  P1 = P + self % h * self % forcas(k1_q) * self % m2
+
+  metodo_mi(1,:,:) = R1
+  metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = self % forcas(R1)
 
 END FUNCTION metodo_mi
 

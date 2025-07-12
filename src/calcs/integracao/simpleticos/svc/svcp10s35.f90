@@ -7,7 +7,8 @@
 !   Referencia: (Hairer et al, 2006, p.158)
 !
 ! Modificado:
-!   03 de junho de 2025
+!   17 de setembro de 2024 (criado)
+!   12 de julho de 2025 (modificado)
 !
 ! Autoria:
 !   oap
@@ -106,7 +107,7 @@ END SUBROUTINE atualizar_constantes
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   17 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -114,7 +115,7 @@ END SUBROUTINE atualizar_constantes
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_svcp10s35), INTENT(IN) :: self
+  class(integracao_svcp10s35), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
   REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
@@ -148,14 +149,14 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao_svcp10s35), INTENT(IN) :: self
+  class(integracao_svcp10s35), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
   REAL(pf), DIMENSION(self%N, self%dim) :: FSomas

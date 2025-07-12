@@ -5,7 +5,8 @@
 !   Aplicacao do metodo simpletico de Ruth com 3a Ordem
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   14 de setembro de 2024 (criado)
+!   12 de julho de 2025 (atualizado)
 !
 ! Autoria:
 !   oap
@@ -40,7 +41,7 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -48,7 +49,7 @@ CONTAINS
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_ruth3), INTENT(IN) :: self
+  class(integracao_ruth3), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
@@ -83,14 +84,14 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
-  class(integracao_ruth3), INTENT(IN) :: self
+  class(integracao_ruth3), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi

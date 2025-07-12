@@ -5,7 +5,8 @@
 !   Aplicacao do metodo de Euler Implicito.
 !
 ! Modificado:
-!   17 de novembro de 2024
+!   14 de setembro de 2024 (criado)
+!   12 de julho de 2025 (modificado)
 !
 ! Autoria:
 !   oap
@@ -35,7 +36,7 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   14 de setembro de 2024
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -43,7 +44,7 @@ CONTAINS
 FUNCTION metodo (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_euler_imp), INTENT(IN) :: self
+  class(integracao_euler_imp), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
@@ -79,7 +80,7 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   01 de junho de 2025
+!   12 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -87,7 +88,7 @@ END FUNCTION metodo
 FUNCTION metodo_mi (self, R, P, FSomas_ant)
 
   IMPLICIT NONE
-  class(integracao_euler_imp), INTENT(IN) :: self
+  class(integracao_euler_imp), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
