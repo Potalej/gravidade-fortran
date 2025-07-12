@@ -31,7 +31,7 @@ para compilar o programa. Se quiser compilar e rodar um exemplo de preset, use:
 sh helpers/compilar_gerar.sh
 ```
 
-### Flags
+### 🚩 Flags
 
 Há duas flags disponíveis. A primeira é a PRECISAO, que pode ser 32, 64 (padrão) ou 128, e todas as variáveis de tipo `REAL(pf)` terão a precisão desejada. Exemplo de uso:
 ```
@@ -78,14 +78,24 @@ Para rodar este caso, utilize:
 
 Confira [aqui](/presets/valores_iniciais/exemplo_vi.json) um exemplo de arquivo de valores iniciais.
 
-### Visualizando
-Além disso, é possível também visualizar as simulações feitas através da opção `-e` ou `--exibir`. É uma visualização simples das trajetórias, mas pode ajudar a conferir resultados rapidamente.
+### Visualizando 🧐
+É possível visualizar as simulações de duas formas.
+
+#### Gnuplot ou Matplotlib
+Através da opção `-e` ou `--exibir`. É uma visualização simples das trajetórias, mas pode ajudar a conferir resultados rapidamente.
 
 ```
 ./gravidade -e SEU_ARQUIVO.csv
 ```
 
-## Métodos
+#### Visualização em tempo real
+Também podemos visualizar as simulações em tempo real via sockets, ativando a opção `"exibir": true` no arquivo de valores iniciais utilizado. Para isso, é preciso ter um servidor local aberto para receber as informações, que são enviadas via TCP.
+
+Um exemplo de script em Python que recebe e exibe os dados em tempo real pode ser encontrado em [aqui](/pyutils/ex_servidor.py). Basta rodar este script e em seguida rodar sua simulação com a opção ativada. É importante observar que o envio de dados prejudica consideravelmente o desempenho, então não é bom usar isso para simulações grandes e sérias.
+
+![Exemplo de visualização em tempo real via socket](/img/exemplo_visualizacao.gif)
+
+## 📈 Métodos
 Os métodos de integração implementados são:
 
 - Métodos gerais:
@@ -115,7 +125,7 @@ As massas, posições e momentos lineares são armazenados em arquivos .csv no d
 
 A análise dos dados pode ser feita com Python através de [gravidade-analise](https://github.com/Potalej/gravidade-analise).
 
-## Bibliotecas utilizadas
+## 📚 Bibliotecas utilizadas
 
 - [OpenBLAS](https://github.com/jacobwilliams/json-fortran/tree/master): Rotinas numéricas de álgebra linear. Geralmente não é difícil de instalar, então [está sendo importada manualmente](https://github.com/Potalej/gravidade-fortran/blob/main/cmake/FindOpenBLAS.cmake).
 - [JSON-Fortran](https://github.com/jacobwilliams/json-fortran/): Rotinas para manipulação de arquivos JSON. Esta teve o "src" de sua versão 9.0.3 (fev/2025) disponibilizado localmente para facilitar o uso em diferentes máquinas, e seus arquivos estão no diretório ["lib/json-fortran"](https://github.com/Potalej/gravidade-fortran/tree/main/lib/json-fortran).
