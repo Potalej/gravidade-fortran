@@ -47,7 +47,7 @@ SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo, d
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN
     CALL verificar_e_colidir_direto(m, R, P, colmd, paralelo, raios, dists)
   ELSE IF (TRIM(modo) == 'octree') THEN
-    CALL verificar_e_colidir_octree(m, R, P, colmd, paralelo, raios, arvore)
+    CALL verificar_e_colidir_octree(m, R, P, paralelo, raios, arvore)
   ELSE
     WRITE (*,*) "ATENCAO! MODO DE COLISAO NAO IDENTIFICADO: ", modo
     CALL ABORT()
@@ -67,12 +67,12 @@ END SUBROUTINE verificar_e_colidir
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir_octree (m, R, P, colmd, paralelo, raios, arvore)
+SUBROUTINE verificar_e_colidir_octree (m, R, P, paralelo, raios, arvore)
   IMPLICIT NONE
-  REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
+  REAL(pf) :: m(:), R(:,:), P(:,:)
   INTEGER :: a, b, i, colididos, colisoes(size(m)-1)
   LOGICAL :: paralelo, colidiram(size(m),size(m))
-  REAL(pf) :: m13a, m13b, fator, raios(size(m))
+  REAL(pf) :: raios(size(m))
   TYPE(arvore_octo), ALLOCATABLE :: arvore
 
   colidiram = .FALSE.

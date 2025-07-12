@@ -78,23 +78,23 @@ MODULE integrador
   END TYPE integracao
 
   ABSTRACT INTERFACE
-    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft, potsoft2, distancias)
+    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft2, distancias)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
-        REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf),                    INTENT(IN) :: G, potsoft2
         REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
 
-    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft, potsoft2, distancias)
+    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft2, distancias)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
-        REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+        REAL(pf),                    INTENT(IN) :: G, potsoft2
         REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
@@ -228,10 +228,10 @@ FUNCTION forcas (self, R)
   
   IF (self % mi) THEN
     forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
-                    self%potsoft, self%potsoft2, self%distancias)
+                    self%potsoft2, self%distancias)
   ELSE
     forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
-                    self%potsoft, self%potsoft2, self%distancias)
+                    self%potsoft2, self%distancias)
   ENDIF
 
 END FUNCTION forcas
@@ -255,16 +255,13 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
   INTEGER, INTENT(IN) :: qntd_passos
   REAL(pf)             :: E
-  REAL(pf), DIMENSION(3) :: J
   ! Para cada passo
-  INTEGER :: i, a, b
+  INTEGER :: i
   ! para verificar se corrigiu
   LOGICAL :: corrigiu = .FALSE.
   ! Para as forcas e passos pos-integracao
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_ant
   REAL(pf), DIMENSION(3, self%N, self%dim) :: resultado
-  ! Energia total aproximada
-  REAL(pf) :: Et_aprox
   ! Consumo de tempo com correcao
   REAL(pf) :: t0_cor, tempo_correcao
   INTEGER :: contagem_correcao

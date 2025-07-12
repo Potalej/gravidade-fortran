@@ -116,7 +116,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   IMPLICIT NONE
   class(integracao_svcp10s35), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
   REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   INTEGER :: i
@@ -124,7 +124,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
   R1 = R
   P1 = P
-  FSomas = self%forcas(R1)
+  FSomas = FSomas_ant
 
   DO i=size(s),1,-1
     h = s(i) * self % h
@@ -137,7 +137,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
-  metodo(3,:,:) = 0.0_pf
+  metodo(3,:,:) = FSomas
 
 END FUNCTION metodo
 
@@ -157,15 +157,14 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
   class(integracao_svcp10s35), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
   REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
   INTEGER :: i
-  REAL(pf) :: h ! tamanho de passo dinamico
 
   R1 = R
   P1 = P
-  FSomas = self%m2 * self%forcas(R1)
+  FSomas = FSomas_ant
   
   i = size(s_128)
   P_meio = P1 + self%h * (a(i) * FSomas)
@@ -182,7 +181,7 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
 
   metodo_mi(1,:,:) = R1
   metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = 0.0_pf
+  metodo_mi(3,:,:) = FSomas
 
 END FUNCTION metodo_mi
 

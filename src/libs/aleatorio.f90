@@ -37,10 +37,9 @@ FUNCTION regiao_esfera (vetor3d, raio)
 
 END FUNCTION regiao_esfera
 
-FUNCTION regiao_cobrinha (vetor3d, raio)
+FUNCTION regiao_cobrinha (vetor3d)
 
   REAL(pf), INTENT(IN), DIMENSION(3) :: vetor3d
-  REAL(pf), INTENT(IN) :: raio
   LOGICAL :: regiao_cobrinha
 
   regiao_cobrinha = (ABS(vetor3d(1)) <= 2 .AND. ABS(vetor3d(3)) <= 2)
@@ -60,7 +59,7 @@ FUNCTION testar_regiao (vetor3d, raio, regiao)
   SELECT CASE (TRIM(regiao))
     CASE ('cubo');     testar_regiao = regiao_cubo(vetor3d, raio)
     CASE ('esfera');   testar_regiao = regiao_esfera(vetor3d, raio)
-    CASE ('cobrinha'); testar_regiao = regiao_cobrinha(vetor3d, raio)
+    CASE ('cobrinha'); testar_regiao = regiao_cobrinha(vetor3d)
   END SELECT
 
 END FUNCTION testar_regiao
@@ -78,9 +77,9 @@ SUBROUTINE condiciona_esfera (vetor, N, raio)
     x = vetor(a,1)
     y = vetor(a,2)
     z = vetor(a,3)
-    x_ = x * SQRT(1.0_pf - 0.5_pf * y * y - 0.5_pf * z * z + y * y * z * z / 3.0_pf)
-    y_ = y * SQRT(1.0_pf - 0.5_pf * z * z - 0.5_pf * x * x + z * z * x * x / 3.0_pf)
-    z_ = z * SQRT(1.0_pf - 0.5_pf * x * x - 0.5_pf * y * y + x * x * y * y / 3.0_pf)
+    x_ = x * SQRT(raio*raio - 0.5_pf * y * y - 0.5_pf * z * z + y * y * z * z / 3.0_pf)
+    y_ = y * SQRT(raio*raio - 0.5_pf * z * z - 0.5_pf * x * x + z * z * x * x / 3.0_pf)
+    z_ = z * SQRT(raio*raio - 0.5_pf * x * x - 0.5_pf * y * y + x * x * y * y / 3.0_pf)
     vetor(a,:) = (/x_,y_,z_/)
   END DO
 
@@ -147,18 +146,16 @@ END SUBROUTINE uniforme
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE normal (vetor, N, distmin, vmin, vmax, regiao, raio)
+SUBROUTINE normal (vetor, N, distmin, regiao, raio)
 
   INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
   CHARACTER(LEN=*), INTENT(IN)     :: regiao
-  REAL(pf), INTENT(IN)     :: vmin, vmax, raio, distmin
-  REAL(pf), DIMENSION(N,3) :: ajuste
+  REAL(pf), INTENT(IN)     :: raio, distmin
   REAL(pf) :: x, y, z
   REAL(pf) :: u1, u2, r, theta, max_dist
   REAL(pf) :: PI = 3.14159265358979_pf
   INTEGER  :: a
-  ajuste(:,:) = vmin
 
   CALL RANDOM_SEED()
 
@@ -209,17 +206,15 @@ END SUBROUTINE normal
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE cauchy (vetor, N, distmin, vmin, vmax, regiao, raio)
+SUBROUTINE cauchy (vetor, N, distmin, regiao, raio)
 
   INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
-  REAL(pf), INTENT(IN)     :: vmin, vmax, raio, distmin
+  REAL(pf), INTENT(IN)     :: raio, distmin
   CHARACTER(LEN=*),INTENT(IN) :: regiao
   REAL(pf), DIMENSION(3)   :: u
   REAL(pf) :: PI = 3.14159265358979_pf
   INTEGER :: a
-  REAL(pf), DIMENSION(3) :: ajuste
-  ajuste(:) = vmin
 
   CALL RANDOM_SEED()
 

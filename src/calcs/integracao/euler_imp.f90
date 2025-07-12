@@ -47,15 +47,13 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
-  INTEGER :: a, i
+  INTEGER :: i, a
 
   R1 = R
   P1 = P
+  FSomas = FSomas_ant
 
   DO i = 1, 100
-    ! Calcula as forcas
-    FSomas = self%forcas(R1)
-
     ! Integrando as posicoes
     DO a = 1, self % N
       R1(a,:) = R(a,:) + self % h * P1(a,:) / self % m(a)
@@ -64,10 +62,13 @@ FUNCTION metodo (self, R, P, FSomas_ant)
     ! Integrando as velocidades
     P1 = P + self%h * FSomas
 
+    ! Calcula as novas forcas
+    FSomas = self%forcas(R1)
   END DO
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
+  metodo(3,:,:) = FSomas
 
 END FUNCTION metodo
 
@@ -90,25 +91,26 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
-  INTEGER :: a, i
+  INTEGER :: i
 
   R1 = R
   P1 = P
+  FSomas = FSomas_ant
 
   DO i = 1, 100
-    ! Calcula as forcas
-    FSomas = self%forcas(R1)
-
     ! Integrando as posicoes
     R1 = R + self % h * self % m_inv * P1
 
     ! Integrando as velocidades
     P1 = P + self%h * (self % m2 * FSomas)
 
+    ! Calcula as novas forcas
+    FSomas = self%forcas(R1)
   END DO
 
   metodo_mi(1,:,:) = R1
   metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = FSomas
 
 END FUNCTION metodo_mi
 

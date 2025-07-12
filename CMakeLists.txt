@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.5.0
+project("gravidade" VERSION 0.5.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -22,6 +22,7 @@ string(TIMESTAMP BUILD_TIME "%H:%M:%S")
 # ----------------------------------------------------------------------------
 # Flags para compilacao
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
+# set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fcheck=all -Wall -fbacktrace -O3 -march=native -fopenmp") # Debug
 message("\n******************************************")
 message("#        gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
 message("******************************************")

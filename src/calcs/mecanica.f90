@@ -76,13 +76,17 @@ END FUNCTION momento_angular_individual
 !
 FUNCTION momento_angular_total (Rs, Ps)
   IMPLICIT NONE
-  REAL(pf), DIMENSION(:,:), INTENT(IN) :: Rs, Ps
+  REAL(pf), DIMENSION(:,:), INTENT(IN), TARGET :: Rs, Ps
   REAL(pf), DIMENSION(3)               :: momento_angular_total
   INTEGER                              :: i
+  REAL(pf), POINTER :: R_p(:), P_p(:)
+
   momento_angular_total = (/0.0_pf,0.0_pf,0.0_pf/)
   DO i=1, SIZE(Rs,1)
+    R_p => Rs(i,:)
+    P_p => Ps(i,:)
     momento_angular_total = momento_angular_total &
-                          + momento_angular_individual(Rs(i,:),Ps(i,:))
+                          + momento_angular_individual(R_p, P_p)
   END DO
 END FUNCTION momento_angular_total
 
@@ -114,7 +118,6 @@ FUNCTION energia_cinetica_esc (m, P) RESULT(ec)
   IMPLICIT NONE
   REAL(pf) :: m, m_inv
   REAL(pf) :: P(:,:), ec
-  INTEGER  :: i
   m_inv = 1 / m
   ec = 0.5_pf * sum(sum(P**2, dim=2)) * m_inv
 END FUNCTION energia_cinetica_esc
@@ -281,7 +284,6 @@ FUNCTION momento_inercia_esc (m, R) RESULT(momine)
   IMPLICIT NONE
   REAL(pf) :: m, R(:,:)
   REAL(pf) :: momine
-  INTEGER  :: i
   momine=m*sum(R(:,1)**2 + R(:,2)**2 + R(:,3)**2)
 END FUNCTION momento_inercia_esc
 

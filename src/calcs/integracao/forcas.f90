@@ -21,24 +21,24 @@ MODULE funcoes_forca
 CONTAINS
 
 ! Paralelo
-FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forcas)
+FUNCTION forcas_par (m, R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
-  REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+  REAL(pf),                    INTENT(IN) :: G, potsoft2
   
   REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
   INTEGER :: indice
 
-  REAL(pf), DIMENSION(dim) :: Fab, Rab
-  INTEGER :: a, b, tid
-  REAL(pf) :: distancia, distancia3, distancia_inv
+  REAL(pf), DIMENSION(dim) :: Fab
+  INTEGER :: a, b
+  REAL(pf) :: distancia
   REAL(pf), DIMENSION(N, dim) :: forcas
   
   forcas = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, Rab, distancia, distancia_inv, a, b, tid,indice)
+  !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, distancia, a, b,indice)
   !$OMP DO
   DO a = 1, N
     DO b = 1, N
@@ -54,8 +54,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forc
       ELSE 
         indice = (b-1)*(b-2)/2 + (a-1)
       ENDIF
-      distancias(indice) = distancia
-      indice = indice + 1
+      distancias(indice+1) = SQRT(distancia)
 
       ! Adiciona na matriz      
       forcas(a,:) = forcas(a,:) + Fab
@@ -67,19 +66,19 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forc
 END FUNCTION forcas_par
 
 ! Sequencial
-FUNCTION forcas_seq (m, R, G, N, dim, potsoft, potsoft2, distancias) RESULT(forcas)
+FUNCTION forcas_seq (m, R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
-  REAL(pf),                    INTENT(IN) :: G, potsoft, potsoft2
+  REAL(pf),                    INTENT(IN) :: G, potsoft2
   
   REAL(pf), DIMENSION(INT(N*(N-1)/2)) :: distancias
   INTEGER :: indice
 
-  REAL(pf), DIMENSION(dim) :: Fab, Rab
+  REAL(pf), DIMENSION(dim) :: Fab
   INTEGER :: a, b
-  REAL(pf) :: distancia, distancia3, distancia_inv
+  REAL(pf) :: distancia
   REAL(pf), DIMENSION(N, dim) :: forcas
 
   forcas(:,:) = 0.0_pf
@@ -108,7 +107,7 @@ FUNCTION calcular_forca (G, m, R, a, b, potsoft2, dist) RESULT(Fab)
   INTEGER,  INTENT(IN) :: a, b
   REAL(pf), INTENT(OUT) :: dist
   REAL(pf) :: dist_pot
-  REAL(pf) :: distancia3, dist_inv, Fab(3), x,y,z
+  REAL(pf) :: distancia3, dist_inv, Fab(3)
 
   Fab = R(b,:) - R(a,:)
   

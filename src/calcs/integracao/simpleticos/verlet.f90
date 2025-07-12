@@ -47,7 +47,6 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
-  INTEGER :: a
 
   ! Integrando as posicoes
   R1 = (P + 0.5_pf * self%h * FSomas_ant) * self%massasInvertidas
@@ -84,8 +83,7 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
   REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
-  REAL(pf) :: const, prod, err
-  INTEGER :: a, i
+  REAL(pf) :: const
 
   ! Integrando as posicoes
   const = 0.5_pf * self % h * self % m_esc

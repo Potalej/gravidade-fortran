@@ -49,7 +49,6 @@ CONTAINS
 SUBROUTINE atualizar_constantes (self)
   IMPLICIT NONE
   class(integracao_rkn551), INTENT(IN) :: self
-  REAL(pf) :: const1, const2, const3
 
   ! Atualiza a constante c
   c_128 = (/ 0.69491389107017931259_pf128, 0.63707199676998338411_pf128, &
@@ -145,7 +144,6 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
-  metodo(3,:,:) = 0.0_pf
 
 END FUNCTION metodo
 
@@ -198,7 +196,7 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
 
   metodo_mi(1,:,:) = R1
   metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = 0.0_pf
+
 END FUNCTION metodo_mi
 
 END MODULE rkn551

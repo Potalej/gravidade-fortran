@@ -73,12 +73,8 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   P1 = P1 + d1 * self % h * FSomas_prox
   R1 = R1 + c1 * self % h * P1 * self % massasInvertidas
 
-  ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
-
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
-  metodo(3,:,:) = FSomas_prox
 
 END FUNCTION metodo
 
@@ -120,12 +116,8 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   P1 = P1 + d1 * self % h * (self % m2 * FSomas_prox)
   R1 = R1 + c1 * self % h * self % m_inv * P1
 
-  ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
-
   metodo_mi(1,:,:) = R1
   metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = FSomas_prox
 
 END FUNCTION metodo_mi
 

@@ -38,16 +38,11 @@ CONTAINS
 SUBROUTINE simular_vi (arquivo)
   CHARACTER(LEN=*), INTENT(INOUT) :: arquivo
 
-  ! Tempo de execucao
-  REAL :: t0, tf
-  ! Quantidade total de passos
-  INTEGER :: qntd_total_passos
-
   TYPE(json_value), POINTER :: infos
   REAL(pf), ALLOCATABLE :: pos3(:), mom3(:)
   REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
-  INTEGER :: a, b
-  CHARACTER(32) :: a_string, b_string
+  INTEGER :: a
+  CHARACTER(32) :: a_string
 
   ! Le o arquivo de valores iniciais
   CALL ler_json(arquivo, infos)

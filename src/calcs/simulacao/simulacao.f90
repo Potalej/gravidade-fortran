@@ -196,7 +196,6 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   TYPE(json_value), POINTER :: infos
   REAL(pf) :: M(:), R0(:,:), P0(:,:)
   REAL(pf) :: h, colmd, densidade
-  INTEGER  :: a, i
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
 
@@ -321,7 +320,7 @@ SUBROUTINE rodar (self, qntdPassos)
   CLASS(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
 
-  INTEGER :: i, t, sub_i
+  INTEGER :: i, sub_i
   REAL(pf64) :: t0, tf, tempo_total
   INTEGER :: qntd_por_rodada
 

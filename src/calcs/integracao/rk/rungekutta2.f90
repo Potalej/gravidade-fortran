@@ -55,7 +55,6 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   CHARACTER(LEN=*), INTENT(IN) :: colmodo
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd, E0, J0(3)
-  INTEGER :: a, i
   REAL(pf) :: corme
   INTEGER :: cormnt
   LOGICAL :: mi
@@ -137,15 +136,18 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(3, self % N, self % dim) :: metodo
 
   ! componentes da integracao (kappas)
-  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q, k2_q, k3_q, k4_q
-  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p, k2_p, k3_p, k4_p
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_q
+  REAL(pf), DIMENSION(self % N, self % dim) :: k1_p
 
+  k1_p = P + 0.5_pf * self % h * FSomas_ant
+  R1 = R + self % h * k1_p
+  
   k1_q = R + 0.5_pf * self % h * P * self % baseRK % massasInvertidas
-  R1 = R + self % h * (P + 0.5_pf * self % h * self % forcas (R))
-  P1 = P + self % h * self % forcas (k1_q)
+  P1 = P + self % h * self % forcas(k1_q)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
+  metodo(3,:,:) = self % forcas(R1)
 
 END FUNCTION metodo
 

@@ -55,7 +55,6 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   CHARACTER(LEN=*), INTENT(IN) :: colmodo
   REAL(pf), allocatable :: massas(:)
   REAL(pf)              :: G, h, potsoft, colmd, E0, J0(3)
-  INTEGER :: a, i
   REAL(pf) :: corme
   INTEGER :: cormnt
   LOGICAL :: mi
@@ -141,7 +140,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   REAL(pf), DIMENSION(self % N, self % dim) :: k1_p, k2_p, k3_p
 
   k1_q = P * self % baseRK % massasInvertidas
-  k1_p = self % forcas (R)
+  k1_p = FSomas_ant
 
   k2_q = (P + 0.5 * self % h * k1_p) * self % baseRK % massasInvertidas
   k2_p = self % forcas (R + 0.5 * self % h * k1_q)
@@ -155,6 +154,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
+  metodo(3,:,:) = self % forcas(R1)
 
 END FUNCTION metodo
 

@@ -45,15 +45,12 @@ FUNCTION metodo (self, R, P, FSomas_ant)
   IMPLICIT NONE
   class(integracao_euler_simp), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   INTEGER :: a
 
-  ! Calcula as forcas
-  FSomas = self%forcas(R)
-
   ! Integrando as velocidades
-  P1 = P + self%h * FSomas
+  P1 = P + self%h * FSomas_ant
 
   ! Integrando as posicoes
   DO a = 1, self % N
@@ -62,6 +59,7 @@ FUNCTION metodo (self, R, P, FSomas_ant)
 
   metodo(1,:,:) = R1
   metodo(2,:,:) = P1
+  metodo(3,:,:) = self % forcas(R1)
 
 END FUNCTION metodo
 
@@ -81,20 +79,18 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
   IMPLICIT NONE
   class(integracao_euler_simp), INTENT(IN) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
   REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
   
-  ! Calcula as forcas
-  FSomas = self%forcas(R)
-
   ! Integrando as velocidades
-  P1 = P + self%h * (self%m2 * FSomas)
+  P1 = P + self%h * (self%m2 * FSomas_ant)
 
   ! Integrando as posicoes
   R1 = R + self % h * P1 * self % m_inv
 
   metodo_mi(1,:,:) = R1
   metodo_mi(2,:,:) = P1
+  metodo_mi(3,:,:) = self % forcas(R1)
 
 END FUNCTION metodo_mi
 

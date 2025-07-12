@@ -23,7 +23,6 @@ PROGRAM main
 
   CHARACTER(256)  :: arq ! Arquivo
   CHARACTER(15)   :: acao ! Modo em que sera operado
-  INTEGER :: i
 
   IF (command_argument_count() == 0) THEN
     STOP 'Nenhum parametro informado! Para mais informacoes, use --help'

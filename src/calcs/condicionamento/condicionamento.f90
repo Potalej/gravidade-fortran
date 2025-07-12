@@ -75,14 +75,12 @@ END SUBROUTINE gerar_valores
 ! 
 FUNCTION gerar_vetores3d (N, sorteio) RESULT(vetores)
 
-  TYPE(json_core) :: json
   INTEGER, INTENT(IN)         :: N
   TYPE(json_value), POINTER, INTENT(INOUT) :: sorteio
   REAL(pf), DIMENSION(N,3)    :: vetores
   CHARACTER(:), ALLOCATABLE   :: distribuicao, regiao
   REAL(pf), ALLOCATABLE     :: intervalo(:)
   REAL(pf)                  :: raio, vmin, vmax, distmin
-  LOGICAL :: ok
 
   distribuicao = json_get_string(sorteio, "distribuicao")
   regiao = json_get_string(sorteio, "regiao")
@@ -104,9 +102,9 @@ FUNCTION gerar_vetores3d (N, sorteio) RESULT(vetores)
     ! Uniforme (0,1)
     CASE ("uniforme"); CALL uniforme(vetores, N, distmin, vmin, vmax, regiao, raio)
     ! Normal (0,1)
-    CASE ("normal"); CALL normal(vetores, N, distmin, vmin, vmax, regiao, raio)
+    CASE ("normal"); CALL normal(vetores, N, distmin, regiao, raio)
     ! Cauchy
-    CASE ("cauchy"); CALL cauchy(vetores, N, distmin, vmin, vmax, regiao, raio)
+    CASE ("cauchy"); CALL cauchy(vetores, N, distmin, regiao, raio)
   END SELECT
 
 END FUNCTION gerar_vetores3d
@@ -131,7 +129,6 @@ FUNCTION gerar_massas (N, sorteio) RESULT(massas)
   REAL(pf), ALLOCATABLE         :: intervalo(:)
   CHARACTER(LEN=:), ALLOCATABLE :: distribuicao
   REAL(pf)               :: vet_min(N)
-  CHARACTER(LEN=:), ALLOCATABLE :: json_str
 
   intervalo = json_get_float_vec(sorteio, "intervalo")
   vet_min = intervalo(1)

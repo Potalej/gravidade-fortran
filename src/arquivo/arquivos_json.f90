@@ -107,11 +107,8 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
     TYPE(json_value), POINTER :: modo, vi, ap, am
     LOGICAL, OPTIONAL :: gerar_nome
     INTEGER :: i
-    LOGICAL :: arquivo_existe, vi_existe
-    CHARACTER(8) :: datahoje
-    CHARACTER(3) :: numero
+    LOGICAL :: vi_existe
     CHARACTER(17) :: nome_arq
-    CHARACTER(12) :: nome_sorteio
 
     ! Verificando nome para arquivo de saida
     IF (PRESENT(gerar_nome) .AND. gerar_nome) THEN

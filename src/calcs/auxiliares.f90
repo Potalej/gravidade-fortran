@@ -118,13 +118,15 @@ FUNCTION tensor_inercia_geral (massas, posicoes)
   IMPLICIT NONE
   REAL(pf), DIMENSION(:), INTENT(IN) :: massas
   INTEGER :: a
-  REAL(pf), DIMENSION(SIZE(massas),3) :: posicoes
+  REAL(pf), DIMENSION(SIZE(massas),3), TARGET :: posicoes
+  REAL(pf), POINTER :: pos_p(:)
   REAL(pf), DIMENSION(3,3) :: tensor_inercia_geral
 
   tensor_inercia_geral(:,:) = 0.0_pf
   
   DO a = 1, SIZE(massas)
-    tensor_inercia_geral = tensor_inercia_geral + tensor_inercia(massas(a), posicoes(a,:))
+    pos_p => posicoes(a,:)
+    tensor_inercia_geral = tensor_inercia_geral + tensor_inercia(massas(a), pos_p)
   END DO   
 
 END FUNCTION tensor_inercia_geral

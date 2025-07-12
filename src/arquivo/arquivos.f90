@@ -186,8 +186,6 @@ SUBROUTINE criarFormato (self, qntdCorpos, dimensao)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT) :: self
   INTEGER, INTENT(IN)           :: qntdCorpos, dimensao
-  CHARACTER                     :: formato
-  INTEGER                       :: i = 1
 
   ! salva a quantidade de corpos e dimensao
   self % qntdCorpos = espacosVazios(qntdCorpos)
@@ -222,7 +220,6 @@ SUBROUTINE criar (self, qntdCorpos, dimensao)
   CLASS(arquivo), INTENT(INOUT) :: self
   INTEGER, INTENT(IN)           :: qntdCorpos, dimensao
   INTEGER(kind=4)               :: idarqdata, idarqinfo, idarqbkp
-  LOGICAL                       :: existe ! para verificar se ja existe ou nao
 
   WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
 
@@ -377,7 +374,7 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, pas
   REAL(pf), INTENT(IN)         :: G, h, potsoft
   CHARACTER(len=*), INTENT(IN) :: metodo
   LOGICAL                      :: cor ! correcao
-  CHARACTER(10)                :: col ! colisao
+  CHARACTER(*)                 :: col ! colisao
   REAL(pf)                     :: corme, colmd
   INTEGER                      :: cormnt
   LOGICAL                      :: fp ! forcas paralelas

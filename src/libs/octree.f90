@@ -96,7 +96,7 @@ SUBROUTINE verificar_colisao_octree (arvore, indice, posicoes, raios, colisoes, 
     REAL(pf), INTENT(IN)   :: posicoes(arvore%N,3), raios(arvore%N)
     INTEGER, INTENT(IN)    :: indice
     INTEGER, INTENT(INOUT) :: colisoes(arvore%N-1), colididos
-    INTEGER                :: i, ind, qntd_corpos
+    INTEGER                :: i, ind
     LOGICAL                :: esta_no_cubo
 
     esta_no_cubo = ANY(arvore%indices==indice)
@@ -211,7 +211,7 @@ END FUNCTION qual_octo
 SUBROUTINE adiciona_indice (arvore, indice)
     TYPE(arvore_octo), INTENT(INOUT) :: arvore
     INTEGER  :: indice
-    INTEGER  :: capacidade, capacidade_antiga
+    INTEGER  :: capacidade_antiga
     INTEGER, ALLOCATABLE :: temp(:)
 
     ! Se ainda nao tiver corpos
@@ -363,7 +363,7 @@ SUBROUTINE localizar (arvore, indice, n, posicoes)
     TYPE(arvore_octo), INTENT(INOUT) :: arvore
     INTEGER, INTENT(IN)  :: indice, N
     REAL(pf), INTENT(IN) :: posicoes(N,3)
-    INTEGER :: qual, filho
+    INTEGER :: filho
 
     IF (.NOT. arvore % folha) THEN
         DO filho = 1, 8
