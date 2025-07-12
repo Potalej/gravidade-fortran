@@ -38,8 +38,9 @@ with conn:
         try: data = conn.recv(tamanho).decode()
         except: break
         
-        pontos = [tuple([float(x) for x in linha.split()]) for linha in data.strip().splitlines()]
-        try: x,y,z = zip(*pontos)
+        try: 
+            pontos = [tuple([float(x) for x in linha.split()]) for linha in data.strip().splitlines()]
+            x,y,z = zip(*pontos)
         except: continue
         lista_dados.append(pontos)
 

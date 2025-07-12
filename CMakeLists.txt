@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.5.1
+project("gravidade" VERSION 0.5.2
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -20,7 +20,7 @@ string(TIMESTAMP BUILD_TIME "%H:%M:%S")
 # ----------------------------------------------------------------------------
 # Compilacao
 # ----------------------------------------------------------------------------
-# Flags para compilacao
+
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
 # set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fcheck=all -Wall -fbacktrace -O3 -march=native -fopenmp") # Debug
 message("\n******************************************")
@@ -116,13 +116,21 @@ add_library(json_utils_mod
 target_link_libraries(json_utils_mod PRIVATE tipos)
 target_link_libraries(json_utils_mod PRIVATE jsonfortran)
 
-# SOCKET PARA PLOT EM TEMPO REAL
-add_library(conexao_mod STATIC
-  "./src/socket/conexao.f90"
-  "./src/socket/server_mod.f90"
-  "./src/socket/wsa_mod.f90"
-)
-target_link_libraries(conexao_mod PRIVATE ws2_32)
+# SOCKET PARA PLOT EM TEMPO REAL (depende do sistema operacional)
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  add_library(conexao_mod STATIC
+    "./src/socket/linux/conexao.f90"
+    "./src/socket/linux/server_mod.f90"
+  )
+
+ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  add_library(conexao_mod STATIC
+    "./src/socket/windows/conexao.f90"
+    "./src/socket/windows/server_mod.f90"
+    "./src/socket/windows/wsa_mod.f90"
+  )
+  target_link_libraries(conexao_mod PRIVATE ws2_32)
+ENDIF()
 
 # ALEATORIO
 add_library(aleatorio 
