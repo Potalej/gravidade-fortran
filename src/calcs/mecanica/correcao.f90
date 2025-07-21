@@ -49,7 +49,7 @@
 ! 
 ! 
 ! Modificado:
-!   10 de novembro de 2024
+!   20 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -72,16 +72,16 @@ CONTAINS
 !   Aplicacao da correcao numerica nas integrais primeiras.
 !
 ! Modificado:
-!   10 de novembro de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, J)
+SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, J, eps)
   IMPLICIT NONE
   REAL(pf), INTENT(IN)    :: corme ! CORrecao Margem Erro
   INTEGER,  INTENT(IN)    :: cormnt ! CORrecao Max Num Tentativas
-  REAL(pf), INTENT(IN)    :: G, massas(:)
+  REAL(pf), INTENT(IN)    :: G, massas(:), eps
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
   LOGICAL,  INTENT(INOUT) :: corrigiu
   INTEGER                 :: N, a, INFO, b, contador = 0, pivos(4)
@@ -108,10 +108,10 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, 
     contador = contador + 1
 
     ! calcula a mariz normal
-    JJt = matriz_normal(G, massas, posicoes, momentos, N, grads)
+    JJt = matriz_normal(G, massas, posicoes, momentos, N, grads, eps)
 
     ! vetor G
-    vetG = Gx(G, massas, posicoes, momentos, N) + (/H, J(1), J(2), J(3)/)
+    vetG = Gx(G, massas, posicoes, momentos, N, eps) + (/H, J(1), J(2), J(3)/)
 
     ! resolve o sistema via fatoracao de Cholesky
     CALL dpotrf('L', 4, JJt, 4, INFO)
@@ -165,16 +165,16 @@ END SUBROUTINE corrigir
 !   Aplicacao da correcao numerica da energia total apenas.
 !
 ! Modificado:
-!   10 de novembro de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H0, J, H_atual)
+SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H0, J, H_atual, eps)
   IMPLICIT NONE
   REAL(pf), INTENT(IN)    :: corme  ! CORrecao Margem Erro
   INTEGER,  INTENT(IN)    :: cormnt ! CORrecao Max Num Tentativas
-  REAL(pf), INTENT(IN)    :: G, massas(:)
+  REAL(pf), INTENT(IN)    :: G, massas(:), eps
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
   LOGICAL,  INTENT(INOUT) :: corrigiu
   INTEGER                 :: N, a, b, contador = 0
@@ -184,7 +184,7 @@ SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos
   N = SIZE(massas)
   contador = 0
 
-  aLlocate(gradE(1:6*N))
+  ALLOCATE(gradE(1:6*N))
   
   ! enquanto nao tiver aceitado a correcao, roda
   loop: DO WHILE (.TRUE.)
@@ -197,7 +197,7 @@ SUBROUTINE corrigir_apenas_energia (corme, cormnt, G, massas, posicoes, momentos
     ! Contador de correcoes
     contador = contador + 1
 
-    gradE=gradiente_energia(G, massas, posicoes, momentos, N)
+    gradE=gradiente_energia(G, massas, posicoes, momentos, N, eps)
     gradE2 = DOT_PRODUCT(gradE,gradE)
 
     alpha = (H0 - H_atual) / gradE2
@@ -235,18 +235,19 @@ END SUBROUTINE corrigir_apenas_energia
 !   primeira)
 !
 ! Modificado:
-!   15 de marco de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-FUNCTION Gx (G, massas, posicoes, momentos, N)
+FUNCTION Gx (G, massas, posicoes, momentos, N, eps)
   IMPLICIT NONE
   INTEGER  :: N
   REAL(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), Gx(4), J(3), Rcm(3), P(3)
+  REAL(pf) :: eps
 
   ! energia total
-  Gx(1) = energia_total(G, massas, posicoes, momentos)
+  Gx(1) = energia_total(G, massas, posicoes, momentos, eps)
 
   ! momento angular
   J = momento_angular_total(posicoes, momentos)
@@ -265,20 +266,20 @@ END FUNCTION Gx
 !   Calcula a matriz produto dos jacobianos (uma matriz normal)
 !
 ! Modificado:
-!   15 de marco de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-FUNCTION matriz_normal (G, massas, posicoes, momentos, N, grads)
+FUNCTION matriz_normal (G, massas, posicoes, momentos, N, grads, eps)
 
   IMPLICIT NONE
   INTEGER  :: N, gi, gj
-  REAL(pf) :: G, massas(N), posicoes(N,3), momentos(N,3)
+  REAL(pf) :: G, massas(N), posicoes(N,3), momentos(N,3), eps
   REAL(pf),INTENT(INOUT) :: grads(4, 6*N)
   REAL(pf) :: matriz_normal(4,4)
 
-  grads(1,:)=gradiente_energia(G, massas, posicoes, momentos, N)
+  grads(1,:)=gradiente_energia(G, massas, posicoes, momentos, N, eps)
   grads(2,:)=gradiente_angularX(posicoes, momentos, N)
   grads(3,:)=gradiente_angularY(posicoes, momentos, N)
   grads(4,:)=gradiente_angularZ(posicoes, momentos, N)
@@ -299,16 +300,16 @@ END FUNCTION matriz_normal
 !   total.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-FUNCTION gradiente_energia (G, massas, Rs, Ps, N)
+FUNCTION gradiente_energia (G, massas, Rs, Ps, N, eps)
 
   IMPLICIT NONE
   INTEGER  :: N, a, b
-  REAL(pf) :: distancia3, distancia(3)
+  REAL(pf) :: distancia3, distancia(3), eps
   REAL(pf) :: G, massas(N), Rs(N,3), Ps(N,3), gradiente_energia(1:6*N)
 
   gradiente_energia(:) = 0.0_pf
@@ -321,7 +322,7 @@ FUNCTION gradiente_energia (G, massas, Rs, Ps, N)
     DO b = 1, N
       IF (b /= a) THEN
         distancia = Rs(b,:)-Rs(a,:)
-        distancia3 = norm2(distancia)**3
+        distancia3 = SQRT(DOT_PRODUCT(distancia, distancia) + eps*eps)**3
         distancia = (massas(b)/distancia3) * distancia
 
         gradiente_energia(6*a-5) = gradiente_energia(6*a-5)+distancia(1)

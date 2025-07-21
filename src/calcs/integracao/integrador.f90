@@ -243,7 +243,7 @@ END FUNCTION forcas
 !   Aplica o metodo iterativamente N vezes.
 !
 ! Modificado:
-!   03 de junho de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -313,7 +313,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
 
   ! Se estiver disposto a corrigir, calcula a energia total para ver se precisa
   IF (self%corrigir) THEN
-    E = energia_total(self % G, self % m, R1, P1, self % distancias)
+    E = energia_total(self % G, self % m, R1, P1, self % potsoft, self % distancias)
         
     IF (ABS(E - self%E0) >= self%corme) THEN
       
@@ -324,7 +324,8 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
 
       ! Corrige somente a energia total
       CALL corrigir_apenas_energia(self % corme, self % cormnt, self % G, &
-                                  self % m, R1, P1, corrigiu, self % E0, self % J0, E)
+                                  self % m, R1, P1, corrigiu, self % E0, self % J0, E, &
+                                  self % potsoft)
       
       IF (corrigiu) THEN
         contagem_correcao = contagem_correcao + 1

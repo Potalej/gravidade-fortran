@@ -5,7 +5,7 @@
 !   Funcoes para a geracao e condicionamento a partir de restricoes.
 ! 
 ! Modificado:
-!   05 de maio de 2025
+!   20 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -192,21 +192,21 @@ END SUBROUTINE condicionar_momentoAngular
 !   desejado.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos)
+SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos, eps)
   ! Outra forma de H>0 seria somente aplicar o fator ((H-EP)/EC)**0.5
 
   IMPLICIT NONE
-  REAL(pf), INTENT(IN)    :: H, G
+  REAL(pf), INTENT(IN)    :: H, G, eps
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), massas(:)
   REAL(pf)                :: EP, EC, fator
 
   ! Calcula as energias
-  EP = energia_potencial(G, massas, posicoes)
+  EP = energia_potencial(G, massas, posicoes, eps)
   EC = energia_cinetica(massas, momentos)
 
   ! Calcula o fator para zerar
@@ -288,13 +288,13 @@ END SUBROUTINE condicionar_momentoLinear
 !   maneira iterativa.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, H, J, P)
-  REAL(pf), INTENT(IN) :: G, H, J(3), P(3)
+SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, J, P)
+  REAL(pf), INTENT(IN) :: G, H, J(3), P(3), eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf) :: erro_0, erro_1, erro_limite = 0.1E-8
   REAL(pf) :: er_energia, er_linear, er_angular
@@ -310,10 +310,10 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, H, J, P)
   CALL condicionar_momentoAngular(J, massas, posicoes, momentos)
 
   ! Condiciona a energia total
-  CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos)
+  CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos, eps)
 
   ! Calculo dos erros
-  er_energia = ABS(energia_total(G,massas, posicoes, momentos) - H)
+  er_energia = ABS(energia_total(G,massas, posicoes, momentos, eps) - H)
   er_linear = MAXVAL(ABS(momentoLinear_total(momentos) - P))
   er_angular = MAXVAL(ABS(momento_angular_total(posicoes,momentos) - J))
   erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
@@ -332,10 +332,10 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, H, J, P)
       CALL condicionar_momentoAngular(J, massas, posicoes, momentos)
 
       ! Condiciona a energia total
-      CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos)
+      CALL condicionar_energiaTotal(H, G, massas, posicoes, momentos, eps)
 
       ! Calculo dos erros
-      er_energia = ABS(energia_total(G,massas, posicoes, momentos) - H)
+      er_energia = ABS(energia_total(G,massas, posicoes, momentos, eps) - H)
       er_linear = MAXVAL(ABS(momentoLinear_total(momentos) - P))
       er_angular = MAXVAL(ABS(momento_angular_total(posicoes,momentos) - J))
       erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
@@ -353,15 +353,15 @@ END SUBROUTINE condicionar_ip_iterativo
 !   maneira direta.
 !
 ! Modificado:
-!   05 de maio de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, H, J, P)
+SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
   REAL(pf), INTENT(IN) :: G
-  REAL(pf), INTENT(IN), OPTIONAL :: H, J(3), P(3)
-  REAL(pf) :: ed, pd(3), jd(3)
+  REAL(pf), INTENT(IN), OPTIONAL :: H, J(3), P(3), soft
+  REAL(pf) :: ed, pd(3), jd(3), eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf) :: energia, linear(3), angular(3), M_tot_inv
   REAL(pf) :: alpha, potencial ! calculo do alpha
@@ -372,21 +372,23 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, H, J, P)
   ed = 0.0_pf
   pd = 0.0_pf
   jd = 0.0_pf
+  eps = 0.0_pf
   IF (PRESENT(H)) ed = H
   IF (PRESENT(J)) jd = J
   IF (PRESENT(P)) pd = P
+  IF (PRESENT(soft)) eps = soft
 
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
 
   ! Calcula as integrais primeiras
-  energia = energia_total(G, massas, posicoes, momentos)
+  energia = energia_total(G, massas, posicoes, momentos, eps)
   linear = momentoLinear_total(momentos)
   angular = momento_angular_total(posicoes, momentos)
   M_tot_inv = 1.0_pf / SUM(massas)
 
   ! Calculo do alpha
-  potencial = energia_potencial(G, massas, posicoes)
+  potencial = energia_potencial(G, massas, posicoes, eps)
   alpha = 1.0_pf + ed / potencial
 
   ! Calculo do beta
@@ -447,13 +449,13 @@ END SUBROUTINE condicionar_ip_direto
 !   unitaria, energia total -0.25, relacao do virial atendida.
 !
 ! Modificado:
-!   05 de maio de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_aarseth (G, massas, posicoes, momentos)
-  REAL(pf), INTENT(IN)    :: G
+SUBROUTINE condicionar_aarseth (G, massas, posicoes, momentos, eps)
+  REAL(pf), INTENT(IN)    :: G, eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf) :: energia = -0.25_pf  ! energia padrao
   REAL(pf) :: virial  = 0.5_pf    ! relacao de virial padrao
@@ -464,10 +466,10 @@ SUBROUTINE condicionar_aarseth (G, massas, posicoes, momentos)
   massas(:) = 1.0_pf/SIZE(massas)
 
   ! Para comecar, condiciona as integrais primeiras para zero
-  CALL condicionar_ip_direto(G, massas, posicoes, momentos)
+  CALL condicionar_ip_direto(G, massas, posicoes, momentos, eps)
 
   ! Metodo de Aarseth
-  ep = energia_potencial(G, massas, posicoes)
+  ep = energia_potencial(G, massas, posicoes, eps)
   ec = energia_cinetica(massas, momentos)
 
   Qv = SQRT(virial * ABS(ep) / ec)

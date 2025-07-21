@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   11 de julho de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -185,7 +185,7 @@ END SUBROUTINE rodar_simulacao_intervalo
 !   Faz a simulacao.
 !
 ! Modificado:
-!   26 de maio de 2024
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -243,7 +243,7 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   self % Ptot = momentoLinear_total(self % P)
 
   ! Salva a energia inicial
-  self % E0 = energia_total(self % G, self % M, self % R, self % P)
+  self % E0 = energia_total(self % G, self % M, self % R, self % P, self % potsoft)
 
   ! Salva o momento angular inicial
   self % J0 = momento_angular_total(self % R, self % P)
@@ -407,7 +407,7 @@ END SUBROUTINE rodar
 !! Mensagens na tela que aparecem durante a simulacao
 !
 ! Modificado:
-!   11 de julho de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -427,10 +427,10 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
 
   ! Energia
   IF (self % mi) THEN
-    Ep = energia_potencial_esc(self % G, self % m_esc, R)
+    Ep = energia_potencial_esc(self % G, self % m_esc, R, self % potsoft)
     Ec = energia_cinetica_esc(self % m_esc, P)
   ELSE
-    Ep = energia_potencial_vec(self % G, self % M, R)
+    Ep = energia_potencial_vec(self % G, self % M, R, self % potsoft)
     Ec = energia_cinetica_vec(self % M, P)
   ENDIF
 

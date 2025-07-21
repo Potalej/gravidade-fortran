@@ -5,7 +5,7 @@
 !   Funcoes para o condicionamento de valores iniciais.
 ! 
 ! Modificado:
-!   02 de maio de 2025
+!   20 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -27,15 +27,16 @@ CONTAINS
 !   chamadas a partir desta.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   20 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
+SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo, eps)
   TYPE(json_value), POINTER, INTENT(IN) :: dados ! in
   TYPE(json_value), POINTER             :: sorteio
   CHARACTER(LEN=*), INTENT(IN)          :: metodo ! in
+  REAL(pf), INTENT(IN) :: eps
   REAL(pf), INTENT(INOUT), ALLOCATABLE  :: massas(:), posicoes(:,:), momentos(:,:) ! out
   REAL(pf) :: ed
   REAL(pf), DIMENSION(:), ALLOCATABLE :: pd, jd
@@ -70,15 +71,15 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
   SELECT CASE (TRIM(metodo))
     ! Condicionamento por integrais primeiras iterativamente
     CASE("sorteio_ip_iterativo")
-      CALL condicionar_ip_iterativo(G, massas, posicoes, momentos, ed, pd, jd)
+      CALL condicionar_ip_iterativo(G, massas, posicoes, momentos, eps, ed, pd, jd)
 
     ! Condicionamento por integrais primeiras diretamente
     CASE("sorteio_ip_direto")
-      CALL condicionar_ip_direto(G, massas, posicoes, momentos, ed, pd, jd)
+      CALL condicionar_ip_direto(G, massas, posicoes, momentos, eps, ed, pd, jd)
 
     ! Condicionamento de Aarseth
     CASE("sorteio_aarseth")
-      CALL condicionar_aarseth(G, massas, posicoes, momentos)
+      CALL condicionar_aarseth(G, massas, posicoes, momentos, eps)
 
     ! Outro caso: erro
     CASE DEFAULT
@@ -86,11 +87,11 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo)
   END SELECT
 
   ! Outputs com informacoes sobre os dados iniciais sorteados
-  CALL condicionamento_outputs(G, massas, posicoes, momentos)
+  CALL condicionamento_outputs(G, massas, posicoes, momentos, eps)
 END SUBROUTINE
 
-SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos)
-  REAL(pf), INTENT(IN) :: G, massas(:), posicoes(:,:), momentos(:,:)
+SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
+  REAL(pf), INTENT(IN) :: G, massas(:), posicoes(:,:), momentos(:,:), eps
   
   ! informacoes para exibir
   REAL(pf) :: potencial, cinetica
@@ -98,7 +99,7 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos)
   REAL(pf) :: inercia, dilatacao
   REAL(pf) :: anitenine ! anisotropia do tensor de inercia
 
-  potencial = energia_potencial(G, massas, posicoes)
+  potencial = energia_potencial(G, massas, posicoes, eps)
   cinetica  = energia_cinetica(massas, momentos)
   lintot    = momentoLinear_total(momentos)
   angtot    = momento_angular_total(posicoes, momentos)
