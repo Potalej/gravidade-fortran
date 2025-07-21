@@ -1,5 +1,17 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-07-21] v0.5.5: Correção - Amortecimento do potencial no condicionamento
+
+Na v0.5.4 incorporei corretamente a energia amortecida em quase todo o código, mas faltou incorporá-la de fato no processo de condicionamento de valores iniciais, pois me baseei completamente na hipótese do potencial ser homogêneo de grau -1, o que não ocorre no amortecimento. Corrigi isso no condicionamento indireto e no de Aarseth adicionando a subrotina `condicionar_potencial_amortecido`, que aplica o método de Newton para resolver o problema
+
+$$f(h) = V_1 (hq_0) - \varepsilon (E - T),$$
+
+e a posição condicionada final é \(h \epsilon q_0\).
+
+O condicionamento direto depende fortemente do potencial ser homogêneo, e ao que me consta trata-se de um problema implícito tridimensional (alpha, beta, omega), o que necessita de um Newton complicado demais por agora. Assim, por enquanto, o condicionamento indireto lança um aviso quando usado com \(\varepsilon \neq 0\), indicando que não funciona, e o de Aarseth só o usa quando não há amortecimento.
+
+---
+
 ## [2025-07-20] v0.5.4: Correção - Energia amortecida
 
 Quando adicionamos um amortecimento na força também precisamos incluir isso no potencial, mas por algum motivo isso não estava feito na versão sincronizada, então adicionei. Agora o potencial tem um \(\varepsilon\) também!

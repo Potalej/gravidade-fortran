@@ -10,7 +10,8 @@
 !   como no calculo do momento angular, que usa o produto vetorial.
 ! 
 ! Modificado:
-!   02 de fevereiro de 2024
+!   02 de fevereiro de 2024 (criado)
+!   21 de julho de 2025 (modificado)
 ! 
 ! Autoria:
 !   oap
@@ -133,7 +134,7 @@ END FUNCTION energia_cinetica_esc
 !   V = - G sum (i < j) m_i m_j / r_ij
 !
 ! Modificado:
-!   03 de fevereiro de 2024
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -180,7 +181,9 @@ FUNCTION energia_potencial_esc (G,m,R,eps,dists) RESULT(ep)
   m2 = m * m
   ep=0.0_pf
   IF (PRESENT(dists)) THEN
-    ep = SUM(1.0_pf/dists)
+    DO i = 1, SIZE(dists)
+      ep = ep + 1.0_pf/SQRT(dists(i)*dists(i) + eps*eps)
+    END DO
   ELSE
     DO i=2, SIZE(R,1)
       DO j=1,i-1

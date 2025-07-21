@@ -5,7 +5,7 @@
 !   Funcoes para a geracao e condicionamento a partir de restricoes.
 ! 
 ! Modificado:
-!   20 de julho de 2025
+!   21 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -26,7 +26,7 @@ CONTAINS
 !   Gera valores iniciais aleatorios.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -45,7 +45,7 @@ SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos, mi)
   ! Gera massas
   IF (mi) THEN
     WRITE (*,'(A)') '    * gerando massas (1/N)'
-    massas = 1/N
+    massas = 1.0_pf/N
   ELSE
     WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
     massas = gerar_massas(N, sort_mas)
@@ -192,7 +192,7 @@ END SUBROUTINE condicionar_momentoAngular
 !   desejado.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -204,7 +204,14 @@ SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos, eps)
   REAL(pf), INTENT(IN)    :: H, G, eps
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:), massas(:)
   REAL(pf)                :: EP, EC, fator
+  
+  REAL(pf), ALLOCATABLE :: dists2(:), massas2(:), posicoes_fator(:,:)
+  REAL(pf) :: erro_newton, pot_fator, pot_der_fator, const, Rab(3)
+  INTEGER  :: a, b, i, contador
+  INTEGER :: N
 
+  N = SIZE(massas)
+  
   ! Calcula as energias
   EP = energia_potencial(G, massas, posicoes, eps)
   EC = energia_cinetica(massas, momentos)
@@ -215,13 +222,105 @@ SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos, eps)
   ! Aplica sobre os momentos
   momentos = fator * momentos
 
-  ! Se nao for zero, aplica homotetia nas posicoes
+  ! Se a energia desejada nao for nula, precisa mexer nas posicoes
   IF (H .NE. 0) THEN
-    fator = 1/(H/EP + 1)
-    posicoes = fator * posicoes
+    ! Se nao tiver amortecimento, pode aplicar homotetia pois o potencial eh homogeneo
+    IF (eps == 0) THEN
+      fator = 1.0_pf/(H/EP + 1.0_pf)
+      posicoes = fator * posicoes
+    
+    ! Se tiver amortecimento, precisa usar Newton para encontrar o fator
+    ELSE
+      CALL condicionar_potencial_amortecido(H, G, massas, posicoes, momentos, eps)
+    ENDIF
   ENDIF
 
 END SUBROUTINE condicionar_energiaTotal
+
+! ************************************************************
+!! Condicionamento do potencial amortecido
+!
+! Objetivos:
+!   Condiciona o potencial amortecido (softening) utilizando 
+!   o metodo de Newton, necessario devido a perda de
+!   homogeneidade.
+!
+! Modificado:
+!   21 de julho de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE condicionar_potencial_amortecido (H, G, massas, posicoes, momentos, eps, fator_inicial)
+  REAL(pf), INTENT(IN) :: H, G, eps, massas(:), momentos(:,:)
+  REAL(pf), INTENT(IN), OPTIONAL :: fator_inicial
+  REAL(pf), INTENT(INOUT) :: posicoes(:,:)
+  REAL(pf), ALLOCATABLE :: dists2(:), massas2(:), posicoes_fator(:,:)
+  REAL(pf) :: erro_newton, pot_fator, pot_der_fator, const, Rab(3), fator, EP, EC
+  INTEGER :: a, b, i, contador
+  INTEGER :: N
+
+  ! Definicoes
+  N = SIZE(massas)
+  ALLOCATE(dists2(INT(N*(N-1)/2)))
+  ALLOCATE(massas2(INT(N*(N-1)/2)))
+  ALLOCATE(posicoes_fator(N,3))
+
+  ! Vetores para facilitar o calculo do potencial e sua derivada
+  i = 1
+  EP = 0.0_pf
+  DO a = 2, N
+    DO b = 1, a - 1
+      Rab = posicoes(a,:) - posicoes(b,:)
+      dists2(i) = DOT_PRODUCT(Rab, Rab)
+      massas2(i) = massas(a) * massas(b)
+      EP = EP - G * massas2(i) / SQRT(dists2(i) + eps*eps)
+      i = i + 1
+    END DO
+  END DO
+  EC = energia_cinetica(massas, momentos)
+
+  ! Constante
+  const = -eps * (H - EC)
+
+  ! Agora vamos aplicar o metodo de Newton
+  erro_newton = 1.0
+  IF (PRESENT(fator_inicial)) THEN
+    fator = fator_inicial/eps
+  ELSE
+    fator = 1.0_pf/(eps * (H/EP + 1.0_pf)) ! Chute inicial
+  ENDIF
+  contador = 0
+
+  DO WHILE (erro_newton > 1E-15 .AND. contador < 50)
+    ! Calcula o potencial e sua derivada em relacao ao fator
+    pot_fator = 0.0_pf
+    pot_der_fator = 0.0_pf
+
+    DO i = 1, SIZE(dists2)
+      pot_fator = pot_fator - G*massas2(i)/SQRT(fator*fator*dists2(i) + 1)
+      pot_der_fator = pot_der_fator + G*massas2(i)*dists2(i)/SQRT(fator*fator*dists2(i) + 1)**3
+    END DO
+    pot_der_fator = pot_der_fator * fator
+
+    ! Agora aplica o metodo de Newton
+    fator = fator - (pot_fator + const)/pot_der_fator
+
+    ! Vamos verificar o erro
+    posicoes_fator = fator * eps * posicoes
+    erro_newton = ABS(H - energia_total(G, massas, posicoes_fator, momentos, eps))
+
+    contador = contador + 1
+  END DO
+
+  ! Atualiza as posicoes
+  posicoes = posicoes_fator
+
+  ! Liberando memoria
+  DEALLOCATE(dists2)
+  DEALLOCATE(massas2)
+  DEALLOCATE(posicoes_fator)
+END SUBROUTINE
 
 ! ************************************************************
 !! Condicionamento: centro de massas (anula)
@@ -288,17 +387,24 @@ END SUBROUTINE condicionar_momentoLinear
 !   maneira iterativa.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, J, P)
-  REAL(pf), INTENT(IN) :: G, H, J(3), P(3), eps
+SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat, mlt)
+  REAL(pf), INTENT(IN) :: G, H, eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf), INTENT(IN), OPTIONAL :: mat(3), mlt(3)
+  REAL(pf) :: J(3), P(3)
   REAL(pf) :: erro_0, erro_1, erro_limite = 0.1E-8
   REAL(pf) :: er_energia, er_linear, er_angular
   INTEGER :: N_iter_max = 10, i
+
+  J = 0.0_pf
+  P = 0.0_pf
+  IF (PRESENT(mat)) J = mat
+  IF (PRESENT(mlt)) P = mlt
 
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
@@ -353,7 +459,7 @@ END SUBROUTINE condicionar_ip_iterativo
 !   maneira direta.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -377,6 +483,10 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
   IF (PRESENT(J)) jd = J
   IF (PRESENT(P)) pd = P
   IF (PRESENT(soft)) eps = soft
+
+  IF (eps .NE. 0) THEN
+    WRITE (*,*) ' [ATENCAO] potencial amortecido, o cond. direto nao sera exato!'
+  END IF
 
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
@@ -405,7 +515,7 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
     S1 = S1 + 0.5_pf * DOT_PRODUCT(K1a, K1a) / massas(i)
 
     K2a = pd * M_tot_inv + produto_vetorial(posicoes(i,:), rot_)
-    S2 = S2 + 0.5_pf * DOT_PRODUCT(K2a, K2a) * massas(i)
+    S2 = S2 + 0.5_pf * DOT_PRODUCT(K2a, K2a) / massas(i)
   END DO
 
   beta = SQRT((-potencial - S2)/S1)
@@ -449,7 +559,7 @@ END SUBROUTINE condicionar_ip_direto
 !   unitaria, energia total -0.25, relacao do virial atendida.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   21 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -466,7 +576,11 @@ SUBROUTINE condicionar_aarseth (G, massas, posicoes, momentos, eps)
   massas(:) = 1.0_pf/SIZE(massas)
 
   ! Para comecar, condiciona as integrais primeiras para zero
-  CALL condicionar_ip_direto(G, massas, posicoes, momentos, eps)
+  IF (eps == 0) THEN
+    CALL condicionar_ip_direto(G, massas, posicoes, momentos)
+  ELSE
+    CALL condicionar_ip_iterativo(G, massas, posicoes, momentos, eps, energia)
+  ENDIF
 
   ! Metodo de Aarseth
   ep = energia_potencial(G, massas, posicoes, eps)
@@ -475,8 +589,16 @@ SUBROUTINE condicionar_aarseth (G, massas, posicoes, momentos, eps)
   Qv = SQRT(virial * ABS(ep) / ec)
   beta = (1.0_pf - virial) * ep / energia
 
-  posicoes = posicoes * beta
+  ! Condiciona as velocidades
   momentos = momentos * Qv / SQRT(beta)
+
+  ! Se nao tiver amortecimento, o metodo eh direto
+  IF (eps == 0) THEN
+    posicoes = posicoes * beta
+  ! Se tiver, precisa ser iterativo, usando beta/eps como chute inicial
+  ELSE
+    CALL condicionar_potencial_amortecido(energia, G, massas, posicoes, momentos, eps, beta)
+  ENDIF
 END SUBROUTINE condicionar_aarseth
 
 END MODULE condicionamento
