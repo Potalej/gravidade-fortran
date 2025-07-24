@@ -7,7 +7,7 @@
 !   dimensao, massas, se corrige ou nao, se colide ou nao, etc.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -22,6 +22,7 @@ MODULE integrador
   USE correcao
   USE colisao
   USE octree
+  USE json_utils_mod
   IMPLICIT NONE
   PRIVATE
   PUBLIC integracao
@@ -109,33 +110,34 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo, mi)
+SUBROUTINE Iniciar (self, infos, timestep, massas, E0, J0)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
+  TYPE(json_value), POINTER :: infos
+  REAL(pf) :: timestep
   REAL(pf), allocatable :: massas(:)
-  REAL(pf)              :: G, h, E0, J0(3)
-  LOGICAL,INTENT(IN) :: corrigir, paralelo
-  LOGICAL, INTENT(IN) :: colidir
-  CHARACTER(LEN=*), INTENT(IN) :: colmodo
-  REAL(pf) :: corme, potsoft, colmd
-  INTEGER :: cormnt
+  REAL(pf)              :: E0, J0(3)
   INTEGER :: a, i
-  LOGICAL :: mi
+
+  LOGICAL :: encontrado
+  REAL(pf) :: colmd, densidade
+  REAL(pf) :: PI = 4.D0*DATAN(1.D0)
 
   ! Quantidade de particulas
   self % N = SIZE(massas)
   
   ! Massas
-  self % mi = mi
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado) self % mi = .FALSE.
   ALLOCATE(self % m(self % N))
   self % m = massas
 
-  IF (mi) THEN
+  IF (self % mi) THEN
     self % m_esc = massas(1)
     self % m_inv = 1.0_pf/self % m_esc
     self % m2 = self % m_esc * self % m_esc
@@ -169,18 +171,18 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
     ALLOCATE(self % massasInvertidas (self % N, self % dim))
     DO a = 1, self % N
       DO i = 1, self % dim
-        self % massasInvertidas(a,i) = 1/(massas(a))
+        self % massasInvertidas(a,i) = 1.0_pf/(massas(a))
       END DO
     END DO
   ENDIF  
 
   ! gravidade
-  self % G = G
+  self % G = json_get_float(infos, 'G')
   ! Passo
-  self % h = h
+  self % h = timestep
   ! Softening do potencial
-  self % potsoft = potsoft
-  self % potsoft2 = potsoft*potsoft
+  self % potsoft = json_get_float(infos, 'integracao.amortecedor')
+  self % potsoft2 = self%potsoft * self%potsoft
 
   ! Valores iniciais
   self % E0 = E0
@@ -190,29 +192,34 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
 
   ! Se vai ou nao corrigir
-  self % corrigir = corrigir
-  self % corme = corme
-  self % cormnt = cormnt
+  CALL json % get(infos, 'correcao.corrigir', self % corrigir)
+  self % corme = json_get_float(infos, 'correcao.margem_erro')
+  CALL json % get(infos, 'correcao.max_num_tentativas', self % cormnt)
 
-  ! Se vai ou nao colidir
-  self % colidir = colidir
-  self % colisoes_modo = colmodo
+  ! Colisoes
+  CALL json % get(infos, 'colisoes.colidir', self % colidir)
+  self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
+  densidade = json_get_float(infos, 'colisoes.densidade')
+  colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
   self % colmd = colmd
+
+  ! Deixando os raios calculados de antemao
   ALLOCATE(self % raios(self % N))
   DO a = 1, self % N
     self % raios(a) = self % colmd * massas(a)**(1.0_pf / 3.0_pf)
   END DO
 
   ! Codigo paralelo
-  self % paralelo = paralelo
-  IF (paralelo) THEN
-    IF (mi) THEN
+  CALL json % get(infos, 'paralelo', self % paralelo)
+
+  IF (self % paralelo) THEN
+    IF (self % mi) THEN
       self % forcas_mi_funcao => forcas_mi_par
     ELSE
       self % forcas_funcao => forcas_par
     ENDIF
   ELSE
-    IF (mi) THEN
+    IF (self % mi) THEN
       self % forcas_mi_funcao => forcas_mi_seq
     ELSE
       self % forcas_funcao => forcas_seq
@@ -243,7 +250,7 @@ END FUNCTION forcas
 !   Aplica o metodo iterativamente N vezes.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -287,7 +294,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
 
       ! se tiver colisoes, aplica
       IF (self % colidir) THEN
-        CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
+        CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
                                 self%raios, self%arvore, self%colisoes_modo, &
                                 self%distancias)
       ENDIF
@@ -304,7 +311,7 @@ SUBROUTINE aplicarNVezes (self, R, P, qntd_passos)
 
       ! se tiver colisoes, aplica
       IF (self % colidir) THEN
-        CALL verificar_e_colidir(self%m, R1, P1, self%colmd, self%paralelo, &
+        CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
                                 self%raios, self%arvore, self%colisoes_modo, &
                                 self%distancias)
       ENDIF

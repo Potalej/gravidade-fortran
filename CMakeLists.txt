@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.5.5
+project("gravidade" VERSION 0.5.6
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -203,15 +203,16 @@ add_library(integracao
 target_link_libraries(integracao PRIVATE
   mecanica # usa o corretor e o de colisoes
   tipos
+  json_utils_mod
 )
 
 # Utilitarios de OS
 # Alguns recursos depENDem do sistema operacional, entao precisam ser
 # filtrados antes da inclusao no programa.
-if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   add_library(os "./src/os/linux.f90")
 
-elseif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   add_library(os "./src/os/windows.f90")
 ENDIF()
 
@@ -220,7 +221,7 @@ ENDIF()
 # A exibicao dos graficos eh feita com o matplotlib, entao o Python precisa
 # estar instalado.
 # ----------------------------------------------------------------------------
-find_program(PYTHON "python" QUIET)
+find_program(PYTHON NAMES python python3 QUIET)
 IF(PYTHON)
   find_package(Python COMPONENTS Interpreter REQUIRED QUIET)
 

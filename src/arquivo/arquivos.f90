@@ -9,7 +9,7 @@
 !   fechamento, criacao de nome e criacao de formato.
 !   
 ! Modificado:
-!   26 de maio de 2024
+!   24 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -19,6 +19,8 @@ MODULE arquivos
 
   ! OPENMP
   USE OMP_LIB
+  USE json_utils_mod
+  USE version
 
   IMPLICIT NONE
 
@@ -355,31 +357,81 @@ SUBROUTINE fechar (self)
 END SUBROUTINE fechar
 
 ! ************************************************************
+!! Captura a data e a hora no formato 11:58 24/07/2025
+!
+! Modificado:
+!   24 de julho de 2025
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE data_hora_string (data_hora_str)
+  CHARACTER(LEN=20), INTENT(OUT) :: data_hora_str
+  INTEGER :: v(8)
+
+  ! v = [ano, mês, dia, fuso, hora, min, seg, milisseg]
+  call date_and_time(values=v)
+
+  WRITE(data_hora_str, '(I2.2,":",I2.2," ",I2.2,"/",I2.2,"/",I4)') v(5), v(6), v(3), v(2), v(1)
+END SUBROUTINE data_hora_string
+
+! ************************************************************
 !! Criacao do arquivo de informacoes
 !
 ! Objetivos:
 !   Cria o arquivo de informacoes e preenche com o principal
 !
 ! Modificado:
-!   25 de maio de 2024
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, passos_inst, cor, corme, cormnt, col, colmd, fp)
+SUBROUTINE inicializar_arquivo_info (self, infos)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN)   :: self
-  INTEGER, INTENT(IN)          :: N, t0, t1, passos_inst
-  REAL(pf), INTENT(IN)         :: G, h, potsoft
-  CHARACTER(len=*), INTENT(IN) :: metodo
-  LOGICAL                      :: cor ! correcao
-  CHARACTER(*)                 :: col ! colisao
-  REAL(pf)                     :: corme, colmd
-  INTEGER                      :: cormnt
-  LOGICAL                      :: fp ! forcas paralelas
+  TYPE(json_value), POINTER    :: infos
+  INTEGER          :: N, t0, tf, checkpoints ! checkpoints
+  REAL(pf)         :: G, h, soft
+  LOGICAL          :: corrigir, colidir ! correcao
+  CHARACTER(len=:), ALLOCATABLE :: metodo, colidir_modo ! colisao
+  REAL(pf)         :: corme, colmd
+  INTEGER          :: cormnt
+  LOGICAL          :: paralelo
+  CHARACTER(20)    :: data_hora_str
 
-  WRITE (self % idarqinfo, '(*(g0,1x))') "# gravidade-fortran v0.1"
+  REAL(pf) :: densidade
+  LOGICAL :: encontrado
+
+  CALL json % get(infos, "N", N)
+  G = json_get_float(infos, "G")
+  
+  ! Integracao
+  metodo = json_get_string(infos, 'integracao.metodo')
+  CALL json % get(infos, 'integracao.t0', t0)
+  CALL json % get(infos, 'integracao.tf', tf)
+  h = json_get_float(infos, "integracao.timestep")
+  soft = json_get_float(infos, "integracao.amortecedor")
+  CALL json % get(infos, "integracao.checkpoints", checkpoints)
+
+  ! Correcao
+  CALL json % get(infos, 'correcao.corrigir', corrigir)
+  corme = json_get_float(infos, 'correcao.margem_erro')
+  CALL json % get(infos, 'correcao.max_num_tentativas', cormnt)
+
+  ! Colisao
+  CALL json % get(infos, 'colisoes.colidir', colidir)
+  colidir_modo = json_get_string(infos, 'colisoes.metodo')
+  densidade = json_get_float(infos, 'colisoes.densidade')
+
+  ! Paralelizacao
+  CALL json % get(infos, 'paralelo', paralelo)
+
+  ! Data e hora de inicio
+  CALL data_hora_string(data_hora_str)
+
+  WRITE (self % idarqinfo, '(*(g0,1x))') "# gravidade-fortran v"//version_string//'_'//precisao
   WRITE (self % idarqinfo, *) 
 
   WRITE (self % idarqinfo, '(*(g0,1x))') "# configuracoes"
@@ -387,22 +439,37 @@ SUBROUTINE inicializar_arquivo_info (self, N, metodo, G, h, potsoft, t0, t1, pas
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- metodo: ", metodo
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- G: ", G
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- h: ", h
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- potsoft: ", potsoft
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos por instante: ", passos_inst
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- amortecimento: ", soft
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- checkpoints: ", checkpoints
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- total passos: " 
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- t0: ", t0
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- t1: ", t1
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- paralelisacao: ", fp
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", cor
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", col
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes max. dist.: ", colmd
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- tf: ", tf
+  WRITE (self % idarqinfo, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo
+  
+  IF (corrigir) THEN
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", corrigir
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
+  ELSE
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", corrigir
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: n/a"
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: n/a"
+  ENDIF
+
+  IF (colidir) THEN
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", colidir, colidir_modo
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- densidade: ", densidade
+  ELSE
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", colidir
+    WRITE (self % idarqinfo, '(*(g0,1x))') "-- densidade: n/a"
+  ENDIF
 
   WRITE (self % idarqinfo, *)
 
   WRITE (self % idarqinfo, '(*(g0,1x))') "# simulacao: "
+  WRITE (self % idarqinfo, '(*(g0,1x))') "-- inicio: ", data_hora_str
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- duracao: "
+
   CLOSE(self % idarqinfo)
 
 END SUBROUTINE inicializar_arquivo_info
@@ -420,7 +487,7 @@ END SUBROUTINE inicializar_arquivo_info
 !   da simulacao. A informacao eh previamente guardada no bkp.
 !
 ! Modificado:
-!   25 de maio de 2024
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -431,8 +498,8 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
   REAL(pf64), INTENT(IN)         :: duracao
-  INTEGER :: linha_qntd_passos = 10, linha_duracao = 21
-  INTEGER :: i = 1, tamanho_arquivo = 21, nova_unidade
+  INTEGER :: linha_qntd_passos = 10, linha_duracao = 22
+  INTEGER :: i = 1, tamanho_arquivo = 22, nova_unidade
   LOGICAL :: mudou_qntd_passos = .FALSE., mudou_duracao = .FALSE.
   CHARACTER(len=50), allocatable :: infos(:)
 
@@ -451,7 +518,7 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   REWIND(self % idarqinfo)
 
   ! DO WHILE (.NOT. mudou_qntd_passos .AND. .NOT. mudou_duracao)
-  DO i = 1, 21
+  DO i = 1, 22
     ! se estiver na linha do tf
     IF (i == linha_qntd_passos) THEN
       WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: ", qntd_passos

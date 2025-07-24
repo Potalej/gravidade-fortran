@@ -39,4 +39,11 @@ FUNCTION json_get_float_vec (dados, chave) RESULT(valor)
     CALL json % get(dados, chave, valor)
 END FUNCTION json_get_float_vec
 
+SUBROUTINE json_clone (entrada, saida)
+    TYPE(json_core) :: json
+    TYPE(json_value), POINTER, INTENT(IN) :: entrada
+    TYPE(json_value), POINTER, INTENT(OUT) :: saida
+    call json % clone(entrada, saida)
+END SUBROUTINE json_clone
+
 END MODULE json_utils_mod

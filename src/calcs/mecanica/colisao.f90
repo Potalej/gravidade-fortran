@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   16 de marco de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -29,15 +29,15 @@ CONTAINS
 !   particulas.
 !
 ! Modificado:
-!   16 de marco de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo, dists)
+SUBROUTINE verificar_e_colidir (m, R, P, paralelo, raios, arvore, modo, dists)
   IMPLICIT NONE
   TYPE(arvore_octo), ALLOCATABLE :: arvore
-  REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
+  REAL(pf) :: m(:), R(:,:), P(:,:) ! maximo de aproximacao
   LOGICAL  :: paralelo
   REAL(pf) :: raios(size(m))
   CHARACTER(LEN=*), INTENT(IN) :: modo
@@ -45,7 +45,7 @@ SUBROUTINE verificar_e_colidir (m, R, P, colmd, paralelo, raios, arvore, modo, d
 
   ! Aplica colisoes conforme o modo
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN
-    CALL verificar_e_colidir_direto(m, R, P, colmd, paralelo, raios, dists)
+    CALL verificar_e_colidir_direto(m, R, P, paralelo, raios, dists)
   ELSE IF (TRIM(modo) == 'octree') THEN
     CALL verificar_e_colidir_octree(m, R, P, paralelo, raios, arvore)
   ELSE
@@ -62,7 +62,7 @@ END SUBROUTINE verificar_e_colidir
 !   corpos.
 !
 ! Modificado:
-!   16 de marco de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -124,17 +124,17 @@ END SUBROUTINE verificar_e_colidir_octree
 !     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   16 de marco de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios, dists)
+SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios, dists)
   IMPLICIT NONE
-  REAL(pf) :: m(:), R(:,:), P(:,:), colmd ! maximo de aproximacao
+  REAL(pf) :: m(:), R(:,:), P(:,:)
   INTEGER :: a, b
-  LOGICAL :: paralelo, colidiram(size(m),size(m))
-  REAL(pf) :: m13a, m13b, fator, raios(size(m)), dist
+  LOGICAL :: paralelo, colidiram(INT(size(m)*(size(m)-1)/2))
+  REAL(pf) :: raios(size(m)), dist
   
   REAL(pf) :: dists(:)
   INTEGER :: indice
@@ -142,21 +142,18 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios, dists)
   colidiram=.FALSE.
 
   IF (paralelo) THEN
-    !$OMP PARALLEL PRIVATE(a, b, m13a, m13b, fator)
+    !$OMP PARALLEL SHARED(colidiram, P) PRIVATE(a, b, indice)
     !$OMP DO
     DO a = 1, SIZE(m)
-      m13a = m(a) ** (1.0_pf/3.0_pf)
       DO b = 1, SIZE(m)
-        IF (a == b .OR. colidiram(a,b) .OR. colidiram(b,a)) THEN
+        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+        IF (a == b .OR. colidiram(indice)) THEN
           CYCLE
         ENDIF
-        m13b = m(b) ** (1.0_pf/3.0_pf)
-        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
-        fator = dists(indice) / ABS(m13a + m13b)
-        IF (fator <= colmd) THEN
+
+        IF (dists(indice) <= raios(a) + raios(b)) THEN
           IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
-            colidiram(a,b) = .TRUE.
-            colidiram(b,a) = .TRUE.
+            colidiram(indice) = .TRUE.
             CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
           ENDIF
         ENDIF 
@@ -167,16 +164,16 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, colmd, paralelo, raios, dists)
   ELSE
     DO a = 2, SIZE(m)
       DO b = 1, a-1
-        IF (a == b .OR. colidiram(a,b) .OR. colidiram(b,a)) THEN
+        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+        
+        IF (a == b .OR. colidiram(indice)) THEN
           CYCLE
         ENDIF
         
-        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
         dist = dists(indice)
         IF (dist <= raios(a) + raios(b)) THEN
           IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
-            colidiram(a,b) = .TRUE.
-            colidiram(b,a) = .TRUE.
+            colidiram(indice) = .TRUE.
             CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
             ! WRITE(*,*) 'colidiram normal:', a,b, NORM2(R(b,:)-R(a,:)) ! debug
           ENDIF

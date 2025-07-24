@@ -1,5 +1,5 @@
 {
-    "modo": "sorteio_aarseth",
+    "modo": "sorteio_ip_iterativo",
     
     "G": 1.0,
     "N": 100,
@@ -14,41 +14,42 @@
             "linear_total":  [0.0, 0.0, 0.0]
         },
         "massas": {
+            "normalizadas": true,
             "intervalo": [1.0, 1.0],
             "distribuicao": "uniforme"
         },
         "posicoes": {
-            "intervalo": [-5.0, 5.0, 0.5],
+            "intervalo": [-5.0, 5.0, 0.1],
             "distribuicao": "uniforme",
-            "regiao":       "esfera",
+            "regiao":       "cubo",
             "raio":         5.0
         },
         "momentos": {
             "intervalo": [-1.0, 1.0],
-            "distribuicao": "normal",
+            "distribuicao": "uniforme",
             "regiao":       "cubo",
             "raio":         1.0
         }
     },
 
     "integracao": {
-        "metodo": "rkn671",
+        "metodo": "verlet",
         "timestep": 0.01,
-        "amortecedor": 0.0,
+        "amortecedor": 0.1,
         "t0": 0,
-        "tf": 100,
+        "tf": 10,
         "checkpoints": 10
     },
 
     "colisoes": {
-        "colidir": true,
+        "colidir": false,
         "metodo": "direto",
-        "densidade": 37301.93978716296
+        "densidade": 59.68310365946074
     },
 
     "correcao": {
-        "corrigir": true,
-        "margem_erro": 1e-3,
+        "corrigir": false,
+        "margem_erro": 1e-4,
         "max_num_tentativas": 1
     }
 }

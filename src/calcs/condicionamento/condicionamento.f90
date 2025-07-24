@@ -5,7 +5,7 @@
 !   Funcoes para a geracao e condicionamento a partir de restricoes.
 ! 
 ! Modificado:
-!   21 de julho de 2025
+!   24 de julho de 2025
 ! 
 ! Autoria:
 !   oap
@@ -26,7 +26,7 @@ CONTAINS
 !   Gera valores iniciais aleatorios.
 !
 ! Modificado:
-!   21 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -36,6 +36,7 @@ SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos, mi)
   INTEGER, INTENT(IN)         :: N
   TYPE(json_value), POINTER   :: sort_mas, sort_pos, sort_mom
   REAL(pf), INTENT(INOUT)     :: posicoes(:,:), momentos(:,:), massas(:)
+  REAL(pf), ALLOCATABLE       :: intervalo(:)
   LOGICAL, INTENT(IN)         :: mi ! massas iguais
 
   CALL json % get(sorteio, "massas", sort_mas)
@@ -43,13 +44,8 @@ SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos, mi)
   CALL json % get(sorteio, "momentos", sort_mom)
 
   ! Gera massas
-  IF (mi) THEN
-    WRITE (*,'(A)') '    * gerando massas (1/N)'
-    massas = 1.0_pf/N
-  ELSE
-    WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
-    massas = gerar_massas(N, sort_mas)
-  ENDIF
+  WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
+  massas = gerar_massas(N, sort_mas)
 
   ! Gera as posições
   WRITE (*,'(A)', ADVANCE='no') '    * gerando posicoes'  
@@ -116,7 +112,7 @@ END FUNCTION gerar_vetores3d
 !   Gera vetor de massas conforme um intervalo informado.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -129,20 +125,33 @@ FUNCTION gerar_massas (N, sorteio) RESULT(massas)
   REAL(pf), ALLOCATABLE         :: intervalo(:)
   CHARACTER(LEN=:), ALLOCATABLE :: distribuicao
   REAL(pf)               :: vet_min(N)
+  LOGICAL :: normalizadas, encontrado
 
   intervalo = json_get_float_vec(sorteio, "intervalo")
   vet_min = intervalo(1)
 
-  ! AQUI PRECISA APLICAR A DISTRIBUICAO DESEJADA. POR ENQUANTO SO TEM A UNIFORME
-  distribuicao = json_get_string(sorteio, "distribuicao")
-  WRITE (*,'(A)') ' ('//distribuicao//')'
-
-  IF (distribuicao == "uniforme") THEN
-    CALL RANDOM_SEED()
-    CALL RANDOM_NUMBER(massas)
+  ! 1 - Se a opcao "normalizadas" for TRUE, faz m = 1/N
+  CALL json % get(sorteio, "normalizadas", normalizadas, encontrado)
+  IF (.NOT. encontrado) normalizadas = .FALSE.
+  IF (normalizadas) THEN
+    massas = 1.0_pf / N
+  
+  ! 2 - Se nao for normalizada mas forem iguais, determina
+  ELSE IF (intervalo(1) == intervalo(2)) THEN
+    massas = intervalo(1)
     
-    ! Agora condiciona no intervalo
-    massas = massas * (intervalo(2) - intervalo(1) + 1) + vet_min
+  ELSE
+    ! AQUI PRECISA APLICAR A DISTRIBUICAO DESEJADA. POR ENQUANTO SO TEM A UNIFORME
+    distribuicao = json_get_string(sorteio, "distribuicao")
+    WRITE (*,'(A)') ' ('//distribuicao//')'
+
+    IF (distribuicao == "uniforme") THEN
+      CALL RANDOM_SEED()
+      CALL RANDOM_NUMBER(massas)
+      
+      ! Agora condiciona no intervalo
+      massas = massas * (intervalo(2) - intervalo(1)) + vet_min
+    ENDIF
   ENDIF
 
 END FUNCTION gerar_massas

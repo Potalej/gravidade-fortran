@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -60,7 +60,10 @@ MODULE simulacao
 
   ! Classe de simulacao
   TYPE :: simular
-  
+
+    !> Ponteiro para o dicionario de valores iniciais
+    TYPE(json_value), POINTER :: infos => NULL()
+
     !> N: Quantidade de corpos
     !> dim: Dimensao do problema
     INTEGER :: N, dim = 3, qntd_checkpoints, t0, tf
@@ -158,7 +161,7 @@ SUBROUTINE rodar_simulacao_intervalo (infos, massas, posicoes, momentos, timeste
   INTEGER :: qntd_total_passos
   CHARACTER(LEN=:), ALLOCATABLE :: metodo
 
-  qntd_total_passos = (tf - t0)/timestep
+  qntd_total_passos = ABS((tf - t0)/timestep)
 
   ! Timer
   timer_0 = omp_get_wtime()
@@ -185,7 +188,7 @@ END SUBROUTINE rodar_simulacao_intervalo
 !   Faz a simulacao.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -199,14 +202,18 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
 
+  ! Faz uma copia do dicionario de informacoes
+  CALL json_clone(infos, self % infos)
+
   ! Quantidade de checkpoints
   CALL json % get(infos, 'integracao.checkpoints', self % qntd_checkpoints)
 
   ! Se quer ou nao plotar durante a simulacao 
-  CALL json % get(infos, 'exibir', self % exibir)
+  CALL json % get(infos, 'exibir', self % exibir, encontrado)
+  IF (.NOT. encontrado) self % exibir = .FALSE.
 
   ! Salva o tamanho dos passos
-  self % h = json_get_float(infos, 'integracao.timestep')
+  self % h = h
 
   ! Salva o softening do potencial
   self % potsoft = json_get_float(infos, 'integracao.amortecedor')
@@ -292,10 +299,7 @@ SUBROUTINE inicializar_metodo (self)
   CALL self % Arq % escrever_cabecalho(self % h, self % G, self % M)
 
   ! Salva as informacoes no info.txt
-  CALL self % Arq % inicializar_arquivo_info(self%N, self%metodo, self%G, self%h, self%potsoft, &
-    self%t0, self%tf, self % qntd_checkpoints, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colisoes_modo, self%colisoes_max_distancia, self % paralelo)
+  CALL self % Arq % inicializar_arquivo_info(self % infos)
 
   ! Condicoes iniciais
   CALL self % Arq % escrever((/self % R, self % P/))
@@ -462,7 +466,7 @@ END SUBROUTINE
 !! Inicializa o integrador e o socket
 !
 ! Modificado:
-!   11 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -473,11 +477,7 @@ SUBROUTINE inicializadores (self, conexao, integrador)
   CLASS(integracao), POINTER, INTENT(INOUT) :: integrador
 
   ! Inicializando o integrador
-  CALL integrador % Iniciar(self % M, self % G, self % h, self % potsoft, &
-    self % E0, self % J0, &
-    self%corrigir, self%corrigir_margem_erro, self%corrigir_max_num_tentativas, &
-    self%colidir, self%colisoes_modo, self%colisoes_max_distancia, self%paralelo, &
-    self%mi)
+  CALL integrador % iniciar(self % infos, self % h, self % M, self % E0, self % J0)
 
   ! Atualizando as constantes se for necessario
   CALL integrador % atualizar_constantes()

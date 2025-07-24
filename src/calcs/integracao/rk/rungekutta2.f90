@@ -6,7 +6,7 @@
 !   Estagios (RK2 ou RK22)
 !
 ! Modificado:
-!   12 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -17,6 +17,7 @@ MODULE rungekutta2
   USE funcoes_forca
   USE funcoes_forca_mi
   USE integrador
+  USE json_utils_mod
 
   IMPLICIT NONE
   PRIVATE
@@ -42,60 +43,66 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt, colidir, colmodo, colmd, paralelo, mi)
+SUBROUTINE Iniciar (self, infos, timestep, massas, E0, J0)
   IMPLICIT NONE
   CLASS(integracao_rk2), INTENT(INOUT) :: self
-  LOGICAL,INTENT(IN) :: corrigir, paralelo
-  LOGICAL, INTENT(IN)          :: colidir
-  CHARACTER(LEN=*), INTENT(IN) :: colmodo
+  TYPE(json_value), POINTER :: infos
+  REAL(pf) :: timestep
   REAL(pf), allocatable :: massas(:)
-  REAL(pf)              :: G, h, potsoft, colmd, E0, J0(3)
-  REAL(pf) :: corme
-  INTEGER :: cormnt
-  LOGICAL :: mi
-  INTEGER :: a
+  REAL(pf)              :: E0, J0(3)
+  INTEGER :: a, i
+
+  LOGICAL :: encontrado
+  REAL(pf) :: colmd, densidade
+  REAL(pf) :: PI = 4.D0*DATAN(1.D0)
 
   ! quantidade de partículas
   self % N = SIZE(massas)
   
   ! massas
-  self % mi = mi
-  ALLOCATE(self % m (self % N))
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado) self % mi = .FALSE.
+  ALLOCATE(self % m(self % N))
   self % m = massas
-  IF (mi) THEN
+  IF (self % mi) THEN
     self % m_esc = massas(1)
     self % m_inv = 1/self % m_esc
     self % m2 = self % m_esc * self % m_esc
   ENDIF
 
   ! gravidade
-  self % G = G
-  ! passo
-  self % h = h
+  self % G = json_get_float(infos, 'G')
+  ! Passo
+  self % h = timestep
   ! Softening do potencial
-  self % potsoft = potsoft
-
-  ! Distancias
-  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
+  self % potsoft = json_get_float(infos, 'integracao.amortecedor')
+  self % potsoft2 = self%potsoft * self%potsoft
 
   ! Valores iniciais
   self % E0 = E0
   self % J0 = J0
 
-  ! Se vai ou nao corrigir
-  self % corrigir = corrigir
-  self % corme = corme
-  self % cormnt = cormnt
+  ! Distancias
+  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
 
-  ! Se vai ou nao colidir
-  self % colidir = colidir
-  self % colisoes_modo = colmodo
+  ! Se vai ou nao corrigir
+  CALL json % get(infos, 'correcao.corrigir', self % corrigir)
+  self % corme = json_get_float(infos, 'correcao.margem_erro')
+  CALL json % get(infos, 'correcao.max_num_tentativas', self % cormnt)
+
+  ! Colisoes
+  CALL json % get(infos, 'colisoes.colidir', self % colidir)
+  self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
+  densidade = json_get_float(infos, 'colisoes.densidade')
+  colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
   self % colmd = colmd
+
+  ! Deixando os raios calculados de antemao
   ALLOCATE(self % raios(self % N))
   DO a = 1, self % N
     self % raios(a) = self % colmd * massas(a)**(1.0_pf / 3.0_pf)
@@ -105,15 +112,15 @@ SUBROUTINE Iniciar (self, massas, G, h, potsoft, E0, J0, corrigir, corme, cormnt
   CALL self % baseRK % Iniciar(self % n, self % m, self % G, self % h, self % potsoft)
   
   ! Codigo paralelo
-  self % paralelo = paralelo
-  IF (paralelo) THEN
-    IF (mi) THEN
+  CALL json % get(infos, 'paralelo', self % paralelo)
+  IF (self % paralelo) THEN
+    IF (self % mi) THEN
       self % forcas_mi_funcao => forcas_mi_par
     ELSE
       self % forcas_funcao => forcas_par
     ENDIF
   ELSE
-    IF (mi) THEN
+    IF (self % mi) THEN
       self % forcas_mi_funcao => forcas_mi_seq
     ELSE
       self % forcas_funcao => forcas_seq

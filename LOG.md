@@ -1,5 +1,45 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-07-24] v0.5.6: Melhorias - Usando melhor o json-fortran e massas normalizadas
+
+Quando adicionei o JSON-Fortran algumas versões atrás, o utilizei quase que somente no script de simulação, e estava passando os parâmetros manualmente para o integrador e outras rotinas. Isso não faz sentido. Simplesmente melhorei a escrita do código, o que acaba facilitando adicionar funcionalidades no futuro.
+
+Das massas normalizadas, estava confusa a entrada de dados especialmente para sorteio de valores iniciais. Estava algo assim:
+
+```json
+"massas_iguais": true,
+"sorteio":{
+  "massas": {
+    "intervalo": [1.0, 2.0],
+    "distribuicao": "uniforme"
+  }
+  ...
+}
+```
+
+Não era claro o que isso deveria fazer. Agora melhorei:
+
+```json
+"massas_iguais": true,
+"sorteio":{
+  "massas": {
+    "normalizadas": false,
+    "intervalo": [1.0, 2.0],
+    "distribuicao": "uniforme"
+  }
+  ...
+}
+```
+
+1. A opção `massas_iguais` se aplica somente à otimização das funções de força e dos integradores, e não depende das massas serem de fato iguais.
+
+2. Se a opção `normalizadas` estiver ativada, as outras opções de massas serão ignoradas e as massas serão tomadas como 1/N.
+
+3. Se estiver desativada, o intervalo será levado em conta. Se seu mínimo e seu máximo forem iguais, as massas serão iguais a esse valor e a distribuição não será levada em conta.
+
+4. Se o intervalo tiver mínimo e máximo diferentes, a distribuição será utilizada para sortear os valores nesse intervalo.
+
+
 ## [2025-07-21] v0.5.5: Correção - Amortecimento do potencial no condicionamento
 
 Na v0.5.4 incorporei corretamente a energia amortecida em quase todo o código, mas faltou incorporá-la de fato no processo de condicionamento de valores iniciais, pois me baseei completamente na hipótese do potencial ser homogêneo de grau -1, o que não ocorre no amortecimento. Corrigi isso no condicionamento indireto e no de Aarseth adicionando a subrotina `condicionar_potencial_amortecido`, que aplica o método de Newton para resolver o problema
