@@ -64,7 +64,7 @@ MODULE integrador
     REAL(pf), ALLOCATABLE :: raios(:)
 
     ! Se vai ou nao usar paralelizacao
-    LOGICAL :: paralelo = .FALSE.
+    LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
 
     ! Funcao de forcas (aceleracao)
     PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
@@ -211,20 +211,37 @@ SUBROUTINE Iniciar (self, infos, timestep, massas, E0, J0)
 
   ! Codigo paralelo
   CALL json % get(infos, 'paralelo', self % paralelo)
+  CALL json % get(infos, 'gpu', self % gpu, encontrado)
+  IF (.NOT. encontrado) self % gpu = .FALSE.
 
-  IF (self % paralelo) THEN
+  IF (self % GPU) THEN
+#ifdef USAR_GPU
     IF (self % mi) THEN
-      self % forcas_mi_funcao => forcas_mi_par
+      self % forcas_mi_funcao => forcas_mi_par_gpu
     ELSE
-      self % forcas_funcao => forcas_par
+      self % forcas_funcao => forcas_par_gpu
     ENDIF
+#else
+    WRITE (*,*) "GPU nao compilada. Recompile o programa com -DUSAR_GPU=ON"
+    WRITE (*,*) "ou desative a opcao de gpu."
+    STOP 0
+#endif
   ELSE
-    IF (self % mi) THEN
-      self % forcas_mi_funcao => forcas_mi_seq
+    IF (self % paralelo) THEN
+      IF (self % mi) THEN
+        self % forcas_mi_funcao => forcas_mi_par
+      ELSE
+        self % forcas_funcao => forcas_par
+      ENDIF
     ELSE
-      self % forcas_funcao => forcas_seq
+      IF (self % mi) THEN
+        self % forcas_mi_funcao => forcas_mi_seq
+      ELSE
+        self % forcas_funcao => forcas_seq
+      ENDIF
     ENDIF
   ENDIF
+
 END SUBROUTINE Iniciar
 
 FUNCTION forcas (self, R)

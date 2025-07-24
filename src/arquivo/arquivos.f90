@@ -398,7 +398,7 @@ SUBROUTINE inicializar_arquivo_info (self, infos)
   CHARACTER(len=:), ALLOCATABLE :: metodo, colidir_modo ! colisao
   REAL(pf)         :: corme, colmd
   INTEGER          :: cormnt
-  LOGICAL          :: paralelo
+  LOGICAL          :: paralelo, gpu ! forcas paralelas, gpu
   CHARACTER(20)    :: data_hora_str
 
   REAL(pf) :: densidade
@@ -427,6 +427,8 @@ SUBROUTINE inicializar_arquivo_info (self, infos)
 
   ! Paralelizacao
   CALL json % get(infos, 'paralelo', paralelo)
+  CALL json % get(infos, 'gpu', gpu, encontrado)
+  IF (.NOT. encontrado) gpu = .FALSE.
 
   ! Data e hora de inicio
   CALL data_hora_string(data_hora_str)
@@ -444,7 +446,7 @@ SUBROUTINE inicializar_arquivo_info (self, infos)
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- total passos: " 
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- t0: ", t0
   WRITE (self % idarqinfo, '(*(g0,1x))') "-- tf: ", tf
-  WRITE (self % idarqinfo, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo
+  WRITE (self % idarqinfo, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo, gpu
   
   IF (corrigir) THEN
     WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", corrigir

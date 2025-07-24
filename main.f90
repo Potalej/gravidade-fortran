@@ -6,7 +6,7 @@
 !   todas as outras funcoes.
 !
 ! Modificado:
-!   15 de marco de 2024
+!   24 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -73,7 +73,11 @@ CONTAINS
 
   ! Ajudador
   SUBROUTINE help
-    WRITE (*,*) 'v', version_string, '_', precisao, ' (', build_date, ' ', build_time, ')'
+    IF (usar_gpu) THEN
+      WRITE (*,*) 'v', version_string, '_', precisao, '_GPU (', build_date, ' ', build_time, ')'
+    ELSE
+      WRITE (*,*) 'v', version_string, '_', precisao, ' (', build_date, ' ', build_time, ')'
+    ENDIF
     WRITE (*,*)
     WRITE (*,*) 'SINOPSE:'
     WRITE (*,*) '   # ./gravidade [--help|-h]'

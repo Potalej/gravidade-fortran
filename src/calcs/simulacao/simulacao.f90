@@ -94,7 +94,7 @@ MODULE simulacao
     CHARACTER(LEN=:), ALLOCATABLE :: dir
 
     ! Configuracoes
-    LOGICAL :: corrigir=.FALSE., colidir=.FALSE., paralelo=.FALSE.
+    LOGICAL :: corrigir=.FALSE., colidir=.FALSE., paralelo=.FALSE., gpu=.FALSE.
     REAL(pf) :: corrigir_margem_erro = 0.1_pf
     INTEGER :: corrigir_max_num_tentativas = 5
     REAL(pf) :: colisoes_max_distancia = 0.1
@@ -278,6 +278,8 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
 
   ! Salva o uso de paralelizacao
   CALL json % get(infos, 'paralelo', self % paralelo)
+  CALL json % get(infos, 'gpu', self % gpu, encontrado)
+  IF (.NOT. encontrado) self % gpu = .FALSE.
 
   ! Inicializa o metodo
   CALL self % inicializar_metodo()

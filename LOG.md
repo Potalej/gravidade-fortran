@@ -1,5 +1,21 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-07-24] v0.6.0: GPU + N-corpos? Vamos experimentar
+
+Adicionei um primeiro teste de uso de GPU neste programa, usando o OpenMP offloads para placas NVidia. Ainda não entendo direito como isso funciona, mas pelo menos já funciona. Com o tempo vou aprendendo e melhorando. Evidentemente, está em fase experimental. Mais para frente penso em tentar usar CUDA se parecer valer a pena. Antes, preciso aprender o básico.
+
+Por ora, para compilar usando a GPU é só passar a flag
+
+```shell
+-DUSAR_GPU=ON
+```
+
+que só vai funcionar também para placas da NVidia.
+
+Ah, também coloquei as funções de força numa pasta separada, finalmente.
+
+---
+
 ## [2025-07-24] v0.5.6: Melhorias - Usando melhor o json-fortran e massas normalizadas
 
 Quando adicionei o JSON-Fortran algumas versões atrás, o utilizei quase que somente no script de simulação, e estava passando os parâmetros manualmente para o integrador e outras rotinas. Isso não faz sentido. Simplesmente melhorei a escrita do código, o que acaba facilitando adicionar funcionalidades no futuro.
@@ -39,6 +55,7 @@ Não era claro o que isso deveria fazer. Agora melhorei:
 
 4. Se o intervalo tiver mínimo e máximo diferentes, a distribuição será utilizada para sortear os valores nesse intervalo.
 
+---
 
 ## [2025-07-21] v0.5.5: Correção - Amortecimento do potencial no condicionamento
 

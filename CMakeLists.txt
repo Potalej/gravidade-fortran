@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.5.6
+project("gravidade" VERSION 0.6.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -39,6 +39,20 @@ if (GPROF)
   message(STATUS "GNU Profiler (gprof) ativado")
   add_compile_options(-pg)
   add_link_options(-pg)
+endif()
+
+# ----------------------------------------------------------------------------
+# GPU
+# ----------------------------------------------------------------------------
+option(USAR_GPU "Utilizar GPU (OpenMP offload)" OFF)
+
+if (USAR_GPU)
+  message(STATUS "Compilando para comportar GPU.")
+  set(USAR_GPU_BOOL ".TRUE.")
+  add_compile_options(-foffload=nvptx-none)
+  add_compile_definitions(USAR_GPU)
+else()
+  set(USAR_GPU_BOOL ".FALSE.")
 endif()
 
 # ----------------------------------------------------------------------------
@@ -172,10 +186,10 @@ target_link_libraries(condicionamento PRIVATE
 
 # Metodos de integracao
 add_library(integracao 
-  "./src/calcs/integracao/forcas.f90" 
-  "./src/calcs/integracao/forcas_mi.f90" 
+  "./src/calcs/forcas/forcas.F90" 
+  "./src/calcs/forcas/forcas_mi.f90" 
   
-  "./src/calcs/integracao/integrador.f90" 
+  "./src/calcs/integracao/integrador.F90" 
   "./src/calcs/integracao/rk/rungekutta.f90" 
   "./src/calcs/integracao/rk/rungekutta2.f90" 
   "./src/calcs/integracao/rk/rungekutta3.f90" 
