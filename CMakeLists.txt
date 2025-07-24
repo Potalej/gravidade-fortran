@@ -187,7 +187,7 @@ target_link_libraries(condicionamento PRIVATE
 # Metodos de integracao
 add_library(integracao 
   "./src/calcs/forcas/forcas.F90" 
-  "./src/calcs/forcas/forcas_mi.f90" 
+  "./src/calcs/forcas/forcas_mi.F90" 
   
   "./src/calcs/integracao/integrador.F90" 
   "./src/calcs/integracao/rk/rungekutta.f90" 
