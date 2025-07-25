@@ -84,12 +84,14 @@ SUBROUTINE atualizar_constantes (self)
     c = c_128 * self % m_inv_128
     aij = aij_128 * self % m_esc_128
     g = g_128 * self % m2_128
+    b = b_128 * self % m_esc_128
 
   ! Se nao
   ELSE
     c = c_128
     aij = aij_128
     g = g_128
+    b = b_128
   ENDIF
 END SUBROUTINE atualizar_constantes
 

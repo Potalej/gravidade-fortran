@@ -81,7 +81,6 @@ SUBROUTINE atualizar_constantes (self)
   b_128(5) =  0.861522212250548491868139295292374513_pf128
   b_128(6) =  4.54235237529960489434842933833071184E-0002_pf128
   b_128(7) = -0.649318730643927621481198463759854890_pf128
-  b = b_128 * self % m_esc_128
 
   ! Atualiza a constante g
   g_128(1) = -0.68774007118557290171_pf128
@@ -97,12 +96,14 @@ SUBROUTINE atualizar_constantes (self)
     c = c_128 * self % m_inv_128
     aij = aij_128 * self % m_esc_128
     g = g_128 * self % m2_128
+    b = b_128 * self % m_esc_128
 
   ! Se nao
   ELSE
     c = c_128
     aij = aij_128
     g = g_128
+    b = b_128
   ENDIF
 END SUBROUTINE atualizar_constantes
 
