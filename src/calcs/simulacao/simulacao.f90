@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   25 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -73,7 +73,8 @@ MODULE simulacao
     !> E0: Energia total inicial
     !> mtot: Massa total do sistema
     !> potsoft: Softening do potencial
-    REAL(pf) :: h, G, E0, mtot, potsoft
+    !> virial: 2*ec + <F,q>
+    REAL(pf) :: h, G, E0, mtot, potsoft, virial
     
     !> M: Massas do sistema
     !> R: Posicoes das particulas
@@ -188,7 +189,7 @@ END SUBROUTINE rodar_simulacao_intervalo
 !   Faz a simulacao.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   25 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -198,7 +199,7 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
   CLASS(simular), INTENT(INOUT) :: self
   TYPE(json_value), POINTER :: infos
   REAL(pf) :: M(:), R0(:,:), P0(:,:)
-  REAL(pf) :: h, colmd, densidade
+  REAL(pf) :: h, colmd, densidade, ec, f_prod_q
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
 
@@ -257,6 +258,17 @@ SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
 
   ! Salva o centro de massas inicial
   self % Rcm = centro_massas(self % M, self % R)
+
+  ! Definindo o raio de virial inicial 
+  ! (2T + V = E + T)
+  ec = energia_cinetica(self % M, P0)
+  IF (self % potsoft == 0) THEN
+    self % virial = ec + self % E0
+  ! (2T + <F,q>)
+  ELSE
+    f_prod_q = virial_potencial_amortecido(self % G, self % M, R0, self % potsoft)
+    self % virial = ec + ec + f_prod_q
+  ENDIF
 
   ! Salva o metodo
   self % metodo = json_get_string(infos, 'integracao.metodo')
@@ -413,7 +425,7 @@ END SUBROUTINE rodar
 !! Mensagens na tela que aparecem durante a simulacao
 !
 ! Modificado:
-!   20 de julho de 2025
+!   25 de julho de 2025
 !
 ! Autoria:
 !   oap
@@ -426,18 +438,26 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
   REAL(pf), DIMENSION(self % N, 3) :: R, P
 
   REAL(pf) :: EP, EC, errene
-  REAL(pf) :: virial
+  REAL(pf) :: virial, f_prod_q
   REAL(pf) :: momine, momdil
   CHARACTER(100) :: char_real
   CHARACTER(300) :: saida
 
-  ! Energia
-  IF (self % mi) THEN
-    Ep = energia_potencial_esc(self % G, self % m_esc, R, self % potsoft)
-    Ec = energia_cinetica_esc(self % m_esc, P)
-  ELSE
-    Ep = energia_potencial_vec(self % G, self % M, R, self % potsoft)
+  ! Se tiver amortecimento, calcula o potencial de um jeito diferente
+  IF (self % potsoft .NE. 0) THEN
+    f_prod_q = virial_potencial_amortecido(self%G, self%M, R, self%potsoft, Ep)
     Ec = energia_cinetica_vec(self % M, P)
+    virial = Ec + Ec + f_prod_q
+  ELSE
+    ! Energia
+    IF (self % mi) THEN
+      Ep = energia_potencial_esc(self % G, self % m_esc, R, self % potsoft)
+      Ec = energia_cinetica_esc(self % m_esc, P)
+    ELSE
+      Ep = energia_potencial_vec(self % G, self % M, R, self % potsoft)
+      Ec = energia_cinetica_vec(self % M, P)
+    ENDIF
+    virial = Ec + Ec + Ep
   ENDIF
 
   ! Erro na energia
@@ -448,12 +468,12 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
   momdil = momento_dilatacao(R, P)
 
   ! Virial
-  virial = (EC + EC) / (EP) + 1
+  self % virial = (i * self % virial + virial)/(i+1)
   
   ! Montando a string de output
   WRITE(saida, '(5X,A,I8,4X,A,F12.3,2X,A,F10.2)') '-> Passo:', i, ' / Tempo:', tempo_total, ' / t:', inst_t
 
-  WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', virial
+  WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', self % virial
   saida = TRIM(saida)//char(10)//TRIM(char_real)
 
   WRITE(char_real, '(A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil

@@ -11,7 +11,7 @@
 ! 
 ! Modificado:
 !   02 de fevereiro de 2024 (criado)
-!   21 de julho de 2025 (modificado)
+!   25 de julho de 2025 (modificado)
 ! 
 ! Autoria:
 !   oap
@@ -376,5 +376,44 @@ FUNCTION tempo_relaxacao_rh (m, R)
   tempo_relaxacao_rh = (0.138_pf * N / log_coulomb) * SQRT(rh*rh*rh / G*m_media)
 
 END FUNCTION tempo_relaxacao_rh
+
+! ************************************************************
+!! Calculo do termo <F,q> para o virial amortecido
+!
+! Modificado:
+!   25 de julho de 2025
+!
+! Autoria:
+!   oap
+!
+FUNCTION virial_potencial_amortecido (G, m, R, eps, ep_var) RESULT(f_prod_q)
+  REAL(pf), INTENT(IN) :: G, m(:), R(:,:), eps
+  REAL(pf), INTENT(OUT), OPTIONAL :: ep_var  ! potencial
+  REAL(pf) :: Fab(3), dist2, denominador, f_prod_q, ep
+  INTEGER :: a, b
+  
+  f_prod_q = 0.0_pf
+  ep = 0.0_pf
+  DO a = 2, SIZE(m)
+    DO b = 1, a - 1
+      Fab = R(b,:) - R(a,:)
+      dist2 = DOT_PRODUCT(Fab, Fab)
+      denominador = SQRT(dist2 + eps*eps)
+
+      ! potencial
+      ep = ep - G * m(a) * m(b) / denominador
+
+      ! forca
+      Fab = G * m(a) * m(b) * Fab / (denominador*denominador*denominador)
+
+      ! virial
+      f_prod_q = f_prod_q + DOT_PRODUCT(R(a,:), Fab)
+      f_prod_q = f_prod_q - DOT_PRODUCT(R(b,:), Fab)
+    END DO
+  END DO
+
+  IF (PRESENT(ep_var)) ep_var = ep
+
+END FUNCTION
 
 END MODULE mecanica

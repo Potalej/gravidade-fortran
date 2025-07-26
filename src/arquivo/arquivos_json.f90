@@ -113,7 +113,8 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
     ! Verificando nome para arquivo de saida
     IF (PRESENT(gerar_nome) .AND. gerar_nome) THEN
         nome_arq = gerar_nome_arquivo(diretorio, "json")
-        WRITE(*,*) 'nome do arquivo:' // nome_arq
+        WRITE (*,*)
+        WRITE(*,*) ' > nome do arquivo:' // nome_arq
     ELSE
         nome_arq = ".json"
     ENDIF

@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.6.0
+project("gravidade" VERSION 0.6.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -145,6 +145,8 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   )
   target_link_libraries(conexao_mod PRIVATE ws2_32)
 ENDIF()
+
+target_link_libraries(conexao_mod PRIVATE tipos)
 
 # ALEATORIO
 add_library(aleatorio 

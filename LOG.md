@@ -1,5 +1,19 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-07-26] v0.6.1: Mais sobre o potencial amortecido e o virial
+
+Na v0.5.5 corrigi a geração de valores iniciais no sentido de usar o potencial amortecido quando necessário. Ocorre que o cálculo do virial estava incorreto, porque o potencial deixa de ser homogêneo, então a expressão correta para o virial é:
+
+$$
+\dfrac{dG}{dt} = 2T + \sum_{a=1}^N \langle \vec F_a(\vec q), \vec q_a \rangle
+$$
+
+Para mais detalhes, [veja a wikipedia](https://en.m.wikipedia.org/wiki/Virial_theorem#Statement_and_derivation).
+
+Isso também me obrigou a mudar o condicionamento do Aarseth, já que o interesse principal é no equilíbrio, e não exatamente nos valores de $T$ e $V$. Adicionei a rotina do Aarseth Modificado para fazer isso, sendo idêntico ao Aarseth no caso em que não há amortecimento.
+
+---
+
 ## [2025-07-24] v0.6.0: GPU + N-corpos? Vamos experimentar
 
 Adicionei um primeiro teste de uso de GPU neste programa, usando o OpenMP offloads para placas NVidia. Ainda não entendo direito como isso funciona, mas pelo menos já funciona. Com o tempo vou aprendendo e melhorando. Evidentemente, está em fase experimental. Mais para frente penso em tentar usar CUDA se parecer valer a pena. Antes, preciso aprender o básico.

@@ -81,6 +81,10 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo, eps)
     CASE("sorteio_aarseth")
       CALL condicionar_aarseth(G, massas, posicoes, momentos, eps)
 
+    ! Condicionamento de Aarseth Modificado
+    CASE("sorteio_aarseth_modificado")
+      CALL condicionar_aarseth_modificado(G, massas, posicoes, momentos, eps, jd)
+
     ! Outro caso: erro
     CASE DEFAULT
       ERROR STOP "!! Modo de condicionamento desconhecido. !!"
@@ -98,9 +102,19 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
   REAL(pf) :: lintot(3), angtot(3)
   REAL(pf) :: inercia, dilatacao
   REAL(pf) :: anitenine ! anisotropia do tensor de inercia
+  REAL(pf) :: f_prod_q, virial
 
-  potencial = energia_potencial(G, massas, posicoes, eps)
   cinetica  = energia_cinetica(massas, momentos)
+  
+  virial = cinetica + cinetica
+  IF (eps == 0) THEN
+    potencial = energia_potencial(G, massas, posicoes, eps)
+    virial = virial + potencial
+  ELSE
+    f_prod_q = virial_potencial_amortecido(G, massas, posicoes, eps, potencial)
+    virial = virial + f_prod_q
+  ENDIF
+
   lintot    = momentoLinear_total(momentos)
   angtot    = momento_angular_total(posicoes, momentos)
   
@@ -114,6 +128,7 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
   WRITE(*,*) "     * V   = ", potencial
   WRITE(*,*) "     * T   = ", cinetica
   WRITE(*,*) "     * E   = ", potencial + cinetica
+  WRITE(*,*) "     * Vir = ", virial
   WRITE(*,*) "     * J   = ", angtot
   WRITE(*,*) "     * P   = ", lintot
   WRITE(*,*) "     * I   = ", inercia
