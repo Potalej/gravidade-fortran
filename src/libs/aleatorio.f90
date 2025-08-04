@@ -7,7 +7,7 @@
 !   distribuicoes de probabilidade.
 ! 
 ! Modificado:
-!   15 de janeiro de 2025
+!   03 de agosto de 2025
 ! 
 ! Autoria:
 !   oap
@@ -17,23 +17,25 @@ MODULE aleatorio
   IMPLICIT NONE
 CONTAINS
 
-FUNCTION regiao_cubo (vetor3d, raio)
+FUNCTION regiao_cubo (vetor3d, raio, centro)
 
   REAL(pf), INTENT(IN), DIMENSION(3) :: vetor3d
-  REAL(pf), INTENT(IN) :: raio
+  REAL(pf), INTENT(IN) :: raio, centro(3)
+  REAL(pf) :: auxiliar(3)
   LOGICAL :: regiao_cubo
 
-  regiao_cubo = (ABS(vetor3d(1)) <= raio .AND. ABS(vetor3d(2)) <= raio .AND. ABS(vetor3d(3)) <= raio)
+  auxiliar = ABS(vetor3d - centro)
+  regiao_cubo = (auxiliar(1) <= raio .AND. auxiliar(2) <= raio .AND. auxiliar(3) <= raio)
 
 END FUNCTION regiao_cubo
 
-FUNCTION regiao_esfera (vetor3d, raio)
+FUNCTION regiao_esfera (vetor3d, raio, centro)
 
   REAL(pf), INTENT(IN), DIMENSION(3) :: vetor3d
-  REAL(pf), INTENT(IN) :: raio
+  REAL(pf), INTENT(IN) :: raio, centro(3)
   LOGICAL :: regiao_esfera
 
-  regiao_esfera = (NORM2(vetor3d) <= raio)
+  regiao_esfera = (NORM2(vetor3d - centro) <= raio)
 
 END FUNCTION regiao_esfera
 
@@ -49,16 +51,16 @@ FUNCTION regiao_cobrinha (vetor3d)
   
 END FUNCTION regiao_cobrinha
 
-FUNCTION testar_regiao (vetor3d, raio, regiao)
+FUNCTION testar_regiao (vetor3d, raio, centro, regiao)
 
   REAL(pf), INTENT(IN), DIMENSION(3) :: vetor3d
-  REAL(pf), INTENT(IN) :: raio
+  REAL(pf), INTENT(IN) :: raio, centro(3)
   CHARACTER(LEN=*),INTENT(IN) :: regiao
   LOGICAL :: testar_regiao
 
   SELECT CASE (TRIM(regiao))
-    CASE ('cubo');     testar_regiao = regiao_cubo(vetor3d, raio)
-    CASE ('esfera');   testar_regiao = regiao_esfera(vetor3d, raio)
+    CASE ('cubo');     testar_regiao = regiao_cubo(vetor3d, raio, centro)
+    CASE ('esfera');   testar_regiao = regiao_esfera(vetor3d, raio, centro)
     CASE ('cobrinha'); testar_regiao = regiao_cobrinha(vetor3d)
   END SELECT
 
@@ -93,29 +95,32 @@ END SUBROUTINE condiciona_esfera
 !   da subrotina padrao do Fortran.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE uniforme (vetor, N, distmin, vmin, vmax, regiao, raio)
+SUBROUTINE uniforme (vetor, N, distmin, vmin, vmax, regiao)
 
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
   CHARACTER(LEN=*), INTENT(IN) :: regiao
   INTEGER,  INTENT(IN) :: N
-  REAL(pf), INTENT(IN) :: raio, distmin, vmin, vmax
+  REAL(pf), INTENT(IN) :: distmin, vmin, vmax
+  REAL(pf) :: raio, centro(3)
   REAL(pf) :: u(3), ajuste(3)
   INTEGER :: i
 
+  raio = 0.5_pf*(vmax - vmin)
+  centro(:) = 0.5_pf*(vmin + vmax)
   ajuste(:) = vmin
   CALL RANDOM_SEED()
   DO i=1, N
     DO
       ! Sorteia e ajusta no intervalo
       CALL RANDOM_NUMBER(u)
-      u = raio * (u * (vmax - vmin) + ajuste)
+      u = (u * (vmax - vmin) + ajuste)
 
-      IF (testar_regiao(u, raio, regiao)) THEN
+      IF (testar_regiao(u, raio, centro, regiao)) THEN
         IF (i >= 1 .AND. distmin > 0) THEN
           vetor(i,:) = u
           IF (testar_distancias(vetor, N, distmin, i)) THEN
@@ -141,17 +146,16 @@ END SUBROUTINE uniforme
 !   primeira componente.
 !
 ! Modificado:
-!   15 de janeiro de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE normal (vetor, N, distmin, regiao, raio)
-
+SUBROUTINE normal (vetor, N, distmin, regiao, raio, centro)
   INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
   CHARACTER(LEN=*), INTENT(IN)     :: regiao
-  REAL(pf), INTENT(IN)     :: raio, distmin
+  REAL(pf), INTENT(IN)     :: raio, distmin, centro(3)
   REAL(pf) :: x, y, z
   REAL(pf) :: u1, u2, r, theta, max_dist
   REAL(pf) :: PI = 3.14159265358979_pf
@@ -178,7 +182,7 @@ SUBROUTINE normal (vetor, N, distmin, regiao, raio)
       theta = 2.0_pf * PI * u2
       z = r * COS(theta)
 
-      IF (testar_regiao((/x,y,z/), raio, regiao)) THEN
+      IF (testar_regiao((/x,y,z/), raio, centro, regiao)) THEN
         IF (a >= 1 .AND. distmin > 0) THEN
           vetor(a,:) = (/x,y,z/)
           IF (testar_distancias(vetor, N, distmin, a)) THEN
@@ -201,16 +205,16 @@ END SUBROUTINE normal
 !   Gera valores iniciais com distribuicao cauchy.
 !
 ! Modificado:
-!   17 de janeiro de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE cauchy (vetor, N, distmin, regiao, raio)
+SUBROUTINE cauchy (vetor, N, distmin, regiao, raio, centro)
 
   INTEGER,  INTENT(IN) :: N
   REAL(pf), INTENT(INOUT), DIMENSION(N,3) :: vetor
-  REAL(pf), INTENT(IN)     :: raio, distmin
+  REAL(pf), INTENT(IN)     :: raio, distmin, centro(3)
   CHARACTER(LEN=*),INTENT(IN) :: regiao
   REAL(pf), DIMENSION(3)   :: u
   REAL(pf) :: PI = 3.14159265358979_pf
@@ -224,7 +228,7 @@ SUBROUTINE cauchy (vetor, N, distmin, regiao, raio)
       CALL RANDOM_NUMBER(u)
       u = TAN(PI*u - PI*0.5_pf)
 
-      IF (testar_regiao(u, raio, regiao)) THEN
+      IF (testar_regiao(u, raio, centro, regiao)) THEN
         IF (a > 1 .AND. distmin > 0) THEN
           vetor(a,:) = u
           IF (testar_distancias(vetor, N, distmin, a)) THEN

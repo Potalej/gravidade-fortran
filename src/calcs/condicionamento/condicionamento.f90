@@ -5,7 +5,7 @@
 !   Funcoes para a geracao e condicionamento a partir de restricoes.
 ! 
 ! Modificado:
-!   24 de julho de 2025
+!   03 de agosto de 2025
 ! 
 ! Autoria:
 !   oap
@@ -26,7 +26,7 @@ CONTAINS
 !   Gera valores iniciais aleatorios.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -44,7 +44,7 @@ SUBROUTINE gerar_valores (N, sorteio, massas, posicoes, momentos, mi)
   CALL json % get(sorteio, "momentos", sort_mom)
 
   ! Gera massas
-  WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
+  WRITE (*,'(A)') '    * gerando massas'
   massas = gerar_massas(N, sort_mas)
 
   ! Gera as posições
@@ -64,7 +64,7 @@ END SUBROUTINE gerar_valores
 !   Gera vetores 3d utilizados para as posicoes e velocidades.
 !
 ! Modificado:
-!   02 de maio de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -76,11 +76,10 @@ FUNCTION gerar_vetores3d (N, sorteio) RESULT(vetores)
   REAL(pf), DIMENSION(N,3)    :: vetores
   CHARACTER(:), ALLOCATABLE   :: distribuicao, regiao
   REAL(pf), ALLOCATABLE     :: intervalo(:)
-  REAL(pf)                  :: raio, vmin, vmax, distmin
+  REAL(pf)                  :: raio, vmin, vmax, distmin, centro(3)
 
   distribuicao = json_get_string(sorteio, "distribuicao")
   regiao = json_get_string(sorteio, "regiao")
-  raio = json_get_float(sorteio, "raio")
 
   WRITE (*,'(A)') ' ('//distribuicao//')'
   
@@ -88,6 +87,8 @@ FUNCTION gerar_vetores3d (N, sorteio) RESULT(vetores)
   intervalo = json_get_float_vec(sorteio, "intervalo")
   vmin = intervalo(1)
   vmax = intervalo(2)
+  raio = 0.5_pf*(vmax - vmin)
+  centro(:) = 0.5_pf*(vmin + vmax)
   distmin = 0.0_pf
   ! Distancia minima
   IF (SIZE(intervalo) == 3) THEN
@@ -96,11 +97,11 @@ FUNCTION gerar_vetores3d (N, sorteio) RESULT(vetores)
 
   SELECT CASE (TRIM(distribuicao))
     ! Uniforme (0,1)
-    CASE ("uniforme"); CALL uniforme(vetores, N, distmin, vmin, vmax, regiao, raio)
+    CASE ("uniforme"); CALL uniforme(vetores, N, distmin, vmin, vmax, regiao)
     ! Normal (0,1)
-    CASE ("normal"); CALL normal(vetores, N, distmin, regiao, raio)
+    CASE ("normal"); CALL normal(vetores, N, distmin, regiao, raio, centro)
     ! Cauchy
-    CASE ("cauchy"); CALL cauchy(vetores, N, distmin, regiao, raio)
+    CASE ("cauchy"); CALL cauchy(vetores, N, distmin, regiao, raio, centro)
   END SELECT
 
 END FUNCTION gerar_vetores3d
@@ -523,6 +524,52 @@ SUBROUTINE condicionar_momentoLinear (P, massas, momentos)
 
 END SUBROUTINE condicionar_momentoLinear
 
+
+! ************************************************************
+!! Verifica condicoes de Sundman e Delta
+!
+! Modificado:
+!   03 de agosto de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE verificar_condicoes_existencia (G, massas, posicoes, momentos, eps, ed, jd, pd)
+  REAL(pf), INTENT(IN) :: G
+  REAL(pf), INTENT(IN) :: ed, jd(3), pd(3), eps
+  REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
+  REAL(pf) :: M_tot_inv, potencial
+  REAL(pf) :: rot_(3), sigma_til, inercia(3,3), delta
+  REAL(pf) :: momine, sundman
+
+  ! Se nao tiver momentos, nao precisa verificar nada
+  IF (NORM2(jd) == 0 .AND. NORM2(pd) == 0) RETURN
+
+  ! Se tiver momentos
+  ! Valores para calcular as condicoes
+  M_tot_inv = 1.0_pf / SUM(massas)
+  potencial = energia_potencial(G, massas, posicoes, eps)
+  inercia = tensor_inercia_geral(massas, posicoes)
+  rot_ = sistema_linear3(inercia, jd)
+  sigma_til = - DOT_PRODUCT(jd, rot_)
+  momine = momento_inercia(massas, posicoes)
+
+  ! Verifica condicao de Delta
+  delta = potencial**2 - sigma_til * (M_tot_inv * NORM2(pd)**2 - 2.0_pf * ed)  
+  IF (delta < 0) THEN
+    PRINT *, ' [ATENCAO] Criterio do Delta nao atingido, energia total insuficiente.'
+    STOP 0
+  ENDIF
+
+  ! Verifica desigualdade de Sundman
+  sundman = momine * potencial**2 + 2 * NORM2(jd)**2 * ed
+  IF (sundman < 0) THEN
+    PRINT *, ' [ATENCAO] Desigualdade de Sundman nao atendida, energia total insuficiente.'
+    STOP 0
+  ENDIF
+
+END SUBROUTINE verificar_condicoes_existencia
+
 ! ************************************************************
 !! Condicionamento iterativo de integrais primeiras
 !
@@ -531,19 +578,23 @@ END SUBROUTINE condicionar_momentoLinear
 !   maneira iterativa.
 !
 ! Modificado:
-!   21 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat, mlt)
+SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat, mlt, nim)
   REAL(pf), INTENT(IN) :: G, H, eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf), INTENT(IN), OPTIONAL :: mat(3), mlt(3)
   REAL(pf) :: J(3), P(3)
   REAL(pf) :: erro_0, erro_1, erro_limite = 0.1E-8
   REAL(pf) :: er_energia, er_linear, er_angular
+  INTEGER, INTENT(IN), OPTIONAL :: nim ! N_iter_max
   INTEGER :: N_iter_max = 10, i
+
+  N_iter_max = 10
+  IF (PRESENT(nim)) N_iter_max = nim
 
   J = 0.0_pf
   P = 0.0_pf
@@ -569,11 +620,9 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat,
   erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
 
   IF (erro_1 >= erro_limite) THEN
-    erro_0 = ABS(erro_1) + 1.0 ! Para entrar no loop
     i = 0
-    DO WHILE (ABS(erro_1) >= erro_limite .AND. i <= N_iter_max)
+    DO WHILE (ABS(erro_1) >= erro_limite .AND. i < N_iter_max)
       i = i + 1
-      erro_0 = erro_1
 
       ! Condiciona o momento linear
       CALL condicionar_momentoLinear(P, massas, momentos)
@@ -605,7 +654,7 @@ END SUBROUTINE condicionar_ip_iterativo
 !   maneira direta.
 !
 ! Modificado:
-!   21 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -616,14 +665,14 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
   REAL(pf) :: ed, pd(3), jd(3), eps
   REAL(pf), INTENT(INOUT) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf) :: energia, linear(3), angular(3), M_tot_inv
-  REAL(pf) :: alpha, potencial ! calculo do alpha
-  REAL(pf) :: beta, inercia(3,3), rot(3), rot_(3), S1, S2, K1a(3), K2a(3) ! calculo do beta
+  REAL(pf) :: alpha, potencial, sigma_til ! calculo do alpha
+  REAL(pf) :: beta, inercia(3,3), rot(3), rot_(3), S1, S2 ! calculo do beta
   REAL(pf), DIMENSION(:,:), ALLOCATABLE :: n_posicoes, n_momentos
-  INTEGER :: i
+  INTEGER :: i, sinal
 
   ed = 0.0_pf
-  pd = 0.0_pf
   jd = 0.0_pf
+  pd = 0.0_pf
   eps = 0.0_pf
   IF (PRESENT(H)) ed = H
   IF (PRESENT(J)) jd = J
@@ -637,34 +686,43 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
   ! Zera o centro de massas
   CALL zerar_centroMassas(massas, posicoes)
 
-  ! Calcula as integrais primeiras
+  ! Verifica as condicoes de existencia
+  CALL verificar_condicoes_existencia(G, massas, posicoes, momentos, eps, ed, jd, pd)
+
+  ! Calcula as integrais primeiras e outros valores
   energia = energia_total(G, massas, posicoes, momentos, eps)
   linear = momentoLinear_total(momentos)
   angular = momento_angular_total(posicoes, momentos)
   M_tot_inv = 1.0_pf / SUM(massas)
-
-  ! Calculo do alpha
   potencial = energia_potencial(G, massas, posicoes, eps)
-  alpha = 1.0_pf + ed / potencial
 
   ! Calculo do beta
   inercia = tensor_inercia_geral(massas, posicoes)
   rot  = sistema_linear3(inercia, angular)
-  rot_ = sistema_linear3(inercia, jd) * alpha
+  rot_ = sistema_linear3(inercia, jd)
 
-  S1 = 0.0_pf
-  S2 = 0.0_pf
+  ! Se nao tiver momentos, ja deixa calculado
+  ! Para E >= 0, basta mexer nas velocidades
+  ! Para E < 0, eh necessario um incremento para existir beta
+  alpha = 1.0_pf
+  IF (ed < 0) alpha = alpha + ed / potencial
 
-  DO i = 1, SIZE(massas)
-    K1a = momentos(i,:) - massas(i) * linear * M_tot_inv
-    K1a = K1a - massas(i) * produto_vetorial(posicoes(i,:), rot)
-    S1 = S1 + 0.5_pf * DOT_PRODUCT(K1a, K1a) / massas(i)
+  ! Se tiver angular (mas nao linear), precisa adicionar
+  ! o elemento de rotacao
+  IF (NORM2(jd) > 0) THEN
+    sigma_til = - DOT_PRODUCT(jd, rot_)
+    alpha = - potencial / sigma_til
+  
+  ! Se nao tiver momento angular mas tiver linear, precisa
+  ! adicionar a contribuicao linear para existir beta
+  ELSE IF (NORM2(pd) > 0) THEN
+    alpha = alpha - 0.5_pf * M_tot_inv * NORM2(pd)**2 / potencial
+  ENDIF
 
-    K2a = pd * M_tot_inv + produto_vetorial(posicoes(i,:), rot_)
-    S2 = S2 + 0.5_pf * DOT_PRODUCT(K2a, K2a) / massas(i)
-  END DO
-
-  beta = SQRT((-potencial - S2)/S1)
+  ! Calculando o beta
+  S1 = (energia-potencial)-0.5_pf*M_tot_inv*NORM2(linear)**2+0.5_pf*DOT_PRODUCT(angular, rot)
+  S2 = (0.5_pf * M_tot_inv * NORM2(pd)**2 - 0.5_pf*alpha*alpha*DOT_PRODUCT(jd, rot_))
+  beta = SQRT((ed - alpha * potencial - S2)/S1)
 
   WRITE (*,*) '   > coeficientes:'
   WRITE (*,*) '     * alpha =', alpha

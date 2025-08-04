@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -191,7 +191,7 @@ END SUBROUTINE verificar_e_colidir_direto
 !   particulas A e B.
 !
 ! Modificado:
-!   08 de abril de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -199,22 +199,22 @@ END SUBROUTINE verificar_e_colidir_direto
 SUBROUTINE colidir (ma, Ra, Pa, mb, Rb, Pb)
   IMPLICIT NONE
   REAL(pf) :: ma, mb, Ra(3), Pa(3), Rb(3), Pb(3)
-  REAL(pf) :: Normal(3), Normal_(3), u1, u2, k
+  REAL(pf) :: Normal(3), norma2, u1, u2, k
 
   ! vetor normal e normal unitario
   Normal = Rb - Ra
-  Normal_ = Normal/norm2(Normal)
+  norma2 = DOT_PRODUCT(Normal, Normal)
 
   ! calcula a componente normal
-  u1 = DOT_PRODUCT(Pa, Normal_) / ma
-  u2 = DOT_PRODUCT(Pb, Normal_) / mb
+  u1 = DOT_PRODUCT(Pa, Normal) / ma
+  u2 = DOT_PRODUCT(Pb, Normal) / mb
 
   ! agora calcula o componente de angulo
-  k = 2.0_pf * (u2 - u1) * ma * mb / (ma + mb)
+  k = 2.0_pf * (u2 - u1) * ma * mb / ((ma + mb) * norma2)
 
   ! por fim, aplica a colisao
-  Pa = Pa + k * Normal_
-  Pb = Pb - k * Normal_
+  Pa = Pa + k * Normal
+  Pb = Pb - k * Normal 
 
 END SUBROUTINE colidir
 

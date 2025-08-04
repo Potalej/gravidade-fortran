@@ -22,14 +22,12 @@
         "posicoes": {
             "intervalo": [-5.0, 5.0, 0.1],
             "distribuicao": "uniforme",
-            "regiao":       "cubo",
-            "raio":         5.0
+            "regiao":       "cubo"
         },
         "momentos": {
             "intervalo": [-1.0, 1.0],
             "distribuicao": "uniforme",
-            "regiao":       "cubo",
-            "raio":         1.0
+            "regiao":       "cubo"
         }
     },
 

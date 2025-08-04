@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-08-03] v0.6.2: Correções e melhorias
+
+- "src/libs/aleatorio.f90": Para a geração de valores iniciais, agora o "raio" não é mais um parâmetro, sendo calculado em função do intervalo passado. Além disso, se o intervalo não for simétrico na origem, os valores gerados também não serão, com a devida translação.
+- "src/calcs/mecanica/colisao.f90": Não é necessário calcular a norma do vetor normal, apenas o seu quadrado, então isso foi removido.
+- "src/calcs/condicionamento/condicoesIniciais.f90": Código adaptado para o módulo "aleatorio", e também adiciona a opção `sorteio`, que não condiciona os valores iniciais, simplesmente os gera.
+- "src/calcs/condicionamento/condicionamento.f90": Adaptação para o módulo "aleatorio", melhorias no processo de condicionamento direto, inclusão de condições de Sundman e de Delta.
+
 ## [2025-07-26] v0.6.1: Mais sobre o potencial amortecido e o virial
 
 Na v0.5.5 corrigi a geração de valores iniciais no sentido de usar o potencial amortecido quando necessário. Ocorre que o cálculo do virial estava incorreto, porque o potencial deixa de ser homogêneo, então a expressão correta para o virial é:

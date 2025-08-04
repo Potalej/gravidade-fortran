@@ -5,7 +5,7 @@
 !   Funcoes para o condicionamento de valores iniciais.
 ! 
 ! Modificado:
-!   20 de julho de 2025
+!   03 de agosto de 2025
 ! 
 ! Autoria:
 !   oap
@@ -27,7 +27,7 @@ CONTAINS
 !   chamadas a partir desta.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -69,13 +69,17 @@ SUBROUTINE condicionar (dados, massas, posicoes, momentos, metodo, eps)
   WRITE(*,'(a)') "  > condicionando..."
   
   SELECT CASE (TRIM(metodo))
+    ! Sem nenhum condicionamento
+    CASE("sorteio")
+      ! Apenas nao faz nada
+
     ! Condicionamento por integrais primeiras iterativamente
     CASE("sorteio_ip_iterativo")
-      CALL condicionar_ip_iterativo(G, massas, posicoes, momentos, eps, ed, pd, jd)
+      CALL condicionar_ip_iterativo(G, massas, posicoes, momentos, eps, ed, jd, pd, 50)
 
     ! Condicionamento por integrais primeiras diretamente
     CASE("sorteio_ip_direto")
-      CALL condicionar_ip_direto(G, massas, posicoes, momentos, eps, ed, pd, jd)
+      CALL condicionar_ip_direto(G, massas, posicoes, momentos, eps, ed, jd, pd)
 
     ! Condicionamento de Aarseth
     CASE("sorteio_aarseth")
