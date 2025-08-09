@@ -13,10 +13,8 @@
 MODULE simulacao_vi
 
   USE tipos
-  USE OMP_LIB
-  USE simulacao
-  USE arquivos_json
-  USE json_utils_mod
+  USE simulador_mod
+  USE arquivos_mod
   IMPLICIT NONE
   PRIVATE
   PUBLIC simular_vi

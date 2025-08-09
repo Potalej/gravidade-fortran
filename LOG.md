@@ -1,11 +1,25 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-08-08] v0.7.0: Maior modularização do programa
+
+- Boa parte do programa foi refatorada e reorganizada para tudo ficar mais modularizado. Isso incluiu mudanças no CMakeLists principal e na criação de um secundário para os integradores.
+- Alguns módulos foram transformados em bibliotecas, o que aumenta a centralização e ao mesmo tempo reduz a dependência entre módulos, o que permite testar melhor e futuramente fazer alterações sem tanta dificuldade.
+- O integrador-base dos métodos de Runge-Kutta também foi suprimido e os métodos de Runge-Kutta disponíveis (de passo fixo) foram adaptados para a estrutura comum de integração.
+- Agora adicionar integradores ficou mais fácil:
+  - Adicione o integrador em algum subdiretório de "src/calcs/integracao";
+  - Adicione a referência em "src/calcs/integracao/CMakeLists.txt".
+
+---
+
+
 ## [2025-08-03] v0.6.2: Correções e melhorias
 
 - "src/libs/aleatorio.f90": Para a geração de valores iniciais, agora o "raio" não é mais um parâmetro, sendo calculado em função do intervalo passado. Além disso, se o intervalo não for simétrico na origem, os valores gerados também não serão, com a devida translação.
 - "src/calcs/mecanica/colisao.f90": Não é necessário calcular a norma do vetor normal, apenas o seu quadrado, então isso foi removido.
 - "src/calcs/condicionamento/condicoesIniciais.f90": Código adaptado para o módulo "aleatorio", e também adiciona a opção `sorteio`, que não condiciona os valores iniciais, simplesmente os gera.
 - "src/calcs/condicionamento/condicionamento.f90": Adaptação para o módulo "aleatorio", melhorias no processo de condicionamento direto, inclusão de condições de Sundman e de Delta.
+
+---
 
 ## [2025-07-26] v0.6.1: Mais sobre o potencial amortecido e o virial
 

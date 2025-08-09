@@ -3,19 +3,20 @@
 !
 ! Objetivos:
 !   Este arquivo utiliza da biblioteca MATPLOTLIB do Python para 
-!   plotar alguns graficos simples, tENDo em vista confirmar 
+!   plotar alguns graficos simples, tendo em vista confirmar 
 !   visualmente os calculos e os scripts antes de tentar rodar 
 !   simulacoes mais pesadas.
 ! 
 ! Modificado:
-!   02 de fevereiro de 2024
+!   02 de fevereiro de 2024 (criado)
+!   08 de agosto de 2025 (modificado)
 ! 
 ! Autoria:
 !   oap
 ! 
-MODULE plot
+MODULE pyplot
   USE tipos
-  USE arquivos
+  USE arquivos_mod
 CONTAINS    
 
 ! ************************************************************
@@ -157,4 +158,23 @@ SUBROUTINE nome_data (dir, nome)
   END DO
 
 END SUBROUTINE nome_data
-END MODULE plot
+
+! ************************************************************
+!! Rodar plot com matplotlib
+!
+! Objetivos:
+!   Roda o script "plot.py" e exibe um grafico com matplotlib
+!
+! Modificado:
+!   02 de fevereiro de 2024
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE rodar_plot (diretorio)
+  IMPLICIT NONE
+  CHARACTER(LEN=*) :: diretorio
+  CALL SYSTEM ('python src/python/plot.py '//TRIM(diretorio))
+END SUBROUTINE rodar_plot
+
+END MODULE pyplot

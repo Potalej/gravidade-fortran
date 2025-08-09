@@ -5,62 +5,39 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   25 de julho de 2025
+!   08 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
 MODULE simulacao
-  USE tipos
-  USE OMP_LIB
 
-  ! Auxiliares
-  USE mecanica
-  USE auxiliares
-  USE arquivos
-  USE arquivos_json
-  ! Metodos de integracao numerica
+  USE OMP_LIB
+!> Versionamento
+  USE version
+!> Tipos
+  USE tipos
+!> Json-Fortran e arquivos
+  USE arquivos_mod
+!> Biblioteca de mecanica
+  USE utilidades
+!> Integracao numerica
   USE integrador
-  USE rungekutta2
-  USE rungekutta3
-  USE rungekutta4
-  USE euler_simp
-  USE verlet
-  USE ruth3
-  USE ruth4
-  USE rkn551
-  USE rkn671
-  USE svcp8s15
-  USE svcp10s35
-  USE euler_exp
-  USE euler_imp
-  ! Para configuracoes
-  USE json_utils_mod
-  ! Para plot em tempo real
+  USE integradores
+!> Para plot em tempo real
   USE conexao
+!> Colisoes
+  USE colisao
+!> Correcao numerica
+  USE correcao
 
   IMPLICIT NONE
   PRIVATE
-  PUBLIC simular, rodar_simulacao
+  PUBLIC simular
 
-  ! Tipos de metodo de integracao
-  TYPE(integracao_verlet),    TARGET, SAVE :: INT_VERLET
-  TYPE(integracao_euler_simp), TARGET, SAVE :: INT_EULER_SIMP
-  TYPE(integracao_rk2),       TARGET, SAVE :: INT_RK2
-  TYPE(integracao_rk3),       TARGET, SAVE :: INT_RK3
-  TYPE(integracao_rk4),       TARGET, SAVE :: INT_RK4
-  TYPE(integracao_ruth3),     TARGET, SAVE :: INT_RUTH3
-  TYPE(integracao_ruth4),     TARGET, SAVE :: INT_RUTH4
-  TYPE(integracao_rkn551),    TARGET, SAVE :: INT_RKN551
-  TYPE(integracao_rkn671),    TARGET, SAVE :: INT_RKN671
-  TYPE(integracao_svcp8s15),  TARGET, SAVE :: INT_SVCP8S15
-  TYPE(integracao_svcp10s35), TARGET, SAVE :: INT_SVCP10S35
-  TYPE(integracao_euler_exp), TARGET, SAVE :: INT_EULER_EXP
-  TYPE(integracao_euler_imp), TARGET, SAVE :: INT_EULER_IMP
-
-  ! Classe de simulacao
+!> Classe de simulacao
   TYPE :: simular
-
+    
     !> Ponteiro para o dicionario de valores iniciais
     TYPE(json_value), POINTER :: infos => NULL()
 
@@ -70,356 +47,286 @@ MODULE simulacao
 
     !> h: Tamanho do passo de integracao
     !> G: Constante de gravitacao universal
-    !> E0: Energia total inicial
     !> mtot: Massa total do sistema
     !> potsoft: Softening do potencial
     !> virial: 2*ec + <F,q>
-    REAL(pf) :: h, G, E0, mtot, potsoft, virial
+    REAL(pf) :: h, G, mtot, potsoft, virial
     
     !> M: Massas do sistema
-    !> R: Posicoes das particulas
-    !> P: Momento linear das particulas
-    !> Jtot: Momento angular total do sistema
-    !> Ptot: Momento linear total do sistema
-    !> Rcm: Centro de massas do sistema
-    REAL(pf), allocatable :: M(:), R(:,:), P(:,:), Jtot(:), Ptot(:), Rcm(:)
+    !> R0: Posicoes das particulas (inicial)
+    !> P0: Momento linear das particulas (inicial)
+    REAL(pf), ALLOCATABLE :: M(:), R0(:,:), P0(:,:)
     REAL(pf) :: m_esc, m_inv, m2
     LOGICAL :: mi ! Massas iguais
-    
-    REAL(pf), DIMENSION(3) :: J0
 
+    !> Integrais primeiras
+    ! E0: Energia total inicial
+    ! J0: Momento angular total inicial
+    ! Ptot0: Momento linear total inicial
+    ! Rcm0: Centro de massas inicial
+    REAL(pf), ALLOCATABLE :: E0, J0(:), Ptot0(:), Rcm0(:)
+    
     ! Metodo
     CHARACTER(LEN=:), ALLOCATABLE :: metodo
+    CLASS(integracao), POINTER :: integrador
 
     ! Diretorio onde ficara salvo
     CHARACTER(LEN=:), ALLOCATABLE :: dir
 
-    ! Configuracoes
-    LOGICAL :: corrigir=.FALSE., colidir=.FALSE., paralelo=.FALSE., gpu=.FALSE.
-    REAL(pf) :: corrigir_margem_erro = 0.1_pf
-    INTEGER :: corrigir_max_num_tentativas = 5
-    REAL(pf) :: colisoes_max_distancia = 0.1
+    ! Correcao
+    LOGICAL :: corrigir=.FALSE., paralelo=.FALSE., gpu=.FALSE.
+    REAL(pf) :: corme = 0.1_pf
+    INTEGER :: cormnt = 5
+    ! Colisoes
+    LOGICAL :: colidir = .FALSE.
+    REAL(pf) :: colmd
     CHARACTER(LEN=:), ALLOCATABLE :: colisoes_modo
+    REAL(pf), ALLOCATABLE :: raios(:)
 
     ! Exibir
     LOGICAL :: exibir = .FALSE.
+    TYPE(conexao_socket) :: conexao
 
     !> Arquivo
     TYPE(arquivo) :: Arq
 
     CONTAINS
-      PROCEDURE :: Iniciar, inicializar_metodo, rodar, &
-                   inicializadores, output_passo
-      
-  END TYPE
+      PROCEDURE :: iniciar, &  ! Inicializacao principal
+                   inicializar_data, &  ! Inicializacao do arquivo "data"
+                   inicializar_metodo, & ! Inicializacao do integrador e do socket
+                   rodar, &   
+                   output_passo
 
-  ! Instanciamento da classe
-  TYPE(simular) :: Simulador
+  END TYPE simular
+
+  ! Instanciamento
+  TYPE(simular) :: simulador
 
 CONTAINS
 
-
-SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
-  TYPE(json_value), POINTER :: infos
-  REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
-  INTEGER  :: t0, tf
-  REAL(pf) :: timestep
-
-  CALL json % get(infos, 'integracao.t0', t0)
-  CALL json % get(infos, 'integracao.tf', tf)
-  timestep = json_get_float(infos, 'integracao.timestep')
-
-  IF (t0 < 0) THEN
-    IF (tf == 0) THEN
-      ! Roda apenas o passado
-      WRITE (*,*) " > Intervalo [", t0, ",", tf, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
-
-    ELSE IF (tf > 0) THEN     
-      ! Roda o passado e o futuro
-      WRITE (*,*) " > Intervalo [", t0, ",", 0, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
-      
-      WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
-
-    ENDIF
-  
-  ! Se for positivo, apenas roda normal
-  ELSE
-    ! Roda apenas o futuro
-    WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
-    CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
-  ENDIF
-END SUBROUTINE rodar_simulacao
-
-SUBROUTINE rodar_simulacao_intervalo (infos, massas, posicoes, momentos, timestep, t0, tf)
-  TYPE(json_value), POINTER :: infos
-  REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
-  REAL(pf), INTENT(IN) :: timestep
-  INTEGER, INTENT(IN)  :: t0, tf
-  REAL(pf) :: timer_0, timer_1
-  INTEGER :: qntd_total_passos
-  CHARACTER(LEN=:), ALLOCATABLE :: metodo
-
-  qntd_total_passos = ABS((tf - t0)/timestep)
-
-  ! Timer
-  timer_0 = omp_get_wtime()
-  
-  ! Inicializando a classe de simulacao
-  CALL Simulador%Iniciar(infos, massas, posicoes, momentos, timestep)
-
-  ! Agora roda
-  CALL Simulador%rodar(tf - t0)
-
-  metodo = json_get_string(infos, 'integracao.metodo')
-
-  timer_1 = omp_get_wtime()
-  WRITE (*,*) ' * tempo ', metodo, ': ', timer_1 - timer_0
-  WRITE (*,*) ' * tempo por passo: ', (timer_1 - timer_0) / qntd_total_passos
-END SUBROUTINE rodar_simulacao_intervalo
-
-
-
-! ************************************************************
-!! Metodo principal
-!
-! Objetivos:
-!   Faz a simulacao.
-!
-! Modificado:
-!   25 de julho de 2025
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE Iniciar (self, infos, M, R0, P0, h)
-
+SUBROUTINE iniciar (self, infos, m, R0, P0, h)
   CLASS(simular), INTENT(INOUT) :: self
   TYPE(json_value), POINTER :: infos
-  REAL(pf) :: M(:), R0(:,:), P0(:,:)
+  REAL(pf) :: m(:), R0(:,:), P0(:,:)
   REAL(pf) :: h, colmd, densidade, ec, f_prod_q
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
+  INTEGER :: a
 
-  ! Faz uma copia do dicionario de informacoes
+  !> Faz uma copia do dicionario de informacoes
   CALL json_clone(infos, self % infos)
 
-  ! Quantidade de checkpoints
-  CALL json % get(infos, 'integracao.checkpoints', self % qntd_checkpoints)
-
-  ! Se quer ou nao plotar durante a simulacao 
-  CALL json % get(infos, 'exibir', self % exibir, encontrado)
-  IF (.NOT. encontrado) self % exibir = .FALSE.
-
-  ! Salva o tamanho dos passos
-  self % h = h
-
-  ! Salva o softening do potencial
+  !## Variaveis e constantes do sistema ##!
+  !> Constante de gravitacao universal
+  self % G = json_get_float(infos, "G")
+  !> Salva o softening do potencial
   self % potsoft = json_get_float(infos, 'integracao.amortecedor')
-
-  ! Salva a gravidade
-  self % G = json_get_float(infos, 'G')
-
-  ! Salva as massas
-  self % M = M
-  
-  ! Quantidade corpos no sistema
-  self % N = SIZE(M)
-
-  ! Massa total do sistema
-  self % mtot = SUM(self % M)
-
-  ! Salva se as massas sao iguais
-  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado) self % mi = .FALSE.
-  IF (self % mi) THEN
-    self % m_esc = self % M(1)
-    self % m2 = self % m_esc * self % m_esc
-    self % m_inv = 1 / self % m_esc
-  ENDIF
-
-  ! Salva as posicoes e os momentos
-  self % R = R0
-  self % P = P0
-
-  ! Salva a dimensao
+  !> Salva a dimensao
   self % dim = SIZE(R0,2)
-
-  ! Salva momento linear total inicial
-  self % Ptot = momentoLinear_total(self % P)
-
-  ! Salva a energia inicial
-  self % E0 = energia_total(self % G, self % M, self % R, self % P, self % potsoft)
-
-  ! Salva o momento angular inicial
-  self % J0 = momento_angular_total(self % R, self % P)
-
-  ! Salva o centro de massas inicial
-  self % Rcm = centro_massas(self % M, self % R)
-
-  ! Definindo o raio de virial inicial 
-  ! (2T + V = E + T)
-  ec = energia_cinetica(self % M, P0)
-  IF (self % potsoft == 0) THEN
+  !> Variaveis de estado
+  self % m = m  ! massas
+  self % R0 = R0 ! posicoes
+  self % P0 = P0 ! momentos
+  !> Quantidade de corpos
+  self % N = SIZE(m)
+  !> Integrais primeiras
+  self % E0 = energia_total(self%G, self%m, R0, P0, self%potsoft)
+  self % J0 = momento_angular_total(R0, P0)
+  self % Ptot0 = momento_linear_total(P0)
+  self % rcm0 = centro_massas(self%m, R0)
+  !> Equilibrio
+  ec = energia_cinetica(self%m, P0)
+  IF (self%potsoft == 0) THEN
     self % virial = ec + self % E0
-  ! (2T + <F,q>)
   ELSE
-    f_prod_q = virial_potencial_amortecido(self % G, self % M, R0, self % potsoft)
+    f_prod_q = virial_potencial_amortecido(self%G, self%m, R0, self%potsoft)
     self % virial = ec + ec + f_prod_q
   ENDIF
 
-  ! Salva o metodo
-  self % metodo = json_get_string(infos, 'integracao.metodo')
-  CALL json % get(infos, 'integracao.t0', self % t0)
-  CALL json % get(infos, 'integracao.tf', self % tf)
-  
-  ! Salva o corretor
-  CALL json % get(infos, 'correcao.corrigir', self % corrigir)
-  self % corrigir_margem_erro = json_get_float(infos, 'correcao.margem_erro')
-  CALL json % get(infos, 'correcao.max_num_tentativas', self % corrigir_max_num_tentativas)
+  !## Uso da paralelizacao ##!
+  CALL json % get(infos, 'paralelo', self%paralelo)
+  CALL json % get(infos, 'gpu', self%gpu, encontrado)
+  IF (.NOT. encontrado) self%gpu = .FALSE.
 
-  ! Salva as colisoes
+  !## Sobre a integracao numerica ##!
+  CALL self % inicializar_metodo(h)
+
+  !## Sobre a correcao numerica ##!
+  CALL json % get(infos, 'correcao.corrigir', self % corrigir)
+  self % corme = json_get_float(infos, 'correcao.margem_erro')
+  CALL json % get(infos, 'correcao.max_num_tentativas', self % cormnt)
+
+  !## Sobre as colisoes ##!
   CALL json % get(infos, 'colisoes.colidir', self % colidir)
   self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
   densidade = json_get_float(infos, 'colisoes.densidade')
   colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
-  self % colisoes_max_distancia = colmd
-  WRITE(*,*) 'COLMD: ', colmd
+  self % colmd = colmd
+  ! Deixando os raios calculados de antemao
+  ALLOCATE(self % raios(self % N))
+  DO a = 1, self % N
+    self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
+  END DO
 
-  ! Salva o uso de paralelizacao
-  CALL json % get(infos, 'paralelo', self % paralelo)
-  CALL json % get(infos, 'gpu', self % gpu, encontrado)
-  IF (.NOT. encontrado) self % gpu = .FALSE.
-
-  ! Inicializa o metodo
-  CALL self % inicializar_metodo()
-
-  ! Copia o arquivo de valores iniciais
+  !> Copia o arquivo de valores iniciais
   CALL diretorio_data()
-  CALL salvar_vi_json('out/data/'//self % Arq % dirarq//'/vi', infos, M, R0, P0, .FALSE.)
-END SUBROUTINE Iniciar
+  !> Inicializa o arquivo data.csv
+  CALL self % inicializar_data()
+  !> Salva os valores iniciais
+  CALL salvar_vi_json('out/data/'//self % Arq % dir_arq//'/vi', infos, M, R0, P0, .FALSE.)
 
-SUBROUTINE inicializar_metodo (self)
-  IMPLICIT NONE
-  class(simular), INTENT(INOUT) :: self
-
-  ! Cria o arquivo onde sera salvo
-  CALL self % Arq % criar(self % N, self % dim)
-  self % dir = self % Arq % dirarq
-
-  ! Salva as infos de cabecalho
-  CALL self % Arq % escrever_cabecalho(self % h, self % G, self % M)
-
-  ! Salva as informacoes no info.txt
-  CALL self % Arq % inicializar_arquivo_info(self % infos)
-
-  ! Condicoes iniciais
-  CALL self % Arq % escrever((/self % R, self % P/))
-
-  WRITE(*,*) 'E0 = ', self % E0
-END SUBROUTINE inicializar_metodo
-
+END SUBROUTINE iniciar
 
 ! ************************************************************
-!! Roda simulacao com algum metodo definido dinamicamente
-!
-! Objetivos:
-!   Roda uma simulacao com algum metodo numerico desejado.
+!! Inicializar o arquivo "data"
 !
 ! Modificado:
-!   11 de julho de 2025
+!   08 de agosto de 2025
 !
 ! Autoria:
 !   oap
+! 
+SUBROUTINE inicializar_data (self)
+  class(simular), INTENT(INOUT) :: self
+
+  ! Cria o arquivo onde sera salvo
+  CALL self % Arq % criar_data(self % N, self % dim)
+  self % dir = self % Arq % dir_arq
+
+  ! Salva as infos de cabecalho
+  CALL self % Arq % escrever_cabecalho_data(self % h, self % G, self % M)
+
+  ! Salva as informacoes no info.txt
+  CALL self % Arq % inicializar_arquivo_info(self % infos, version_string, precisao)
+
+  ! Condicoes iniciais
+  CALL self % Arq % escrever_data((/self % R0, self % P0/))
+END SUBROUTINE inicializar_data
+
+! ************************************************************
+!! Inicializa o integrador e o socket
 !
+! Modificado:
+!   08 de agosto de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE inicializar_metodo (self, h)
+  CLASS(simular), INTENT(INOUT) :: self
+  REAL(pf), INTENT(IN) :: h
+  LOGICAL :: encontrado
+
+  self % h = h  ! Timestep
+  !> Metodo
+  self % metodo = json_get_string(self%infos, 'integracao.metodo')
+  CALL json % get(self%infos, 'integracao.t0', self % t0)
+  CALL json % get(self%infos, 'integracao.tf', self % tf)
+  !> Quantidade de checkpoints
+  CALL json % get(self%infos, 'integracao.checkpoints', self % qntd_checkpoints)
+  !> Se quer ou nao plotar durante a simulacao 
+  CALL json % get(self%infos, 'exibir', self % exibir, encontrado)
+  IF (.NOT. encontrado) self % exibir = .FALSE.
+  !> Definindo o metodo
+  CALL definir_metodo(self%integrador, self%metodo)
+
+  ! Inicializando o integrador
+  CALL self % integrador % iniciar(self%infos, self%h, self%M, self%E0, self%J0)
+
+  ! Atualizando as constantes se for necessario
+  CALL self % integrador % atualizar_constantes()
+
+  ! Se for plotar em tempo real, precisa inicializar tambem
+  IF (self % exibir) CALL self % conexao % inicializar_plot_tempo_real(self % N)
+END SUBROUTINE
+
+
 SUBROUTINE rodar (self, qntdPassos)
   CLASS(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
+  INTEGER :: qntd_por_rodada, passo, sub_passo
+  REAL(pf) :: inst_t, tempo_total, t0, tf
+  REAL(pf) :: R1(self%N,self%dim), P1(self%N,self%dim)
+  REAL(pf) :: E
+  LOGICAL :: corrigiu
 
-  INTEGER :: i, sub_i
-  REAL(pf64) :: t0, tf, tempo_total
-  INTEGER :: qntd_por_rodada
-
-  ! Integrador
-  CLASS(integracao), POINTER :: integrador
-
-  ! Variaveis de estado
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
-  REAL(pf)   :: inst_t, timestep_inv
-  INTEGER :: inst
-
-  ! Para conexao, se for o caso
-  TYPE(conexao_socket) :: conexao
-
-  ! Definindo o metodo
-  CALL definir_metodo (integrador, self%metodo)
-
-  ! Inicializando tudo
-  CALL self % inicializadores(conexao, integrador)
-  
-  ! Condicoes iniciais
-  R1 = self % R
-  P1 = self % P
-  CALL self % Arq % escrever((/R1, P1/))
-  IF (self % exibir) CALL conexao % enviar(R1, P1)
-  timestep_inv = 1/self % h
-
-  ! Agora roda, enfim
   WRITE (*, '(a)') '  > iniciando simulacao...'
-  qntd_por_rodada  = NINT(ABS(qntdPassos * timestep_inv) / self % qntd_checkpoints)
-  i = 0
-  tempo_total = 0
+  R1 = self % R0
+  P1 = self % P0
+
+  qntd_por_rodada = NINT(ABS(qntdPassos / self%h) / self%qntd_checkpoints)
+
+  passo = 0
   inst_t = 0
+  tempo_total = 0
 
-  DO WHILE (i < self % qntd_checkpoints)
-    ! Atualizando o instante
-    inst_t = inst_t + qntd_por_rodada * self % h
+  DO WHILE (passo < self % qntd_checkpoints)
+    !> Atualizando o instante
+    inst_t = inst_t + qntd_por_rodada * self%h
+    !> Timer
+    t0 = OMP_GET_WTIME()
 
-    ! Timer
-    t0 = omp_get_wtime()
+    !> Simulacao em si
+    DO sub_passo = 1, qntd_por_rodada
+      !> Integracao
+      CALL self % integrador % aplicar(R1, P1)
 
-    ! Se for exibir, precisa mandar sinal
-    IF (self % exibir) THEN
-      DO sub_i = 1, qntd_por_rodada
-        CALL integrador % aplicarNVezes(R1, P1, 1)
+      !> Colide, se for o caso
+      IF (self % colidir) THEN
+        CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
+                                self%raios, self%colisoes_modo, &
+                                self%integrador%distancias)
+      END IF
 
-        IF (MOD(sub_i,2) == 0) THEN
-          CALL conexao % enviar(R1, P1)
-        ENDIF
-      END DO
-    
-    ! Se nao for exibir, roda tudo de uma vez
-    ELSE
-      CALL integrador % aplicarNVezes(R1, P1, qntd_por_rodada)
-    ENDIF
+      !> Se for exibir, envia os dados
+      IF (self % exibir) THEN
+        !> Envia nos subpassos pares
+        IF (MOD(sub_passo,2) == 0) CALL self%conexao%enviar(R1, P1)
+      END IF
+    END DO
 
-    ! Timer
-    tf = omp_get_wtime()
+    !> Se for corrigir, calcula a energia total para ver se precisa
+    IF (self % corrigir) THEN
+      E = energia_total(self%G, self%m, R1, P1, self%potsoft, self%integrador%distancias)
+
+      !> Se o erro for maior que o permitido, corrige
+      IF (ABS(E - self%E0) >= self%corme) THEN
+        !> (Corrige energia total e momento angular total)[CUSTOSO]
+        ! CALL corrigir(self%corme, self%cormnt, self%G, self%m, R1, P1, corrigiu, self%E0, self%J0)
+
+        !> (Corrige somente a energia total)
+        CALL corrigir_apenas_energia(self % corme, self % cormnt, self % G, &
+                                  self % m, R1, P1, corrigiu, self % E0, self % J0, E, &
+                                  self % potsoft)
+      ENDIF
+    END IF
+
+    !> Timer
+    tf = OMP_GET_WTIME()
     tempo_total = tempo_total + (tf - t0)
 
-    ! Salvando o output
-    CALL self % Arq % escrever ((/R1, P1/))
-    CALL self % Arq % arquivo_bkp(i*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
+    !> Salvando o output
+    CALL self % arq % escrever_data((/R1, P1/))
+    CALL self % arq % atualizar_arquivo_bkp(passo * self%qntd_checkpoints*NINT(1.0_pf/self%h), tempo_total)
 
-    call self % output_passo(i+1, tempo_total, inst_t, R1, P1)
+    !> Imprimindo informacoes
+    CALL self % output_passo(passo+1, tempo_total, inst_t, R1, P1)
 
-    inst = inst + 1
-    i = i + 1
+    !> Atualiza o passo
+    passo = passo + 1
   END DO
 
-  CALL self % Arq % atualizar_arquivo_info(qntdPassos*self%qntd_checkpoints*NINT(timestep_inv), tempo_total)
-  CALL self % Arq % excluir_bkp()
+  CALL self % arq % atualizar_arquivo_info(qntdPassos*self%qntd_checkpoints*NINT(1.0_pf/self%h), tempo_total)
+  CALL self % arq % excluir_bkp()
 
-  IF (self % exibir) CALL conexao % encerrar_conexao()
+  IF (self % exibir) CALL self % conexao % encerrar_conexao()
 
   WRITE (*, '(a)') '  > simulacao encerrada!'
   WRITE (*,*)
 
-  CALL self % Arq % fechar()
+  CALL self % arq % fechar()
 
-END SUBROUTINE rodar
+END SUBROUTINE
 
 ! ************************************************************
 !! Mensagens na tela que aparecem durante a simulacao
@@ -484,65 +391,4 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
 
 END SUBROUTINE
 
-! ************************************************************
-!! Inicializa o integrador e o socket
-!
-! Modificado:
-!   24 de julho de 2025
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE inicializadores (self, conexao, integrador)
-  CLASS(simular), INTENT(INOUT) :: self
-  TYPE(conexao_socket), INTENT(INOUT) :: conexao
-  CLASS(integracao), POINTER, INTENT(INOUT) :: integrador
-
-  ! Inicializando o integrador
-  CALL integrador % iniciar(self % infos, self % h, self % M, self % E0, self % J0)
-
-  ! Atualizando as constantes se for necessario
-  CALL integrador % atualizar_constantes()
-
-  ! Se for plotar em tempo real, precisa inicializar tambem
-  IF (self % exibir) CALL conexao % inicializar_plot_tempo_real(self % N)
-END SUBROUTINE
-
-! ************************************************************
-!! Define o integrador a partir da string
-!
-! Modificado:
-!   11 de julho de 2025
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE definir_metodo (integrador, metodo)
-  CLASS(integracao), POINTER, INTENT(OUT) :: integrador
-  CHARACTER(LEN=*), INTENT(IN) :: metodo
-
-  ! Definicao dinamica do metodo
-  WRITE (*,'(a)') 'METODO: ', metodo
-  
-  SELECT CASE (TRIM(metodo))
-    CASE ('verlet');     integrador => INT_VERLET
-    CASE ('rk2');        integrador => INT_RK2
-    CASE ('rk3');        integrador => INT_RK3
-    CASE ('rk4');        integrador => INT_RK4
-    CASE ('euler_simp'); integrador => INT_EULER_SIMP
-    CASE ('ruth3');      integrador => INT_RUTH3
-    CASE ('ruth4');      integrador => INT_RUTH4
-    CASE ('rkn551');     integrador => INT_RKN551
-    CASE ('rkn671');     integrador => INT_RKN671
-    CASE ('svcp8s15');   integrador => INT_SVCP8S15
-    CASE ('svcp10s35');  integrador => INT_SVCP10S35
-    CASE ('euler_exp');  integrador => INT_EULER_EXP
-    CASE ('euler_imp');  integrador => INT_EULER_IMP
-    
-    ! Por padrao, sera o VERLET
-    CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
-  END SELECT
-
-END SUBROUTINE definir_metodo
-
-END module simulacao
+END MODULE simulacao

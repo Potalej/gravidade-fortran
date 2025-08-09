@@ -56,8 +56,7 @@
 ! 
 MODULE correcao
   USE tipos
-  USE auxiliares
-  USE mecanica
+  USE utilidades
 
   IMPLICIT NONE
   PRIVATE

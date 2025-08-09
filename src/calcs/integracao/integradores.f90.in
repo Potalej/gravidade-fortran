@@ -1,0 +1,64 @@
+! ************************************************************
+!! Integradores - Gerado devidamente via CMake
+!
+! Objetivos:
+!   Arquivo base para manipular o uso dos diferentes 
+!   integradores disponiveis.
+!
+! Modificado:
+!   08 de agosto de 2025
+!
+! Autoria:
+!   oap
+!
+MODULE integradores
+!> Modulo raiz do integrador
+  USE integrador, only: integracao
+
+!> Importacao de todos os metodos disponiveis
+@INTEGRADORES_USE@
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC definir_metodo, listar_integradores_disponiveis
+
+! Adicionando alvos para o ponteiro do metodo de integracao
+@INTEGRADORES_CLASSES@
+CONTAINS
+
+! ************************************************************
+!! Define o integrador a partir da string
+!
+! Modificado:
+!   07 de agosto de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE definir_metodo (integrador, metodo)
+  CLASS(integracao), POINTER, INTENT(OUT) :: integrador
+  CHARACTER(LEN=*), INTENT(IN) :: metodo
+
+  ! Definicao dinamica do metodo
+  WRITE (*,'(a)') 'METODO: ', metodo
+  
+  SELECT CASE (TRIM(metodo))
+@INTEGRADORES_SELECT@
+    CASE DEFAULT;       WRITE(*,*) 'Metodo nao identificado!'
+  END SELECT
+
+END SUBROUTINE definir_metodo
+
+! ************************************************************
+!! Lista os integradores disponiveis
+!
+! Modificado:
+!   08 de agosto de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE listar_integradores_disponiveis ()
+@INTEGRADORES_LISTA@
+END SUBROUTINE listar_integradores_disponiveis
+
+END MODULE integradores

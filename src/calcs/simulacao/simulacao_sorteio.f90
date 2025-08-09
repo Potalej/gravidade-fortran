@@ -13,12 +13,10 @@
 MODULE simulacao_sorteio
 
   USE tipos
-  USE OMP_LIB
-  USE simulacao
-  USE condicoesIniciais
-  USE arquivos
+  USE simulador_mod
+  USE condicoes_iniciais
+  USE arquivos_mod
   USE json_module
-  USE arquivos_json
   IMPLICIT NONE
   PRIVATE
   PUBLIC simular_sorteio, sorteio_salvar

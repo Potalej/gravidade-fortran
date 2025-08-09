@@ -10,10 +10,9 @@
 ! Autoria:
 !   oap
 ! 
-MODULE condicoesIniciais
+MODULE condicoes_iniciais
   USE tipos
-  USE mecanica
-  USE auxiliares
+  USE utilidades
   USE condicionamento ! Metodos gerais de restricao
   USE json_utils_mod
   IMPLICIT NONE
@@ -119,7 +118,7 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
     virial = virial + f_prod_q
   ENDIF
 
-  lintot    = momentoLinear_total(momentos)
+  lintot    = momento_linear_total(momentos)
   angtot    = momento_angular_total(posicoes, momentos)
   
   inercia   = momento_inercia(massas, posicoes)
@@ -141,4 +140,4 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
 
 END SUBROUTINE
 
-END MODULE condicoesIniciais
+END MODULE condicoes_iniciais

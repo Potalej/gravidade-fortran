@@ -6,7 +6,7 @@
 !   todas as outras funcoes.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   08 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -14,11 +14,10 @@
 PROGRAM main
   USE version
   USE tipos
-  USE OMP_LIB
+  USE integradores, only: listar_integradores_disponiveis
   USE simulacao_sorteio
   USE simulacao_vi
-  USE condicoesIniciais
-  USE plot
+  USE pyplot
   IMPLICIT NONE
 
   CHARACTER(256)  :: arq ! Arquivo
@@ -96,6 +95,10 @@ CONTAINS
     WRITE (*,*) '   (-e, --exibir) [arquivo]' 
     WRITE (*,*) '         Gera um grafico com as trajetorias dos corpos no arquivo informado.'
     WRITE (*,*)
+    WRITE (*,*) 'INTEGRADORES DISPONIVEIS:'
+    
+    
+    CALL listar_integradores_disponiveis()
   END SUBROUTINE help
 
   ! Imprime o cabecalho do programa

@@ -12,8 +12,7 @@
 ! 
 MODULE condicionamento
   USE tipos
-  USE mecanica
-  USE auxiliares
+  USE utilidades
   USE aleatorio
   USE json_utils_mod
   IMPLICIT NONE
@@ -516,7 +515,7 @@ SUBROUTINE condicionar_momentoLinear (P, massas, momentos)
   INTEGER                 :: a
 
   ! Usa o mesmo metodo porque a ideia eh exatamente igual
-  pcm = (momentoLinear_total(momentos) - P)/ SUM(massas)
+  pcm = (momento_linear_total(momentos) - P)/ SUM(massas)
   ! Substitui
   DO a = 1, SIZE(massas)
     momentos(a,:) = momentos(a,:) - massas(a)*pcm
@@ -615,7 +614,7 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat,
 
   ! Calculo dos erros
   er_energia = ABS(energia_total(G,massas, posicoes, momentos, eps) - H)
-  er_linear = MAXVAL(ABS(momentoLinear_total(momentos) - P))
+  er_linear = MAXVAL(ABS(momento_linear_total(momentos) - P))
   er_angular = MAXVAL(ABS(momento_angular_total(posicoes,momentos) - J))
   erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
 
@@ -635,7 +634,7 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat,
 
       ! Calculo dos erros
       er_energia = ABS(energia_total(G,massas, posicoes, momentos, eps) - H)
-      er_linear = MAXVAL(ABS(momentoLinear_total(momentos) - P))
+      er_linear = MAXVAL(ABS(momento_linear_total(momentos) - P))
       er_angular = MAXVAL(ABS(momento_angular_total(posicoes,momentos) - J))
       erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
     END DO
@@ -691,7 +690,7 @@ SUBROUTINE condicionar_ip_direto (G, massas, posicoes, momentos, soft, H, J, P)
 
   ! Calcula as integrais primeiras e outros valores
   energia = energia_total(G, massas, posicoes, momentos, eps)
-  linear = momentoLinear_total(momentos)
+  linear = momento_linear_total(momentos)
   angular = momento_angular_total(posicoes, momentos)
   M_tot_inv = 1.0_pf / SUM(massas)
   potencial = energia_potencial(G, massas, posicoes, eps)

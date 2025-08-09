@@ -1,14 +1,14 @@
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Arquivo CMake para o Gravidade-Fortran
 #
 # Na raiz do diretorio, utilize:
 #   > cmake -B build
 # Para compilar com o Ninja, use:
 #   > cmake -B build -G Ninja
-# ----------------------------------------------------------------------------
+# ============================================================================
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.6.2
+project("gravidade" VERSION 0.7.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -17,10 +17,9 @@ enable_language(Fortran)
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
 string(TIMESTAMP BUILD_TIME "%H:%M:%S")
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Compilacao
 # ----------------------------------------------------------------------------
-
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
 # set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -fcheck=all -Wall -fbacktrace -O3 -march=native -fopenmp") # Debug
 message("\n******************************************")
@@ -29,8 +28,9 @@ message("******************************************")
 
 # Diretorio para .mod
 include_directories(${CMAKE_BINARY_DIR}/mod)
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # GProf
 # ----------------------------------------------------------------------------
 option(GPROF "Habilitar criacao de perfil gprof" OFF)
@@ -40,8 +40,9 @@ if (GPROF)
   add_compile_options(-pg)
   add_link_options(-pg)
 endif()
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # GPU
 # ----------------------------------------------------------------------------
 option(USAR_GPU "Utilizar GPU (OpenMP offload)" OFF)
@@ -54,8 +55,9 @@ if (USAR_GPU)
 else()
   set(USAR_GPU_BOOL ".FALSE.")
 endif()
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Precisao
 # ----------------------------------------------------------------------------
 set(PRECISAO "64" CACHE STRING "Escolha a precisão: 32, 64 ou 128")
@@ -71,8 +73,9 @@ elseif(PRECISAO STREQUAL "128")
 else()
   message(FATAL_ERROR "Precisão inválida: ${PRECISAO}. Use 32, 64 ou 128")
 endif()
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Versionamento
 # ----------------------------------------------------------------------------
 configure_file(
@@ -80,26 +83,22 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/version.f90
   @ONLY
 )
+add_library(versao
+  ${CMAKE_CURRENT_BINARY_DIR}/version.f90
+)
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Executaveis utilizados no programa
 # ----------------------------------------------------------------------------
 add_executable(gravidade
   "main.f90"
-
-  "./src/calcs/simulacao/simulacao_sorteio.f90"
-  "./src/calcs/simulacao/simulacao_vi.f90"
-  "./src/calcs/simulacao/simulacao.f90"
-
-  "./src/arquivo/arquivos_json.f90"
-  "./src/arquivo/arquivos.f90"
-  "./src/arquivo/plot.f90"
-
-  ${CMAKE_CURRENT_BINARY_DIR}/version.f90
 )
+target_link_libraries(versao)
 target_include_directories(gravidade PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Procura pelo OpenBLAS
 # ----------------------------------------------------------------------------
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
@@ -108,35 +107,63 @@ find_package(OpenBLAS REQUIRED)
 IF (NOT OpenBLAS_LIB)
   message(FATAL_ERROR "OpenBLAS nao encontrado!!!")
 ENDIF()
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Inclui o JSONFortran
 # ----------------------------------------------------------------------------
 add_subdirectory(lib/json-fortran)
+# ============================================================================
 
-# ----------------------------------------------------------------------------
-# Bibliotecas locais
-# ----------------------------------------------------------------------------
 
-# Tipos
+
+# ============================================================================
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=- Bibliotecas locais =-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ============================================================================
+
+# ============================================================================
+#> Tipos
+# ----------------------------------------------------------------------------
+# Esta biblioteca contem os tipos de variaveis reais utilizadas globalmente,
+# incluindo o "pf". Eh chamada por todas as bibliotecas e modulos.
+# ----------------------------------------------------------------------------
 add_library(tipos
-  "./src/tipos.F90"
+"./src/tipos.F90"
 )
+# ============================================================================
 
-# JSON-FILE-MOD
+# ============================================================================
+#> json_utils_mod
+# ----------------------------------------------------------------------------
+# Esta biblioteca contem funcionalidades basicas do Json-Fortran e rotinas
+# para facilitar o uso local de variaveis de tipo JSON_VALUE.
+# ----------------------------------------------------------------------------
 add_library(json_utils_mod 
-  "./src/arquivo/json_utils_mod.f90"
+  "./src/libs/json_utils_mod.f90"
 )
 target_link_libraries(json_utils_mod PRIVATE tipos)
 target_link_libraries(json_utils_mod PRIVATE jsonfortran)
+# ============================================================================
 
-# SOCKET PARA PLOT EM TEMPO REAL (depende do sistema operacional)
+# ============================================================================
+#> Conexao
+# ----------------------------------------------------------------------------
+# Esta biblioteca eh utilizada para fazer a transmissao de dados via socket
+# quando se deseja visualizar simulacoes em tempo real. Eh chamada pelo
+# modulo SIMULACAO principal.
+#
+# Como ela depende do sistema operacional utilizado, eh necessario fazer
+# a verificacao devida.
+# ----------------------------------------------------------------------------
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   add_library(conexao_mod STATIC
     "./src/socket/linux/conexao.f90"
     "./src/socket/linux/server_mod.f90"
   )
-
+# ----------------------------------------------------------------------------
+# No caso do Windows, eh preciso adicionar as rotinas do WSA para que o
+# socket funcione corretamente
+# ----------------------------------------------------------------------------
 ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   add_library(conexao_mod STATIC
     "./src/socket/windows/conexao.f90"
@@ -145,98 +172,172 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   )
   target_link_libraries(conexao_mod PRIVATE ws2_32)
 ENDIF()
-
 target_link_libraries(conexao_mod PRIVATE tipos)
+# ============================================================================
 
-# ALEATORIO
+# ============================================================================
+#> Aleatorio
+# ----------------------------------------------------------------------------
+# Contem rotinas de geracao de valores aleatorios. Eh chamada pelo modulo
+# de condicionamento.
+# ----------------------------------------------------------------------------
 add_library(aleatorio 
   "./src/libs/aleatorio.f90" 
 )
 target_link_libraries(aleatorio PRIVATE tipos)
+# ============================================================================
 
-# ARVORE BINARIA
+# ============================================================================
+#> Octree
+# ----------------------------------------------------------------------------
+# Esta biblioteca implementa a separacao de vetores 3D em uma octree (arvore
+# "octanaria"). No momento, a arvore eh utilizada somente pelo modulo de
+# colisoes, quando desejado.
+# ----------------------------------------------------------------------------
 add_library(octree 
   "./src/libs/octree.f90"
 )
 target_link_libraries(octree PRIVATE tipos)
+# ============================================================================
 
-# Mecanica
-add_library(mecanica 
-  "./src/calcs/mecanica.f90" 
-  "./src/calcs/auxiliares.f90" 
-  "./src/calcs/mecanica/correcao.f90" 
-  "./src/calcs/mecanica/colisao.f90"
+# ============================================================================
+#> Utilidades
+# ----------------------------------------------------------------------------
+# Esta contem rotinas e funcoes dos antigos modulos MECANICA e AUXILIARES,
+# ou seja, contem tanto rotinas para resolucao de sistemas lineares, calculo
+# de autovalores e afins, como tambem rotinas para calculo de energia total,
+# momento angular, tensor de inercia e afins.
+# ----------------------------------------------------------------------------
+add_library(utilidades
+  "./src/libs/utilidades.f90" 
 )
-target_link_libraries(mecanica PRIVATE
+target_link_libraries(utilidades PRIVATE tipos)
+# ============================================================================
+
+
+
+# ============================================================================
+# =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Modulos =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ============================================================================
+
+# ============================================================================
+#> Arquivos
+# ----------------------------------------------------------------------------
+# Este modulo contem as funcionalidades de arquivos .txt, .csv e .json que
+# sao utilizados pelo programa.
+# ----------------------------------------------------------------------------
+add_library(arquivos
+  # Principal (reune os dois)
+  "./src/arquivo/arquivos_mod.f90"
+
+  # Arquivos gerais
+  "./src/arquivo/arquivos.f90"
+  "./src/arquivo/diretorio.f90"
+  "./src/arquivo/string_utils.f90"
+
+  # Arquivos JSON
+  "./src/arquivo/arquivos_json.f90"
+)
+target_link_libraries(arquivos PRIVATE 
+  tipos
+  json_utils_mod 
+)
+# ============================================================================
+
+# ============================================================================
+#> Corretor
+# ----------------------------------------------------------------------------
+# Contem rotinas para, dado um estado no espaco de fases e as integrais que
+# deveriam estar sendo satisfeitas, aplicar uma projecao do estado para obter
+# um estado que atenda - aproximadamente - tais integrais. Eh utilizado apos
+# integracoes numericas, permitindo melhorar os resultados.
+# Depende da biblioteca "utilidades"
+# ----------------------------------------------------------------------------
+add_library(corretor
+  "./src/calcs/correcao.f90" 
+)
+target_link_libraries(corretor PRIVATE
   ${OpenBLAS_LIB} # utilizada no corretor
+  utilidades
+  tipos
+)
+
+# ============================================================================
+#> Colisoes
+# ----------------------------------------------------------------------------
+# Contem rotinas para aplicar choques perfeitamente elasticos entre dois
+# corpos. Contem um verificador direto de colisoes, mas tambem importa a
+# biblioteca "OCTREE" e permite utilizar a arvore para verificar colisoes.
+# ----------------------------------------------------------------------------
+add_library(colisoes
+  "./src/calcs/colisao.f90" 
+)
+target_link_libraries(colisoes PRIVATE
   tipos
   octree
 )
+# ============================================================================
 
-# Condicionamento de valores iniciais
+# ============================================================================
+#> Condicionamento
+# ----------------------------------------------------------------------------
+## Contem rotinas para condicionar valores iniciais para que atendam a 
+## restricoes desejadas, como integrais primeiras ou equilibrio (virial).
+## Depende das bibliotecas "ALEATORIO", "JSON_UTILS" e "UTILIDADES".
+# ----------------------------------------------------------------------------
 add_library(condicionamento
-  "./src/calcs/condicionamento/condicoesIniciais.f90"  
+  "./src/calcs/condicionamento/condicoes_iniciais.f90"  
   "./src/calcs/condicionamento/condicionamento.f90"  
 )
 target_link_libraries(condicionamento PRIVATE
-  mecanica
+  utilidades
   ${OpenBLAS_LIB}
   aleatorio
   tipos
   json_utils_mod
 )
+# ============================================================================
 
-# Metodos de integracao
+# ============================================================================
+#> Integracao
+# ----------------------------------------------------------------------------
+# Modulo que centraliza a integracao. Todos os metodos de integracao numerica
+# sao adicionados em
+#
+# "src/calcs/integracao/CMakeLists.txt"
+#
+# e sao chamados aqui, com as funcoes de forca e dos modulos centralizadores.
+# ----------------------------------------------------------------------------
+add_subdirectory(src/calcs/integracao) # Metodos de integracao
 add_library(integracao 
   "./src/calcs/forcas/forcas.F90" 
-  "./src/calcs/forcas/forcas_mi.F90" 
+  "./src/calcs/forcas/forcas_md.F90" 
+  "./src/calcs/forcas/forcas_mi.F90"
   
-  "./src/calcs/integracao/integrador.F90" 
-  "./src/calcs/integracao/rk/rungekutta.f90" 
-  "./src/calcs/integracao/rk/rungekutta2.f90" 
-  "./src/calcs/integracao/rk/rungekutta3.f90" 
-  "./src/calcs/integracao/rk/rungekutta4.f90" 
-  "./src/calcs/integracao/simpleticos/verlet.f90" 
-  "./src/calcs/integracao/simpleticos/euler_simp.f90" 
+  "./src/calcs/integracao/integrador.f90" 
+  ${CMAKE_CURRENT_BINARY_DIR}/src/calcs/integracao/integradores.f90
 
-  # Metodos de Ruth
-  "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" 
-  "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" 
-
-  # Metodos de Runge-Kutta-Nystrom
-  "./src/calcs/integracao/simpleticos/rkn/rkn551.f90" 
-  "./src/calcs/integracao/simpleticos/rkn/rkn671.f90" 
-
-  # Metodos de Stormer-Verlet Compostos
-  "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90" 
-  "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" 
-  
-  # Euler (explicito, tradicional)
-  "./src/calcs/integracao/euler_exp.f90" 
-  # Euler (implicito, tradicional)
-  "./src/calcs/integracao/euler_imp.f90" 
+  ${INTEGRADORES_SOURCE}
 )
 target_link_libraries(integracao PRIVATE
-  mecanica # usa o corretor e o de colisoes
   tipos
   json_utils_mod
 )
+# ============================================================================
 
-# Utilitarios de OS
-# Alguns recursos depENDem do sistema operacional, entao precisam ser
-# filtrados antes da inclusao no programa.
-IF (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  add_library(os "./src/os/linux.f90")
-
-ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  add_library(os "./src/os/windows.f90")
-ENDIF()
-
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Procura pelo Python
-# A exibicao dos graficos eh feita com o matplotlib, entao o Python precisa
-# estar instalado.
 # ----------------------------------------------------------------------------
+# A exibicao dos graficos eh feita com o matplotlib, entao o Python precisa
+# estar instalado. Se nao estiver, um aviso sera enviado mas a biblioteca sera
+# adicionada de qualquer jeito, entao caso o Python e o matplotlib sejam
+# instalados posteriormente, o programa funcionara.
+# ----------------------------------------------------------------------------
+add_library(pyplot "./src/libs/pyplot.f90")
+target_link_libraries(pyplot PRIVATE 
+  tipos
+  arquivos
+)
 find_program(PYTHON NAMES python python3 QUIET)
 IF(PYTHON)
   find_package(Python COMPONENTS Interpreter REQUIRED QUIET)
@@ -255,32 +356,58 @@ IF(PYTHON)
     ENDIF()
   ENDIF()
 
-  add_library(python_lib 
-    "./src/libs/python.f90"
-  )
   message(STATUS "Python localizado.")
 ELSE()
   message(WARNING "Python nao encontrado! Nao sera possivel criar graficos.")
 ENDIF()
+# ============================================================================
 
+# ============================================================================
+# Modulos para simulacao
 # ----------------------------------------------------------------------------
+# O modulo de simulacao centraliza todo o sistema e eh efetivamente o que faz
+# o programa funcionar, depois do MAIN.
+# 
+# O modulo simulacao_sorteio contem as rotinas para sortear e salvar os dados,
+# alem de simular se for desejado.
+#
+# O modulo simulacao_vi contem as rotinas para ler e rodar simulacoes com
+# valores predefinidos em algum arquivo de valores iniciais.
+# 
+# Os outros dois modulos sao chamados por esses primeiros, unindo os processos
+# de integracao numerica, colisoes, correcao, arquivos etc.
+# ----------------------------------------------------------------------------
+add_library(simulacao 
+  "./src/calcs/simulacao/simulacao_sorteio.f90"
+  "./src/calcs/simulacao/simulacao_vi.f90"
+  "./src/calcs/simulacao/simulacao.f90"
+  "./src/calcs/simulacao/simulador.f90"
+)
+target_link_libraries(simulacao PRIVATE
+  tipos
+  versao
+  arquivos
+  integracao
+  conexao_mod
+  utilidades
+  condicionamento
+  colisoes
+  corretor
+)
+# ============================================================================
+
+# ============================================================================
 # Linka as bibliotecas no executavel
 # ----------------------------------------------------------------------------
 target_link_libraries(gravidade
   tipos
-  os
+  pyplot
+  simulacao
   integracao
-  mecanica
-  python_lib
-  condicionamento
-  aleatorio
-  octree
-  jsonfortran
-  json_utils_mod
-  conexao_mod
 )
+# ============================================================================
 
-# ----------------------------------------------------------------------------
+# ============================================================================
 # Apos a compilacao faz uma copia do executavel para fora da pasta build
 # ----------------------------------------------------------------------------
 add_custom_command(TARGET gravidade POST_BUILD 
@@ -288,3 +415,4 @@ add_custom_command(TARGET gravidade POST_BUILD
      "$<TARGET_FILE:gravidade>"
      "../$<CONFIGURATION>/$<TARGET_FILE_NAME:gravidade>" 
   COMMENT "Copiando para o lado de fora")
+# ----------------------------------------------------------------------------

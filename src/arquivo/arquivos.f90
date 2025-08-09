@@ -7,113 +7,77 @@
 !   
 !   O objeto `arquivo` tem as propriedades de criacao, escrita, 
 !   fechamento, criacao de nome e criacao de formato.
+! 
+!   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   24 de julho de 2025
+!   08 de agosto de 2025
 ! 
 ! Autoria:
 !   oap
 ! 
 MODULE arquivos
   USE tipos
-
-  ! OPENMP
-  USE OMP_LIB
+  USE diretorio
+  USE string_utils
   USE json_utils_mod
-  USE version
 
   IMPLICIT NONE
+  PUBLIC arquivo, ler_csv, capturar_unidade
 
-  ! classe de arquivo
   TYPE :: arquivo
+    !> Ids dos arquivos data, info e backup
+    INTEGER :: id_arq_data, id_arq_info, id_arq_bkp
+    
+    !> Informacoes sobre a simulacao
+    INTEGER :: qntd_corpos_int, dimensao_int
 
-  ! ids dos arquivos
-  INTEGER :: idarqdata, idarqinfo, idarqbkp, qntdCorpos_int, dimensao_int
-  ! nome dos arquivos, qntd de corpos, formato e dimensao
-  CHARACTER(:), allocatable :: dirarq, nomearqdata, nomearqinfo, nomearqbkp, formato, formatoMassas, qntdCorpos, dimensao
-  ! extensao
-  CHARACTER(4) :: extensao = '.csv'
-  ! diretorio padrao (fora da pasta build)
-  CHARACTER(11) :: dir = "./out/data/"
-  CHARACTER(5) :: dir_out = "./out"
-  CHARACTER(4) :: dir_data = "data"
-  CHARACTER(16) :: dir_vi = "valores_iniciais"
-  
-  CONTAINS
-    PROCEDURE :: criar, escrever, fechar, nomeArquivo, criarFormato, escrever_massas, escrever_cabecalho, &
-                 inicializar_arquivo_info, atualizar_arquivo_info, arquivo_bkp, excluir_bkp
-  END TYPE
+    !> Nomes dos arquivos
+    CHARACTER(:), ALLOCATABLE :: dir_arq, nome_arq_data, nome_arq_info, nome_arq_bkp
+    
+    !> Formatos
+    CHARACTER(:), ALLOCATABLE :: formato, formato_massas, qntd_corpos, dimensao
+
+    !> Diretorios padrao
+    CHARACTER(:), ALLOCATABLE :: dir_out
+
+    CONTAINS
+      !> Rotinas e funcoes
+      PROCEDURE :: definir_diretorio_saida,& ! Define o diretorio de saida
+                   gerar_nome_diretorio,& ! Gera o nome do diretorio de saida
+                   criar_formatos,&       ! Cria os formatos para massas e dados
+                   criar_data,&           ! Cria is arquivos de dados de saida
+                   escrever_data,&        ! Escreve arrays no data.csv
+                   fechar,&               ! Fecha os arquivos de saida
+                   excluir_bkp,&          ! Exclui o arquivo de backup
+                   escrever_cabecalho_data,&  ! Escreve o cabecalho do data.csv
+                   inicializar_arquivo_info,& ! Inicializa arquivo de informacoes
+                   atualizar_arquivo_info,&   ! Atualiza o arquivo de informacoes
+                   atualizar_arquivo_bkp      ! Atualiza o arquivo de backup
+  END TYPE arquivo
 
 CONTAINS
 
-! ************************************************************
-!! Verifica se o diretorio "out" existe, e caso nao, cria
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE diretorio_out ()
-  IMPLICIT NONE
-  LOGICAL :: existe = .TRUE.
-  ! verifica se existe o diretorio out
-  INQUIRE(file="./out", exist=existe)
-  IF (.NOT. existe) THEN
-    CALL criar_dir("./out")
+SUBROUTINE definir_diretorio_saida (self, dir_param)
+  CLASS(arquivo), INTENT(INOUT) :: self
+  CHARACTER(LEN=*), INTENT(INOUT), OPTIONAL :: dir_param
+  CHARACTER(:), ALLOCATABLE :: dir
+  
+  IF (PRESENT(dir_param)) THEN
+    ALLOCATE(CHARACTER(LEN(TRIM(dir_param))) :: dir)
+    dir = dir_param
+  ELSE
+    ALLOCATE(CHARACTER(5) :: dir)
+    dir = "./out"
   ENDIF
-END SUBROUTINE diretorio_out
+  
+  IF (ALLOCATED(self % dir_out)) DEALLOCATE(self % dir_out)
+  ALLOCATE(CHARACTER(LEN(TRIM(dir))) :: self % dir_out)
+  self % dir_out = TRIM(dir)
+END SUBROUTINE definir_diretorio_saida
 
 ! ************************************************************
-!! Verifica se o diretorio "out/data" existe, e caso nao, cria
-!
-! Modificado:
-!   26 de maio de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE diretorio_data ()
-  IMPLICIT NONE
-  LOGICAL :: existe = .TRUE.
-
-  ! Verifica se existe o diretorio 'out'
-  CALL diretorio_out()
-
-  ! verifica se existe o diretorio padrao
-  INQUIRE(file='./out/data', exist=existe)
-  IF (.NOT. existe) THEN
-    CALL criar_dir('data', './out')
-  ENDIF
-END SUBROUTINE diretorio_data
-
-! ************************************************************
-!! Verifica se o diretorio "out/valores_iniciais" existe, e 
-!! caso nao, cria
-!
-! Modificado:
-!   05 de maio de 2025
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE diretorio_vi ()
-  IMPLICIT NONE
-  LOGICAL :: existe = .TRUE.
-
-  ! Verifica se existe o diretorio 'out'
-  CALL diretorio_out()
-
-  ! verifica se existe o diretorio padrao
-  INQUIRE(file='./out/valores_iniciais', exist=existe)
-  IF (.NOT. existe) THEN
-    CALL criar_dir('valores_iniciais', './out')
-  ENDIF
-END SUBROUTINE diretorio_vi
-
-! ************************************************************
-!! Nome do arquivo
+!! Nome da pasta de saida
 !
 ! Objetivos:
 !   Cria o nome do diretorio baseado no dia corrente e contando
@@ -122,48 +86,45 @@ END SUBROUTINE diretorio_vi
 !   AAAAMMDD_03, etc.
 !
 ! Modificado:
-!   26 de maio de 2024
+!   26 de maio de 2024 (criado)
+!   08 de agosto de 2025 (modificado)
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE nomeArquivo (self)
-
-  IMPLICIT NONE
+SUBROUTINE gerar_nome_diretorio (self)
   CLASS(arquivo), INTENT(INOUT) :: self
-
-  ! para iterar e nao repetir arquivo
-  INTEGER :: i = 1
   CHARACTER(3) :: numero
+  INTEGER :: i
   LOGICAL :: existe
+  
+  ! Para capturar a data de hoje
+  CHARACTER(8) :: data_hoje
 
-  ! para capturar a data
-  CHARACTER(8) :: datahoje
+  CALL DATE_AND_TIME(data_hoje)
 
-  ! verifica se existe o diretorio padrao
-  CALL diretorio_data()
+  ! Verifica se existe o diretorio de saida
+  IF (.NOT. ALLOCATED(self % dir_out)) CALL self % definir_diretorio_saida()
+  CALL diretorio_data(self % dir_out)
 
-  ! Por padrao, existe
+  ! Descobrindo iterativamente qual o nome do arquivo
   existe = .TRUE.
-
-  ! em string
-  CALL DATE_AND_TIME(datahoje)
-
+  i = 1
   DO WHILE (existe)
     WRITE(numero, '(I3.3)') i
     i = i + 1
 
-    ! cria nomes
-    self % dirarq      = TRIM(datahoje)//"_"//TRIM(numero)
-    self % nomearqdata = self % dir//self % dirarq//"/data"//self % extensao
-    self % nomearqinfo = self % dir//self % dirarq//"/info.txt"
-    self % nomearqbkp  = self % dir//self % dirarq//"/bkp.txt"
-
-    ! verifica se existe
-    INQUIRE(file=TRIM(self % dir//self % dirarq), exist=existe)
+    ! Cria nomes
+    self % dir_arq = TRIM(data_hoje)//"_"//TRIM(numero)
+    self % nome_arq_data = self%dir_out // "/data/" // self%dir_arq // "/data.csv"
+    self % nome_arq_info = self%dir_out // "/data/" // self%dir_arq // "/info.txt"
+    self % nome_arq_bkp  = self%dir_out // "/data/" // self%dir_arq // "/bkp.txt"
+    
+    ! Verifica se a pasta existe
+    INQUIRE(file=TRIM(self%dir_out // "/data/" // self%dir_arq), exist=existe)
   END DO
 
-END SUBROUTINE nomeArquivo
+END SUBROUTINE gerar_nome_diretorio
 
 ! ************************************************************
 !! Formato do arquivo
@@ -171,7 +132,7 @@ END SUBROUTINE nomeArquivo
 ! Objetivos:
 !   Para uma determinada quantidade de particulas e dimensoes,
 !   eh criada a formatacao para transformar o array em uma 
-!   string corretamente. SENDo N:= qntdCorpos e D := dimensao,
+!   string corretamente. SENDo N:= qntd_corpos e D := dimensao,
 !   por exemplo, deve ser gerada a seguinte formatacao:
 !   '(2(N(D(F25.7,:,","))))'
 !   enquanto para as massas:
@@ -182,106 +143,79 @@ END SUBROUTINE nomeArquivo
 !
 ! Autoria:
 !   oap
-! 
-SUBROUTINE criarFormato (self, qntdCorpos, dimensao)
+!
+SUBROUTINE criar_formatos (self, qntd_corpos, dimensao)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN)           :: qntdCorpos, dimensao
+  INTEGER, INTENT(IN)           :: qntd_corpos, dimensao
 
   ! salva a quantidade de corpos e dimensao
-  self % qntdCorpos = espacosVazios(qntdCorpos)
-  self % dimensao = espacosVazios(dimensao)
+  self % qntd_corpos = int_para_string(qntd_corpos)
+  self % dimensao = int_para_string(dimensao)
 
-  self % qntdCorpos_int = qntdCorpos
+  self % qntd_corpos_int = qntd_corpos
   self % dimensao_int = dimensao
 
-  self % formato = '(2(' // self % dimensao // '(' // self % qntdCorpos // '(F25.13, :, ","))))'
-  self % formatoMassas = '(' // self % qntdCorpos // '(F25.7, :, ","))'
+  self % formato = '(2(' // self % dimensao // '(' // self % qntd_corpos // '(F25.13, :, ","))))'
+  self % formato_massas = '(' // self % qntd_corpos // '(F25.7, :, ","))'
 
-END SUBROUTINE criarFormato
+END SUBROUTINE criar_formatos
 
 ! ************************************************************
-!! Criacao do arquivo
+!! Criacao dos arquivos de dados de saida
 !
 ! Objetivos:
-!   Cria um arquivo .csv que se configura para fazer a formatacao
-!   de uma determinada quantidade de particulas e uma determinada
-!   quantidade de dimensoes. O `idarq` eh utilizado como
-!   identificador unico do arquivo.
+!   Cria os arquivos de saida da simulacao dentro do diretorio
+!   devido.
 !
 ! Modificado:
-!   26 de maio de 2024
+!   08 de agosto de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE criar (self, qntdCorpos, dimensao)
+SUBROUTINE criar_data (self, qntd_corpos, dimensao)
 
-  IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT) :: self
-  INTEGER, INTENT(IN)           :: qntdCorpos, dimensao
-  INTEGER(kind=4)               :: idarqdata, idarqinfo, idarqbkp
+  INTEGER, INTENT(IN)           :: qntd_corpos, dimensao
+  INTEGER(kind=4)               :: id_arq_data, id_arq_info, id_arq_bkp
 
   WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
 
   ! cria formatacao
-  CALL self % criarFormato(qntdCorpos, dimensao)
+  CALL self % criar_formatos(qntd_corpos, dimensao)
   WRITE (*, '(a)') '  > formato : ' // self % formato
 
-  ! criacao do nome do arquivo
-  CALL self % nomeArquivo()
-  WRITE (*,'(a)') '  > diretorio de saida: ' // self % dirarq
+  ! criacao do nome do diretorio
+  CALL self % gerar_nome_diretorio()
+  WRITE (*,'(a)') '  > diretorio de saida: ' // self % dir_arq
 
   ! cria o diretorio
-  CALL criar_dir(self % dirarq, self % dir)
+  CALL criar_dir(self % dir_arq, self % dir_out // "/data")
 
-  ! cria o arquivo csv
-  CALL capturar_unidade(idarqdata)
-  self % idarqdata = idarqdata
-  OPEN(idarqdata, file = self % nomearqdata, status='new')
+  ! cria o arquivo "data"
+  CALL capturar_unidade(id_arq_data)
+  self % id_arq_data = id_arq_data
+  OPEN(id_arq_data, file = self % nome_arq_data, status='new')
 
   ! cria o arquivo info
-  CALL capturar_unidade(idarqinfo)
-  self % idarqinfo = idarqinfo
-  OPEN(idarqinfo, file = self % nomearqinfo, status='new')
+  CALL capturar_unidade(id_arq_info)
+  self % id_arq_info = id_arq_info
+  OPEN(id_arq_info, file = self % nome_arq_info, status='new')
 
   ! cria o arquivo bkp
-  CALL capturar_unidade(idarqbkp)
-  self % idarqbkp = idarqbkp
-  OPEN(idarqbkp, file = self % nomearqbkp, status='new')
+  CALL capturar_unidade(id_arq_bkp)
+  self % id_arq_bkp = id_arq_bkp
+  OPEN(id_arq_bkp, file = self % nome_arq_bkp, status='new')
 
   WRITE (*,'(a)') '  > arquivos criados!'
   WRITE (*,*)
 
-END SUBROUTINE criar
+END SUBROUTINE criar_data
 
 ! ************************************************************
-!! Escrita das massas
-!
-! Objetivos:
-!   Salva as massas no arquivo de acordo com o formato criado.
-!
-! Modificado:
-!   26 de maio de 2024
-!
-! Autoria:
-!   oap
-! 
-SUBROUTINE escrever_massas (self, massas)
-
-  IMPLICIT NONE
-  CLASS(arquivo), INTENT(IN) :: self
-  REAL(pf), INTENT(IN)       :: massas(:)
-
-  ! salva
-  WRITE (self % idarqdata, self % formatoMassas) massas
-
-END SUBROUTINE escrever_massas
-
-
-! ************************************************************
-!! Escrita do cabecalho
+!! Escrita do cabecalho no arquivo "data"
 !
 ! Objetivos:
 !   Salva no comeco do arquivo algumas informacoes da simulacao,
@@ -293,7 +227,7 @@ END SUBROUTINE escrever_massas
 ! Autoria:
 !   oap
 !
-SUBROUTINE escrever_cabecalho (self, h, G, massas)
+SUBROUTINE escrever_cabecalho_data (self, h, G, massas)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN) :: self
@@ -301,21 +235,21 @@ SUBROUTINE escrever_cabecalho (self, h, G, massas)
   REAL(pf)                   :: h, G
 
   ! Salva h
-  WRITE (self % idarqdata, "(F25.7, :, ',')") h
+  WRITE (self % id_arq_data, "(F25.7, :, ',')") h
 
   ! Salva G
-  WRITE (self % idarqdata, "(F25.7, :, ',')") G
+  WRITE (self % id_arq_data, "(F25.7, :, ',')") G
 
   ! Salva as massas
-  CALL self%escrever_massas(massas)
+  WRITE (self % id_arq_data, self % formato_massas) massas
 
-END SUBROUTINE escrever_cabecalho
+END SUBROUTINE escrever_cabecalho_data
 
 ! ************************************************************
-!! Escrita do arquivo
+!! Escrita no arquivo "data"
 !
 ! Objetivos:
-!   Escreve o array no arquivo, conforme formato.
+!   Escreve um array no arquivo "data", conforme formato.
 !
 ! Modificado:
 !   26 de maio de 2024
@@ -323,16 +257,16 @@ END SUBROUTINE escrever_cabecalho
 ! Autoria:
 !   oap
 !
-SUBROUTINE escrever (self, array)
+SUBROUTINE escrever_data (self, array)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN) :: self
-  REAL(pf), INTENT(IN)       :: array(2,self % qntdCorpos_int,self % dimensao_int)
+  REAL(pf), INTENT(IN)       :: array(2,self%qntd_corpos_int,self%dimensao_int)
 
   ! salva 
-  WRITE (self % idarqdata, self % formato) array
+  WRITE (self % id_arq_data, self % formato) array
 
-END SUBROUTINE escrever
+END SUBROUTINE escrever_data
 
 ! ************************************************************
 !! Fechamento dos arquivos
@@ -351,29 +285,10 @@ SUBROUTINE fechar (self)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN) :: self
   
-  CLOSE(self % idarqdata)
-  CLOSE(self % idarqinfo)
+  CLOSE(self % id_arq_data)
+  CLOSE(self % id_arq_info)
 
 END SUBROUTINE fechar
-
-! ************************************************************
-!! Captura a data e a hora no formato 11:58 24/07/2025
-!
-! Modificado:
-!   24 de julho de 2025
-!
-! Autoria:
-!   oap
-!
-SUBROUTINE data_hora_string (data_hora_str)
-  CHARACTER(LEN=20), INTENT(OUT) :: data_hora_str
-  INTEGER :: v(8)
-
-  ! v = [ano, mês, dia, fuso, hora, min, seg, milisseg]
-  call date_and_time(values=v)
-
-  WRITE(data_hora_str, '(I2.2,":",I2.2," ",I2.2,"/",I2.2,"/",I4)') v(5), v(6), v(3), v(2), v(1)
-END SUBROUTINE data_hora_string
 
 ! ************************************************************
 !! Criacao do arquivo de informacoes
@@ -387,9 +302,7 @@ END SUBROUTINE data_hora_string
 ! Autoria:
 !   oap
 !
-SUBROUTINE inicializar_arquivo_info (self, infos)
-
-  IMPLICIT NONE
+SUBROUTINE inicializar_arquivo_info (self, infos, version_string, precisao)
   CLASS(arquivo), INTENT(IN)   :: self
   TYPE(json_value), POINTER    :: infos
   INTEGER          :: N, t0, tf, checkpoints ! checkpoints
@@ -400,6 +313,7 @@ SUBROUTINE inicializar_arquivo_info (self, infos)
   INTEGER          :: cormnt
   LOGICAL          :: paralelo, gpu ! forcas paralelas, gpu
   CHARACTER(20)    :: data_hora_str
+  CHARACTER(LEN=*) :: version_string, precisao
 
   REAL(pf) :: densidade
   LOGICAL :: encontrado
@@ -433,47 +347,46 @@ SUBROUTINE inicializar_arquivo_info (self, infos)
   ! Data e hora de inicio
   CALL data_hora_string(data_hora_str)
 
-  WRITE (self % idarqinfo, '(*(g0,1x))') "# gravidade-fortran v"//version_string//'_'//precisao
-  WRITE (self % idarqinfo, *) 
+  WRITE (self % id_arq_info, '(*(g0,1x))') "# gravidade-fortran v"//version_string//'_'//precisao
+  WRITE (self % id_arq_info, *) 
 
-  WRITE (self % idarqinfo, '(*(g0,1x))') "# configuracoes"
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- corpos: ", N
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- metodo: ", metodo
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- G: ", G
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- h: ", h
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- amortecimento: ", soft
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- checkpoints: ", checkpoints
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- total passos: " 
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- t0: ", t0
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- tf: ", tf
-  WRITE (self % idarqinfo, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo, gpu
+  WRITE (self % id_arq_info, '(*(g0,1x))') "# configuracoes"
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- corpos: ", N
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- metodo: ", metodo
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- G: ", G
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- h: ", h
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- amortecimento: ", soft
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- checkpoints: ", checkpoints
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- total passos: " 
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- t0: ", t0
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- tf: ", tf
+  WRITE (self % id_arq_info, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo, gpu
   
   IF (corrigir) THEN
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", corrigir
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: ", corme
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao: ", corrigir
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao margem erro: ", corme
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao max num tent.: ", cormnt
   ELSE
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao: ", corrigir
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao margem erro: n/a"
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- correcao max num tent.: n/a"
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao: ", corrigir
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao margem erro: n/a"
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao max num tent.: n/a"
   ENDIF
 
   IF (colidir) THEN
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", colidir, colidir_modo
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- densidade: ", densidade
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- colisoes: ", colidir, colidir_modo
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- densidade: ", densidade
   ELSE
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- colisoes: ", colidir
-    WRITE (self % idarqinfo, '(*(g0,1x))') "-- densidade: n/a"
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- colisoes: ", colidir
+    WRITE (self % id_arq_info, '(*(g0,1x))') "-- densidade: n/a"
   ENDIF
 
-  WRITE (self % idarqinfo, *)
+  WRITE (self % id_arq_info, *)
 
-  WRITE (self % idarqinfo, '(*(g0,1x))') "# simulacao: "
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- inicio: ", data_hora_str
-  WRITE (self % idarqinfo, '(*(g0,1x))') "-- duracao: "
+  WRITE (self % id_arq_info, '(*(g0,1x))') "# simulacao: "
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- inicio: ", data_hora_str
+  WRITE (self % id_arq_info, '(*(g0,1x))') "-- duracao: "
 
-  CLOSE(self % idarqinfo)
-
+  CLOSE(self % id_arq_info)
 END SUBROUTINE inicializar_arquivo_info
 
 ! ************************************************************
@@ -495,8 +408,6 @@ END SUBROUTINE inicializar_arquivo_info
 !   oap
 !
 SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
-
-  IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT)   :: self
   INTEGER, INTENT(IN)          :: qntd_passos
   REAL(pf64), INTENT(IN)         :: duracao
@@ -508,33 +419,32 @@ SUBROUTINE atualizar_arquivo_info (self, qntd_passos, duracao)
   allocate(infos(tamanho_arquivo))
 
   CALL capturar_unidade(nova_unidade)
-  self % idarqinfo = nova_unidade
+  self % id_arq_info = nova_unidade
 
-  OPEN(newunit=self%idarqinfo,file=self%nomearqinfo,status='old',action='readwrite')
+  OPEN(newunit=self%id_arq_info,file=self%nome_arq_info,status='old',action='readwrite')
   
   DO i = 1, tamanho_arquivo
-    READ (self % idarqinfo, '(A)') infos(i)
+    READ (self % id_arq_info, '(A)') infos(i)
   END DO
 
   ! volta para o comeco do arquivo
-  REWIND(self % idarqinfo)
+  REWIND(self % id_arq_info)
 
   ! DO WHILE (.NOT. mudou_qntd_passos .AND. .NOT. mudou_duracao)
   DO i = 1, 22
     ! se estiver na linha do tf
     IF (i == linha_qntd_passos) THEN
-      WRITE (self % idarqinfo, '(*(g0,1x))') "-- passos: ", qntd_passos
+      WRITE (self % id_arq_info, '(*(g0,1x))') "-- passos: ", qntd_passos
       mudou_qntd_passos = .TRUE.
     ! se estiver na linha da duracao
     ELSE IF (i == linha_duracao) THEN
-      WRITE (self % idarqinfo, '(*(g0,1x))') "-- duracao: ", duracao
+      WRITE (self % id_arq_info, '(*(g0,1x))') "-- duracao: ", duracao
       mudou_duracao = .TRUE.
     ! se nao
     ELSE
-      WRITE (self % idarqinfo, '(*(g0,1x))') infos(i)
+      WRITE (self % id_arq_info, '(*(g0,1x))') infos(i)
     ENDIF
   END DO
-
 END SUBROUTINE atualizar_arquivo_info
 
 ! ************************************************************
@@ -549,15 +459,14 @@ END SUBROUTINE atualizar_arquivo_info
 ! Autoria:
 !   oap
 !
-SUBROUTINE arquivo_bkp (self, qntd_passos, duracao)
-  IMPLICIT NONE
+SUBROUTINE atualizar_arquivo_bkp (self, qntd_passos, duracao)
   CLASS(arquivo), INTENT(INOUT)   :: self
-  INTEGER, INTENT(IN)          :: qntd_passos
-  REAL(pf64), INTENT(IN)         :: duracao
+  INTEGER, INTENT(IN)             :: qntd_passos
+  REAL(pf64), INTENT(IN)          :: duracao
 
-  REWIND(self%idarqbkp)
-  WRITE(self%idarqbkp, '(*(g0,1x))') qntd_passos, duracao
-END SUBROUTINE arquivo_bkp
+  REWIND(self%id_arq_bkp)
+  WRITE(self%id_arq_bkp, '(*(g0,1x))') qntd_passos, duracao
+END SUBROUTINE atualizar_arquivo_bkp
 
 ! ************************************************************
 !! Exclusao do arquivo de backup
@@ -576,8 +485,48 @@ SUBROUTINE excluir_bkp (self)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT)   :: self
 
-  CLOSE(self % idarqbkp, status='delete') ! fecha o arquivo
+  CLOSE(self % id_arq_bkp, status='delete') ! fecha o arquivo
 END SUBROUTINE excluir_bkp
+
+
+!*****************************************************************************
+!! Retorna uma unidade FORTRAN que esteja livre
+!
+!  Objetivos:
+!    Uma unidade de FORTRAN "livre" eh um inteiro entre 1 e 99 que nao esta
+!    associado a nenhum dispositivo I/O, e eh utilizado para abrir arquivos.
+!    Se a unidade eh nula, entao nao ha nenhuma unidade FORTRAN livre.
+!    
+!    Os numeros 5, 6 e 9 sao reservados, entao nunca sao retornados.
+!    
+!    O codigo foi baseado na biblioteca GNUFOR de John Burkardt.
+!
+!  Modificado:
+!    02 de fevereiro de 2024
+!
+!  Autoria:
+!    oap
+!
+SUBROUTINE capturar_unidade ( iunit )
+  IMPLICIT NONE
+  INTEGER ( kind = 4 ) i
+  INTEGER ( kind = 4 ) ios
+  INTEGER ( kind = 4 ) iunit
+  LOGICAL lopen
+  iunit = 0
+  DO i = 1, 99
+    IF (i /= 5 .and. i /= 6 .and. i /= 9) THEN
+      INQUIRE ( unit = i, opened = lopen, iostat = ios )
+      IF ( ios == 0 ) THEN
+        IF ( .not. lopen ) THEN
+          iunit = i
+          RETURN
+        ENDIF
+      ENDIF
+    ENDIF
+  END DO
+  RETURN
+END SUBROUTINE capturar_unidade
 
 ! ************************************************************
 !! Leitura de arquivo CSV
@@ -598,7 +547,7 @@ SUBROUTINE ler_csv (nome, h, G, massas, R, P)
   REAL(pf), allocatable, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
   CHARACTER(len=100000)                :: massas_string
   INTEGER :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
-  REAL(pf) :: t0, tf
+  INTEGER :: t_rate, t0, tf
 
   WRITE(*, '(a)') "LER_CSV:"
   WRITE(*, '(a)') "  > arquivo: " // TRIM(nome)
@@ -645,146 +594,18 @@ SUBROUTINE ler_csv (nome, h, G, massas, R, P)
   ALLOCATE(P(qntdLinhas,qntdCorpos,3))
 
   ! captura as posicoes e momentos
-  t0 = omp_get_wtime()
+  CALL SYSTEM_CLOCK(count_rate=t_rate)
+  CALL SYSTEM_CLOCK(t0)
   DO i = 1, qntdLinhas-1
     READ(iu,*) R(i,:,:),P(i,:,:)
   END DO
-  tf = omp_get_wtime()
+  CALL SYSTEM_CLOCK(tf)
   
   CLOSE(iu)
 
-  WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", tf-t0, "s"
+  WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", REAL(tf-t0)/REAL(t_rate), "s"
   WRITE (*,*)
 
 END SUBROUTINE ler_csv
 
-! ************************************************************
-!! Criacao de diretorio
-!
-! Objetivos:
-!   Cria um diretorio em algum lugar.
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-!
-SUBROUTINE criar_dir (dir, onde)
-
-  IMPLICIT NONE
-  CHARACTER(LEN=*) :: dir
-  CHARACTER(LEN=*),OPTIONAL :: onde
-  CHARACTER(LEN=LEN(dir)) :: res
-  CHARACTER(:), ALLOCATABLE :: comando
-  INTEGER :: i
-  res = dir
-  ! Remove o "./" se tiver
-  DO i = 1, LEN(dir)
-    IF (dir(i:i) == "/" .OR. dir(i:i) == ".") THEN
-      res(i:i) = " "
-    ENDIF
-  END DO
-
-  IF (PRESENT(onde)) THEN
-    ALLOCATE(CHARACTER(3+LEN(onde)+10+LEN(res)) :: comando)
-    comando = "cd "//onde//" && mkdir "// TRIM(res)
-  ELSE
-    comando = "mkdir "//TRIM(res)
-  ENDIF
-
-  CALL SYSTEM(comando)
-
-  DEALLOCATE(comando)
-
-END SUBROUTINE criar_dir
-
-! ************************************************************
-!! Remocao de espacos vazios
-!
-! Objetivos:
-!   Salva as massas no arquivo de acordo com o formato criado.
-!
-! Modificado:
-!   15 de marco de 2024
-!
-! Autoria:
-!   oap
-!
-FUNCTION espacosVazios (valor)
-
-  IMPLICIT NONE
-  INTEGER, INTENT(IN)           :: valor
-  CHARACTER(7)                  :: valor_str
-  CHARACTER(:), ALLOCATABLE     :: valor_str_parcial, espacosVazios
-  INTEGER                       :: i = 1
-
-  ! transforma o valor em string
-  WRITE(valor_str, '(I7)') valor
-
-  ! alinha a esquerda para facilitar
-  valor_str = ADJUSTL(valor_str)
-
-  ! onde ficara salvo
-  valor_str_parcial = ""
-  
-  ! elimina os caracteres vazios
-  DO WHILE (.TRUE.)
-    IF (valor_str(i:i).eq." ") THEN
-      i = 1
-      exit
-    ELSE
-      valor_str_parcial = valor_str_parcial // valor_str(i:i)
-      i = i + 1
-    ENDIF     
-  END DO
-
-  ! aloca a string para poder salvar
-  ALLOCATE( CHARACTER(LEN_TRIM(valor_str_parcial)) :: espacosVazios)
-  ! enfim, salva
-  espacosVazios = TRIM(valor_str_parcial)
-
-END FUNCTION espacosVazios
-
-!*****************************************************************************
-!! Retorna uma unidade FORTRAN que esteja livre
-!
-!  Objetivos:
-!
-!    Uma unidade de FORTRAN "livre" eh um inteiro entre 1 e 99 que nao esta
-!    associado a nenhum dispositivo I/O, e eh utilizado para abrir arquivos.
-!    Se a unidade eh nula, entao nao ha nenhuma unidade FORTRAN livre.
-!    
-!    Os numeros 5, 6 e 9 sao reservados, entao nunca sao retornados.
-!    
-!    O codigo foi baseado na biblioteca GNUFOR de John Burkardt.
-!
-!  Modificado:
-!
-!    02 de fevereiro de 2024
-!
-!  Autoria:
-!
-!    oap
-!
-SUBROUTINE capturar_unidade ( iunit )
-  IMPLICIT NONE
-  INTEGER ( kind = 4 ) i
-  INTEGER ( kind = 4 ) ios
-  INTEGER ( kind = 4 ) iunit
-  LOGICAL lopen
-  iunit = 0
-  DO i = 1, 99
-    IF (i /= 5 .and. i /= 6 .and. i /= 9) THEN
-      INQUIRE ( unit = i, opened = lopen, iostat = ios )
-      IF ( ios == 0 ) THEN
-        IF ( .not. lopen ) THEN
-          iunit = i
-          RETURN
-        ENDIF
-      ENDIF
-    ENDIF
-  END DO
-  RETURN
-END SUBROUTINE capturar_unidade
 END MODULE arquivos
