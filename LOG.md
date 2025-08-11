@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-08-11] v0.7.1: Enviando o tempo na exibição
+
+Para facilitar comparações, o instante $t$ agora é enviado pelo socket quando o "exibir" estiver habilitado.
+
+---
+
 ## [2025-08-08] v0.7.0: Maior modularização do programa
 
 - Boa parte do programa foi refatorada e reorganizada para tudo ficar mais modularizado. Isso incluiu mudanças no CMakeLists principal e na criação de um secundário para os integradores.

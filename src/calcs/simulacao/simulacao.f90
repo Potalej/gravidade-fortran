@@ -245,7 +245,7 @@ SUBROUTINE rodar (self, qntdPassos)
   CLASS(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
   INTEGER :: qntd_por_rodada, passo, sub_passo
-  REAL(pf) :: inst_t, tempo_total, t0, tf
+  REAL(pf) :: inst_t, subinst_t, tempo_total, t0, tf
   REAL(pf) :: R1(self%N,self%dim), P1(self%N,self%dim)
   REAL(pf) :: E
   LOGICAL :: corrigiu
@@ -258,6 +258,7 @@ SUBROUTINE rodar (self, qntdPassos)
 
   passo = 0
   inst_t = 0
+  subinst_t = 0
   tempo_total = 0
 
   DO WHILE (passo < self % qntd_checkpoints)
@@ -269,6 +270,7 @@ SUBROUTINE rodar (self, qntdPassos)
     !> Simulacao em si
     DO sub_passo = 1, qntd_por_rodada
       !> Integracao
+      subinst_t = subinst_t + self % h
       CALL self % integrador % aplicar(R1, P1)
 
       !> Colide, se for o caso
@@ -281,7 +283,7 @@ SUBROUTINE rodar (self, qntdPassos)
       !> Se for exibir, envia os dados
       IF (self % exibir) THEN
         !> Envia nos subpassos pares
-        IF (MOD(sub_passo,2) == 0) CALL self%conexao%enviar(R1, P1)
+        IF (MOD(sub_passo,2) == 0) CALL self%conexao%enviar(subinst_t, R1, P1)
       END IF
     END DO
 

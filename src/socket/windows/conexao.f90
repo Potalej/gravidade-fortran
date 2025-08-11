@@ -2,7 +2,7 @@
 !! Conexao com o servidor
 !
 ! Modificado:
-!   11 de julho de 2025
+!   11 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -61,15 +61,16 @@ SUBROUTINE encerrar_conexao (self)
     CALL wsa_cleanup()
 END SUBROUTINE
 
-SUBROUTINE enviar (self, R, P)
+SUBROUTINE enviar (self, t, R, P)
     CLASS (conexao_socket) :: self
-    REAL(pf) :: R(self % N,3), P(self % N,3)
-    REAL(c_double) :: pos(self % N,3), mom(self % N,3)
+    REAL(pf) :: t, R(self % N,3), P(self % N,3)
+    REAL(c_double) :: t_double, pos(self % N,3), mom(self % N,3)
 
     pos = REAL(R, kind=c_double)
     mom = REAL(P, kind=c_double)
+    t_double = REAL(t, kind=c_double)
 
-    CALL enviar_dados(self % sockfd, self % N, pos)
+    CALL enviar_dados(self % sockfd, t_double, self % N, pos)
 END SUBROUTINE
 
 END MODULE conexao

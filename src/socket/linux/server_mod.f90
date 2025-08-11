@@ -2,7 +2,7 @@
 !! Sockets e servidor
 !
 ! Modificado:
-!   11 de julho de 2025
+!   11 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -101,23 +101,24 @@ contains
         ENDIF
     END SUBROUTINE
 
-    SUBROUTINE enviar_dados (sockfd, N, R)
+    SUBROUTINE enviar_dados (sockfd, t, N, R)
         INTEGER(c_int) :: sockfd
         CHARACTER(len=100), target :: linha
         CHARACTER(len=65536), target :: buffer
-        REAL(c_double), target :: R(:,:)
+        REAL(c_double), target :: t, R(:,:)
         INTEGER(c_int) :: res_envio
         INTEGER :: i, N
 
         ! Montando os dados
-        buffer = ""
+        WRITE(linha, '(F16.4)') t
+        buffer = TRIM(linha)//CHAR(10)
         DO i = 1, N
-            write(linha, '(F16.4,1X,F16.4,1X,F16.4)') R(i,1), R(i,2), R(i,3)
-            buffer = trim(buffer)//trim(linha)//char(10)
+            WRITE(linha, '(F16.4,1X,F16.4,1X,F16.4)') R(i,1), R(i,2), R(i,3)
+            buffer = TRIM(buffer)//TRIM(linha)//CHAR(10)
         END DO
 
         ! Enviando os dados
-        res_envio = send(sockfd, c_loc(buffer), len(trim(buffer)), 0_c_int)
+        res_envio = send(sockfd, c_loc(buffer), LEN(TRIM(buffer)), 0_c_int)
     END SUBROUTINE
 
 END MODULE server_mod
