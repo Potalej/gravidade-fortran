@@ -13,50 +13,50 @@
 !   oap
 ! 
 MODULE integrador
-
-	USE tipos
-	USE funcoes_forca
+	
+  USE tipos
+  USE funcoes_forca
   USE json_utils_mod
-	IMPLICIT NONE
-	PRIVATE
-	PUBLIC integracao
+  IMPLICIT NONE
+  PRIVATE
+  PUBLIC integracao
 
 !> Esta eh a classe de integracao, da qual todos os metodos de 
 !  integracao devem ser filhos.
-	TYPE, ABSTRACT :: integracao
-		! m: Massas
-		REAL(pf), ALLOCATABLE :: m(:)
-		REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
-		
-		! Massas iguais
-		LOGICAL  :: mi
-		REAL(pf) :: m_esc, m_inv, m2
-		REAL(pf128) :: m_esc_128, m_inv_128, m2_128
+  TYPE, ABSTRACT :: integracao
+    ! m: Massas
+    REAL(pf), ALLOCATABLE :: m(:)
+	REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
+	
+	! Massas iguais
+	LOGICAL  :: mi
+	REAL(pf) :: m_esc, m_inv, m2
+	REAL(pf128) :: m_esc_128, m_inv_128, m2_128
 
-		! Distancias entre os corpos
-		REAL(pf), ALLOCATABLE :: distancias(:)
+    ! Distancias entre os corpos
+	REAL(pf), ALLOCATABLE :: distancias(:)
 
-		! h: Passo de integracao
-		! G: Constante de gravitacao
-		! potsoft: Softening do potencial
-		REAL(pf) :: h, G, potsoft, potsoft2
+    ! h: Passo de integracao
+	! G: Constante de gravitacao
+	! potsoft: Softening do potencial
+	REAL(pf) :: h, G, potsoft, potsoft2
 
-		! dim: Dimensao do problema
-		! N: Quantidade de partículas
-		INTEGER :: dim = 3, N
+	! dim: Dimensao do problema
+	! N: Quantidade de partículas
+	INTEGER :: dim = 3, N
 
-		! Se vai ou nao usar paralelizacao
-		LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
+	! Se vai ou nao usar paralelizacao
+	LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
 
-		! Funcao de forcas (aceleracao)
-		PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
-		PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
+	! Funcao de forcas (aceleracao)
+	PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
+	PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
 
-	CONTAINS
-		PROCEDURE :: iniciar, inicializar_massas, atualizar_constantes, &
+  CONTAINS
+	PROCEDURE :: iniciar, inicializar_massas, atualizar_constantes, &
 								 forcas, metodo, metodo_mi, aplicar
 								
-	END TYPE integracao
+  END TYPE integracao
 
 CONTAINS
 
@@ -80,33 +80,33 @@ SUBROUTINE iniciar (self, infos, timestep, massas, E0, J0)
   REAL(pf), INTENT(IN), allocatable :: massas(:)
   REAL(pf), INTENT(IN) :: timestep, E0, J0(3)
   INTEGER :: a, i
-	LOGICAL :: encontrado
+  LOGICAL :: encontrado
 
-	!> Quantidade de particulas
-	self % N = SIZE(massas)
+  !> Quantidade de particulas
+  self % N = SIZE(massas)
 
-	!> Inicializando as variaveis ligadas as massas dos corpos
-	CALL self % inicializar_massas(infos, massas)
+  !> Inicializando as variaveis ligadas as massas dos corpos
+  CALL self % inicializar_massas(infos, massas)
 
-	!> Constantes
-	self % G = json_get_float(infos, 'G') ! Const. de Gravitacao
-	self % h = timestep 									! Tamanho de passo
-	!> Amortecedor
-	self % potsoft = json_get_float(infos, 'integracao.amortecedor')
-	self % potsoft2 = self % potsoft * self % potsoft
-	
-	!> Vetor de distancias dos corpos
-	ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
+  !> Constantes
+  self % G = json_get_float(infos, 'G') ! Const. de Gravitacao
+  self % h = timestep 									! Tamanho de passo
+  !> Amortecedor
+  self % potsoft = json_get_float(infos, 'integracao.amortecedor')
+  self % potsoft2 = self % potsoft * self % potsoft
 
-	!> Uso (ou nao) do paralelismo
-	CALL json % get(infos, 'paralelo', self % paralelo)
+  !> Vetor de distancias dos corpos
+  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
+
+  !> Uso (ou nao) do paralelismo
+  CALL json % get(infos, 'paralelo', self % paralelo)
   CALL json % get(infos, 'gpu', self % gpu, encontrado)
   IF (.NOT. encontrado) self % gpu = .FALSE.
 
-	!> Determinando as funcoes de forca a se utilizar
-	!> Modulo: funcoes_forca
-	CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, &
-                          self%forcas_funcao, self%forcas_mi_funcao)
+  !> Determinando as funcoes de forca a se utilizar
+  !> Modulo: funcoes_forca
+  CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, &
+	  				  self%forcas_funcao, self%forcas_mi_funcao)
 END SUBROUTINE iniciar
 
 ! ************************************************************
@@ -126,8 +126,8 @@ SUBROUTINE inicializar_massas (self, infos, massas)
   LOGICAL :: encontrado
 
   !> Massas iguais
-	CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-	IF (.NOT. encontrado) self % mi = .FALSE.
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado) self % mi = .FALSE.
 
   !> Alocando vetor de massas
   ALLOCATE(self % m (self % N))
