@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-08-13] v0.7.2: Correção na inicialização da simulação
+
+Na modularização não adicionei as variáveis que guardam se as massas são iguais, o que impacta no output de informações da simulação.
+
+---
+
 ## [2025-08-11] v0.7.1: Enviando o tempo na exibição
 
 Para facilitar comparações, o instante $t$ agora é enviado pelo socket quando o "exibir" estiver habilitado.

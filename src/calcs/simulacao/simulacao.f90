@@ -127,6 +127,14 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h)
   self % m = m  ! massas
   self % R0 = R0 ! posicoes
   self % P0 = P0 ! momentos
+  !> Salva se as massas sao iguais
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado) self % mi = .FALSE.
+  IF (self % mi) THEN
+    self % m_esc = self % M(1)
+    self % m2 = self % m_esc * self % m_esc
+    self % m_inv = 1 / self % m_esc
+  ENDIF
   !> Quantidade de corpos
   self % N = SIZE(m)
   !> Integrais primeiras
