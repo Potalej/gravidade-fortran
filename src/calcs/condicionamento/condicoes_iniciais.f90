@@ -106,6 +106,8 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
   REAL(pf) :: inercia, dilatacao
   REAL(pf) :: anitenine ! anisotropia do tensor de inercia
   REAL(pf) :: f_prod_q, virial
+  INTEGER  :: a
+  REAL(pf) :: dist, mais_distante
 
   cinetica  = energia_cinetica(massas, momentos)
   
@@ -126,6 +128,12 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
 
   anitenine = anisotropia_tensor_inercia(massas, posicoes)
 
+  mais_distante = 0
+  DO a = 1, SIZE(massas)
+    dist = NORM2(posicoes(a,:))
+    IF (dist > mais_distante) mais_distante = dist
+  END DO
+
   WRITE(*,*) ""
   WRITE(*,'(a)') "  > valores iniciais condicionados!"
   WRITE(*,*) "     * V   = ", potencial
@@ -137,6 +145,7 @@ SUBROUTINE condicionamento_outputs (G, massas, posicoes, momentos, eps)
   WRITE(*,*) "     * I   = ", inercia
   WRITE(*,*) "     * D   = ", dilatacao
   WRITE(*,*) "     * A_I = ", anitenine
+  WRITE(*,*) "     * MD  = ", mais_distante
 
 END SUBROUTINE
 

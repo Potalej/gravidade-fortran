@@ -201,7 +201,7 @@ END SUBROUTINE condicionar_momentoAngular
 !   desejado.
 !
 ! Modificado:
-!   21 de julho de 2025
+!   03 de agosto de 2025
 !
 ! Autoria:
 !   oap
@@ -225,14 +225,18 @@ SUBROUTINE condicionar_energiaTotal (H, G, massas, posicoes, momentos, eps)
   EP = energia_potencial(G, massas, posicoes, eps)
   EC = energia_cinetica(massas, momentos)
 
-  ! Calcula o fator para zerar
-  fator = (-EP/EC)**0.5
-    
+  ! Calcula o fator para bater a energia
+  IF (H > 0) THEN
+    fator = ((-EP+H)/EC)**0.5
+  ELSE
+    fator = (-EP/EC)**0.5
+  ENDIF
+
   ! Aplica sobre os momentos
   momentos = fator * momentos
 
-  ! Se a energia desejada nao for nula, precisa mexer nas posicoes
-  IF (H .NE. 0) THEN
+  ! Se a energia desejada nao for positiva, precisa mexer nas posicoes
+  IF (H < 0) THEN
     ! Se nao tiver amortecimento, pode aplicar homotetia pois o potencial eh homogeneo
     IF (eps == 0) THEN
       fator = 1.0_pf/(H/EP + 1.0_pf)
@@ -618,8 +622,8 @@ SUBROUTINE condicionar_ip_iterativo (G, massas, posicoes, momentos, eps, H, mat,
   er_angular = MAXVAL(ABS(momento_angular_total(posicoes,momentos) - J))
   erro_1 = MAXVAL((/er_energia,er_linear,er_angular/))
 
+  i = 1
   IF (erro_1 >= erro_limite) THEN
-    i = 0
     DO WHILE (ABS(erro_1) >= erro_limite .AND. i < N_iter_max)
       i = i + 1
 
