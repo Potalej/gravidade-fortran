@@ -87,7 +87,7 @@ END SUBROUTINE definir_diretorio_saida
 !
 ! Modificado:
 !   26 de maio de 2024 (criado)
-!   08 de agosto de 2025 (modificado)
+!   10 de outubro de 2025 (modificado)
 !
 ! Autoria:
 !   oap
@@ -116,7 +116,7 @@ SUBROUTINE gerar_nome_diretorio (self)
 
     ! Cria nomes
     self % dir_arq = TRIM(data_hoje)//"_"//TRIM(numero)
-    self % nome_arq_data = self%dir_out // "/data/" // self%dir_arq // "/data.csv"
+    self % nome_arq_data = self%dir_out // "/data/" // self%dir_arq // "/data.bin"
     self % nome_arq_info = self%dir_out // "/data/" // self%dir_arq // "/info.txt"
     self % nome_arq_bkp  = self%dir_out // "/data/" // self%dir_arq // "/bkp.txt"
     
@@ -170,7 +170,7 @@ END SUBROUTINE criar_formatos
 !   devido.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de outubro de 2025
 !
 ! Autoria:
 !   oap
@@ -197,7 +197,7 @@ SUBROUTINE criar_data (self, qntd_corpos, dimensao)
   ! cria o arquivo "data"
   CALL capturar_unidade(id_arq_data)
   self % id_arq_data = id_arq_data
-  OPEN(id_arq_data, file = self % nome_arq_data, status='new')
+  OPEN(id_arq_data, file = self % nome_arq_data, status='new', access='stream')
 
   ! cria o arquivo info
   CALL capturar_unidade(id_arq_info)
@@ -222,7 +222,7 @@ END SUBROUTINE criar_data
 !   como tamanho do passo, valor de G, etc.
 !
 ! Modificado:
-!   26 de maio de 2024
+!   10 de outubro de 2025
 !
 ! Autoria:
 !   oap
@@ -234,14 +234,12 @@ SUBROUTINE escrever_cabecalho_data (self, h, G, massas)
   REAL(pf), INTENT(IN)       :: massas(:)
   REAL(pf)                   :: h, G
 
-  ! Salva h
-  WRITE (self % id_arq_data, "(F25.7, :, ',')") h
-
-  ! Salva G
-  WRITE (self % id_arq_data, "(F25.7, :, ',')") G
+  ! Salva h, G, N
+  ! WRITE (self % id_arq_data, "(F25.7, :, ',')") h
+  WRITE (self % id_arq_data) h, G, SIZE(massas)
 
   ! Salva as massas
-  WRITE (self % id_arq_data, self % formato_massas) massas
+  WRITE (self % id_arq_data) massas
 
 END SUBROUTINE escrever_cabecalho_data
 
@@ -252,7 +250,7 @@ END SUBROUTINE escrever_cabecalho_data
 !   Escreve um array no arquivo "data", conforme formato.
 !
 ! Modificado:
-!   26 de maio de 2024
+!   10 de outubro de 2025
 !
 ! Autoria:
 !   oap
@@ -264,7 +262,7 @@ SUBROUTINE escrever_data (self, array)
   REAL(pf), INTENT(IN)       :: array(2,self%qntd_corpos_int,self%dimensao_int)
 
   ! salva 
-  WRITE (self % id_arq_data, self % formato) array
+  WRITE (self % id_arq_data) array
 
 END SUBROUTINE escrever_data
 

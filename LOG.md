@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-10-14] v0.8.0: Nova forma de armazenar dados
+
+Após sugestão, troquei o uso de arquivos CSV por arquivos binários na saída de dados. Isso traz uma redução considerável no tamanho dos arquivos de saída, bem como tem um impacto positivo significativo em simulações com muitos salvamentos.
+
+---
+
 ## [2025-08-13] v0.7.2: Correção na inicialização da simulação
 
 Na modularização não adicionei as variáveis que guardam se as massas são iguais, o que impacta no output de informações da simulação.
