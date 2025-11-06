@@ -253,7 +253,8 @@ SUBROUTINE rodar (self, qntdPassos)
   CLASS(simular), INTENT(INOUT) :: self
   INTEGER, INTENT(IN) :: qntdPassos
   INTEGER :: qntd_por_rodada, passo, sub_passo
-  REAL(pf) :: inst_t, subinst_t, tempo_total, t0, tf
+  REAL(pf) :: inst_t, subinst_t, t0, tf
+  REAL(pf64)  :: tempo_total
   REAL(pf) :: R1(self%N,self%dim), P1(self%N,self%dim)
   REAL(pf) :: E
   LOGICAL :: corrigiu
