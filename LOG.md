@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-11-10] v0.8.1: Opção de pasta de saída (issue #15)
+
+Agora é possível escolher a pasta de "out". Basta passar o parâmetro `-ps destino` ou `--pasta-saida destino`.
+
+---
+
 ## [2025-10-14] v0.8.0: Nova forma de armazenar dados
 
 Após sugestão, troquei o uso de arquivos CSV por arquivos binários na saída de dados. Isso traz uma redução considerável no tamanho dos arquivos de saída, bem como tem um impacto positivo significativo em simulações com muitos salvamentos.

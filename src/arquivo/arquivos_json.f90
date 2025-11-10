@@ -5,8 +5,11 @@
 !   Rotinas para manipular arquivos de sorteios. Especificamente, a
 !   leitura dos arquivos de pre-valores para condicionamento.
 !   
-! Modificado:
+! Criado:
 !   01 de maio de 2025
+!
+! Modificado:
+!   10 de novembro de 2025
 ! 
 ! Autoria:
 !   oap
@@ -16,9 +19,8 @@ MODULE arquivos_json
     USE json_utils_mod
 
     IMPLICIT NONE
-    CHARACTER(6)  :: DIR_OUT  = "./out/"
-    CHARACTER(11) :: DIR_DATA = "./out/data/"
-    CHARACTER(23) :: DIR_AVI  = "./out/valores_iniciais/"
+    CHARACTER(5)  :: DIR_OUT  = "./out"
+    CHARACTER(18) :: DIR_AVI  = "/valores_iniciais/"
 
 CONTAINS
 
@@ -26,14 +28,14 @@ CONTAINS
 !! Leitura de valores de sorteio
 !
 ! Modificado:
-!   15 de marco de 2024
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE ler_json (arquivo, dados)
     CHARACTER(LEN=*), INTENT(IN) :: arquivo
-    TYPE(json_value), POINTER, INTENT(INOUT) :: dados
+    TYPE(json_value), POINTER, INTENT(INOUT) :: dados    
 
     WRITE (*,'(A)') 'PRESET: '//arquivo
     CALL json % parse(file=arquivo, p=dados)
@@ -78,16 +80,23 @@ END FUNCTION gerar_nome_arquivo
 !! Salva arquivo de valores iniciais no diretorio auto_vi
 !
 ! Modificado:
-!   05 de maio de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE salvar_auto_vi (infos_sorteio, massas, posicoes, momentos)
+SUBROUTINE salvar_auto_vi (out_dir, infos_sorteio, massas, posicoes, momentos)
     TYPE(json_value), POINTER   :: infos_sorteio
     REAL(pf)                    :: massas(:), posicoes(:,:), momentos(:,:)
+    CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: out_dir
 
-    CALL salvar_vi_json(DIR_AVI, infos_sorteio, massas, posicoes, momentos, .TRUE.)
+    IF (PRESENT(out_dir)) THEN
+        CALL salvar_vi_json(TRIM(out_dir)//DIR_AVI, &
+                            infos_sorteio, massas, posicoes, momentos, .TRUE.)
+    ELSE
+        CALL salvar_vi_json(DIR_OUT//DIR_AVI, &
+                            infos_sorteio, massas, posicoes, momentos, .TRUE.)
+    ENDIF
 END SUBROUTINE salvar_auto_vi
 
 ! ************************************************************

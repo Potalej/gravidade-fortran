@@ -11,7 +11,7 @@
 !   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 ! 
 ! Autoria:
 !   oap
@@ -60,7 +60,7 @@ CONTAINS
 
 SUBROUTINE definir_diretorio_saida (self, dir_param)
   CLASS(arquivo), INTENT(INOUT) :: self
-  CHARACTER(LEN=*), INTENT(INOUT), OPTIONAL :: dir_param
+  CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: dir_param
   CHARACTER(:), ALLOCATABLE :: dir
   
   IF (PRESENT(dir_param)) THEN

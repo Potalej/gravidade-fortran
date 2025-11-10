@@ -48,13 +48,13 @@ END SUBROUTINE criar_dir
 !! Verifica se o diretorio de saida existe, e caso nao, cria
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE diretorio_out (dir_param)
-  CHARACTER(LEN=*), INTENT(INOUT), OPTIONAL :: dir_param
+  CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: dir_param
   CHARACTER(:), ALLOCATABLE :: dir
   LOGICAL :: existe
   
@@ -74,13 +74,13 @@ END SUBROUTINE diretorio_out
 !! Verifica se o diretorio de "data" existe, e caso nao, cria
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE diretorio_data (dir_param)
-  CHARACTER(LEN=*), INTENT(INOUT), OPTIONAL :: dir_param
+  CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: dir_param
   CHARACTER(:), ALLOCATABLE :: dir
   LOGICAL :: existe
   
@@ -105,13 +105,13 @@ END SUBROUTINE diretorio_data
 !! caso nao, cria
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE diretorio_vi (dir_param)
-  CHARACTER(LEN=*), INTENT(INOUT), OPTIONAL :: dir_param
+  CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: dir_param
   CHARACTER(:), ALLOCATABLE :: dir
   LOGICAL :: existe
   

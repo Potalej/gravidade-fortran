@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -104,8 +104,9 @@ MODULE simulacao
 
 CONTAINS
 
-SUBROUTINE iniciar (self, infos, m, R0, P0, h)
+SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir)
   CLASS(simular), INTENT(INOUT) :: self
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir
   TYPE(json_value), POINTER :: infos
   REAL(pf) :: m(:), R0(:,:), P0(:,:)
   REAL(pf) :: h, colmd, densidade, ec, f_prod_q
@@ -177,11 +178,11 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h)
   END DO
 
   !> Copia o arquivo de valores iniciais
-  CALL diretorio_data()
+  CALL diretorio_data(out_dir)
   !> Inicializa o arquivo data.csv
-  CALL self % inicializar_data()
+  CALL self % inicializar_data(out_dir)
   !> Salva os valores iniciais
-  CALL salvar_vi_json('out/data/'//self % Arq % dir_arq//'/vi', infos, M, R0, P0, .FALSE.)
+  CALL salvar_vi_json(out_dir//'/data/'//self % Arq % dir_arq//'/vi', infos, M, R0, P0, .FALSE.)
 
 END SUBROUTINE iniciar
 
@@ -189,13 +190,17 @@ END SUBROUTINE iniciar
 !! Inicializar o arquivo "data"
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE inicializar_data (self)
-  class(simular), INTENT(INOUT) :: self
+SUBROUTINE inicializar_data (self, out_dir)
+  CLASS(simular), INTENT(INOUT) :: self
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir
+
+  ! Define o diretorio de saida
+  CALL self % Arq % definir_diretorio_saida(out_dir)
 
   ! Cria o arquivo onde sera salvo
   CALL self % Arq % criar_data(self % N, self % dim)

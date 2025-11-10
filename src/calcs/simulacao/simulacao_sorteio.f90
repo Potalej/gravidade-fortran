@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -30,13 +30,14 @@ CONTAINS
 !   Aplica o sorteio e faz a simulacao.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE simular_sorteio (arquivo)
+SUBROUTINE simular_sorteio (arquivo, out_dir)
   CHARACTER(LEN=*), INTENT(IN) :: arquivo
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir
   TYPE(json_value), POINTER :: infos
   CHARACTER(LEN=:), ALLOCATABLE :: modo
   REAL(pf) :: eps
@@ -52,7 +53,7 @@ SUBROUTINE simular_sorteio (arquivo)
   CALL condicionar(infos, massas, posicoes, momentos, modo, eps)
 
   ! Roda a simulacao no intervalo [t0, tf]
-  CALL rodar_simulacao(infos, massas, posicoes, momentos)
+  CALL rodar_simulacao(out_dir, infos, massas, posicoes, momentos)
 
 END SUBROUTINE simular_sorteio
 
@@ -64,14 +65,15 @@ END SUBROUTINE simular_sorteio
 !   valores iniciais.
 !
 ! Modificado:
-!   20 de julho de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE sorteio_salvar (arquivo_in)
+SUBROUTINE sorteio_salvar (arquivo_in, out_dir)
   IMPLICIT NONE
   CHARACTER(LEN=*) :: arquivo_in
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir
   REAL(pf) :: eps
   REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
   TYPE(json_value), POINTER :: infos
@@ -86,10 +88,10 @@ SUBROUTINE sorteio_salvar (arquivo_in)
   CALL condicionar(infos, massas, posicoes, momentos, modo, eps)
 
   ! Verifica se o diretorio de saida existe
-  CALL diretorio_vi()
+  CALL diretorio_vi(out_dir)
 
   ! Agora salva
-  CALL salvar_auto_vi(infos, massas, posicoes, momentos)
+  CALL salvar_auto_vi(out_dir, infos, massas, posicoes, momentos)
 END SUBROUTINE sorteio_salvar
 
 END module

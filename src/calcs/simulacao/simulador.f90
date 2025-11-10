@@ -5,7 +5,7 @@
 !   Rotinas para invocar o simulador mais facilmente.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   10 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -22,7 +22,8 @@ MODULE simulador_mod
 
 CONTAINS
 
-SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
+SUBROUTINE rodar_simulacao (out_dir, infos, massas, posicoes, momentos)
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir
   TYPE(json_value), POINTER :: infos
   REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
   INTEGER  :: t0, tf
@@ -36,15 +37,15 @@ SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
     IF (tf == 0) THEN
       ! Roda apenas o passado
       WRITE (*,*) " > Intervalo [", t0, ",", tf, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
+      CALL rodar_simulacao_intervalo(out_dir, infos, massas, posicoes, momentos, -timestep, t0, 0)
 
     ELSE IF (tf > 0) THEN     
       ! Roda o passado e o futuro
       WRITE (*,*) " > Intervalo [", t0, ",", 0, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, -timestep, t0, 0)
+      CALL rodar_simulacao_intervalo(out_dir, infos, massas, posicoes, momentos, -timestep, t0, 0)
       
       WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
-      CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
+      CALL rodar_simulacao_intervalo(out_dir, infos, massas, posicoes, momentos, timestep, 0, tf)
 
     ENDIF
   
@@ -52,11 +53,12 @@ SUBROUTINE rodar_simulacao (infos, massas, posicoes, momentos)
   ELSE
     ! Roda apenas o futuro
     WRITE (*,*) " > Intervalo [", 0, ",", tf, "]"
-    CALL rodar_simulacao_intervalo(infos, massas, posicoes, momentos, timestep, 0, tf)
+    CALL rodar_simulacao_intervalo(out_dir, infos, massas, posicoes, momentos, timestep, 0, tf)
   ENDIF
 END SUBROUTINE rodar_simulacao
 
-SUBROUTINE rodar_simulacao_intervalo (infos, massas, posicoes, momentos, timestep, t0, tf)
+SUBROUTINE rodar_simulacao_intervalo (out_dir, infos, massas, posicoes, momentos, timestep, t0, tf)
+  CHARACTER(LEN=*), INTENT(IN):: out_dir
   TYPE(json_value), POINTER :: infos
   REAL(pf), INTENT(IN) :: massas(:), posicoes(:,:), momentos(:,:)
   REAL(pf), INTENT(IN) :: timestep
@@ -74,7 +76,7 @@ SUBROUTINE rodar_simulacao_intervalo (infos, massas, posicoes, momentos, timeste
   timer_0 = omp_get_wtime()
   
   ! Inicializando a classe de simulacao
-  CALL simulador%iniciar(infos, massas, posicoes, momentos, timestep)
+  CALL simulador%iniciar(infos, massas, posicoes, momentos, timestep, out_dir)
 
   ! Agora roda
   CALL simulador%rodar(tf - t0)
