@@ -11,7 +11,7 @@
 !   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   10 de novembro de 2025
+!   11 de novembro de 2025
 ! 
 ! Autoria:
 !   oap
@@ -97,7 +97,7 @@ END SUBROUTINE definir_diretorio_saida
 !
 ! Modificado:
 !   26 de maio de 2024 (criado)
-!   10 de outubro de 2025 (modificado)
+!   11 de novembro de 2025 (modificado)
 !
 ! Autoria:
 !   oap
@@ -180,7 +180,7 @@ END SUBROUTINE criar_formatos
 !   devido.
 !
 ! Modificado:
-!   10 de outubro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -239,7 +239,7 @@ END SUBROUTINE criar_data
 !   como tamanho do passo, valor de G, etc.
 !
 ! Modificado:
-!   10 de outubro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -281,7 +281,7 @@ END SUBROUTINE escrever_cabecalho_data
 !   Escreve um array no arquivo "data", conforme formato.
 !
 ! Modificado:
-!   10 de outubro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
