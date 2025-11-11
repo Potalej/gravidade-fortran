@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-11-11] v0.8.2: Opção de arquivo de saída (issue #14)
+
+Agora é possível escolher o tipo de arquivo de saída através do parâmetro `-es .tipo` ou `--extensao-saida .tipo`.
+
+---
+
 ## [2025-11-10] v0.8.1: Opção de pasta de saída (issue #15)
 
 Agora é possível escolher a pasta de "out". Basta passar o parâmetro `-ps destino` ou `--pasta-saida destino`.

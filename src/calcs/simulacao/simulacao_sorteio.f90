@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -30,14 +30,14 @@ CONTAINS
 !   Aplica o sorteio e faz a simulacao.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE simular_sorteio (arquivo, out_dir)
+SUBROUTINE simular_sorteio (arquivo, out_dir, out_ext)
   CHARACTER(LEN=*), INTENT(IN) :: arquivo
-  CHARACTER(LEN=*), INTENT(IN) :: out_dir
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir, out_ext
   TYPE(json_value), POINTER :: infos
   CHARACTER(LEN=:), ALLOCATABLE :: modo
   REAL(pf) :: eps
@@ -53,7 +53,7 @@ SUBROUTINE simular_sorteio (arquivo, out_dir)
   CALL condicionar(infos, massas, posicoes, momentos, modo, eps)
 
   ! Roda a simulacao no intervalo [t0, tf]
-  CALL rodar_simulacao(out_dir, infos, massas, posicoes, momentos)
+  CALL rodar_simulacao(out_dir, out_ext, infos, massas, posicoes, momentos)
 
 END SUBROUTINE simular_sorteio
 

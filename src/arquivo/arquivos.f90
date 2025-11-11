@@ -34,6 +34,7 @@ MODULE arquivos
 
     !> Nomes dos arquivos
     CHARACTER(:), ALLOCATABLE :: dir_arq, nome_arq_data, nome_arq_info, nome_arq_bkp
+    CHARACTER(:), ALLOCATABLE :: ext_arq_data ! Extensao do arquivo "data". Pode ser csv ou bin
     
     !> Formatos
     CHARACTER(:), ALLOCATABLE :: formato, formato_massas, qntd_corpos, dimensao
@@ -58,9 +59,10 @@ MODULE arquivos
 
 CONTAINS
 
-SUBROUTINE definir_diretorio_saida (self, dir_param)
+SUBROUTINE definir_diretorio_saida (self, dir_param, ext_arq_data)
   CLASS(arquivo), INTENT(INOUT) :: self
   CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: dir_param
+  CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: ext_arq_data
   CHARACTER(:), ALLOCATABLE :: dir
   
   IF (PRESENT(dir_param)) THEN
@@ -69,6 +71,14 @@ SUBROUTINE definir_diretorio_saida (self, dir_param)
   ELSE
     ALLOCATE(CHARACTER(5) :: dir)
     dir = "./out"
+  ENDIF
+
+  IF (PRESENT(ext_arq_data)) THEN
+    ALLOCATE(CHARACTER(LEN(ext_arq_data)) :: self % ext_arq_data)
+    self % ext_arq_data = ext_arq_data
+  ELSE
+    ALLOCATE(CHARACTER(4) :: self % ext_arq_data)
+    self % ext_arq_data = ".bin" ! Binario por padrao
   ENDIF
   
   IF (ALLOCATED(self % dir_out)) DEALLOCATE(self % dir_out)
@@ -116,7 +126,7 @@ SUBROUTINE gerar_nome_diretorio (self)
 
     ! Cria nomes
     self % dir_arq = TRIM(data_hoje)//"_"//TRIM(numero)
-    self % nome_arq_data = self%dir_out // "/data/" // self%dir_arq // "/data.bin"
+    self % nome_arq_data = self%dir_out // "/data/" // self%dir_arq // "/data" // self%ext_arq_data
     self % nome_arq_info = self%dir_out // "/data/" // self%dir_arq // "/info.txt"
     self % nome_arq_bkp  = self%dir_out // "/data/" // self%dir_arq // "/bkp.txt"
     
@@ -197,7 +207,14 @@ SUBROUTINE criar_data (self, qntd_corpos, dimensao)
   ! cria o arquivo "data"
   CALL capturar_unidade(id_arq_data)
   self % id_arq_data = id_arq_data
-  OPEN(id_arq_data, file = self % nome_arq_data, status='new', access='stream')
+
+  IF (self % ext_arq_data == '.csv') THEN
+    OPEN(id_arq_data, file = self % nome_arq_data, status='new')
+  ELSE IF (self % ext_arq_data == '.bin') THEN
+    OPEN(id_arq_data, file = self % nome_arq_data, status='new', access='stream')
+  ELSE
+    STOP "Extensao nao definida!"
+  ENDIF
 
   ! cria o arquivo info
   CALL capturar_unidade(id_arq_info)
@@ -234,12 +251,26 @@ SUBROUTINE escrever_cabecalho_data (self, h, G, massas)
   REAL(pf), INTENT(IN)       :: massas(:)
   REAL(pf)                   :: h, G
 
-  ! Salva h, G, N
-  ! WRITE (self % id_arq_data, "(F25.7, :, ',')") h
-  WRITE (self % id_arq_data) h, G, SIZE(massas)
+  IF (self % ext_arq_data == '.csv') THEN
+    ! Salva h
+    WRITE (self % id_arq_data, "(F25.7, :, ',')") h
 
-  ! Salva as massas
-  WRITE (self % id_arq_data) massas
+    ! Salva G
+    WRITE (self % id_arq_data, "(F25.7, :, ',')") G
+
+    ! Salva as massas
+    WRITE (self % id_arq_data, self % formato_massas) massas
+
+  ELSE IF (self % ext_arq_data == '.bin') THEN
+    ! Salva h, G, N
+    WRITE (self % id_arq_data) h, G, SIZE(massas)
+
+    ! Salva as massas
+    WRITE (self % id_arq_data) massas
+  
+  ELSE
+    STOP 'Extensao nao definida!'
+  ENDIF
 
 END SUBROUTINE escrever_cabecalho_data
 
@@ -261,8 +292,16 @@ SUBROUTINE escrever_data (self, array)
   CLASS(arquivo), INTENT(IN) :: self
   REAL(pf), INTENT(IN)       :: array(2,self%qntd_corpos_int,self%dimensao_int)
 
-  ! salva 
-  WRITE (self % id_arq_data) array
+  IF (self % ext_arq_data == '.csv') THEN
+    WRITE (self % id_arq_data, self % formato) array
+
+  ELSE IF (self % ext_arq_data == '.bin') THEN
+    WRITE (self % id_arq_data) array
+  
+  ELSE
+    STOP 'Extensao nao definida!'
+  ENDIF
+
 
 END SUBROUTINE escrever_data
 

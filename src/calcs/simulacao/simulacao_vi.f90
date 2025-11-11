@@ -5,7 +5,7 @@
 !   Simulacoes a partir diretamente de valores iniciais.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
@@ -28,14 +28,14 @@ CONTAINS
 !   Faz a simulacao.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   11 de novembro de 2025
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE simular_vi (arquivo, out_dir)
+SUBROUTINE simular_vi (arquivo, out_dir, out_ext)
   CHARACTER(LEN=*), INTENT(IN) :: arquivo
-  CHARACTER(LEN=*), INTENT(IN) :: out_dir
+  CHARACTER(LEN=*), INTENT(IN) :: out_dir, out_ext
 
   TYPE(json_value), POINTER :: infos
   REAL(pf), ALLOCATABLE :: pos3(:), mom3(:)
@@ -61,7 +61,7 @@ SUBROUTINE simular_vi (arquivo, out_dir)
   END DO
 
   ! Roda a simulacao
-  CALL rodar_simulacao(out_dir, infos, massas, posicoes, momentos)
+  CALL rodar_simulacao(out_dir, out_ext, infos, massas, posicoes, momentos)
 
 END SUBROUTINE simular_vi
 
