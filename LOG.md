@@ -1,5 +1,15 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-12-16] v0.9.0: Independência de bibliotecas `utilidade` e `valores-iniciais`
+
+O processo de geração de valores iniciais merecia ser algo separado do gravidade-fortran, e de fato já havia tido uma situação em que um colega queria apenas gerar os valores iniciais para rodar em seu próprio programa, mas não queria ter que instalar todo o gravidade-fortran. Agora, então, é possível compilar a biblioteca `valores-iniciais` separadamente, disponível no repositório:
+> https://github.com/potalej/valores-iniciais
+Como consequência, precisei separar a biblioteca de `utilidades` também, disponível no repositório:
+> https://github.com/potalej/utilidades
+Isso será útil para as análises. De toda forma, tudo segue funcionando normalmente, a diferença é que as duas bibliotecas agora são baixadas do repositório pelo CMake.
+
+---
+
 ## [2025-11-11] v0.8.2: Opção de arquivo de saída (issue #14)
 
 Agora é possível escolher o tipo de arquivo de saída através do parâmetro `-es .tipo` ou `--extensao-saida .tipo`.

@@ -8,10 +8,13 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.8.2
+project("gravidade" VERSION 0.9.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
+
+# Para baixar as coisas se necessario
+include(FetchContent)
 
 # Data e hora de compilacao
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
@@ -112,9 +115,45 @@ ENDIF()
 # ============================================================================
 # Inclui o JSONFortran
 # ----------------------------------------------------------------------------
-add_subdirectory(lib/json-fortran)
+add_subdirectory(libs/json-fortran)
 # ============================================================================
 
+# ============================================================================
+# Utilidades
+# ----------------------------------------------------------------------------
+# Esta contem rotinas e funcoes dos antigos modulos MECANICA e AUXILIARES,
+# ou seja, contem tanto rotinas para resolucao de sistemas lineares, calculo
+# de autovalores e afins, como tambem rotinas para calculo de energia total,
+# momento angular, tensor de inercia e afins.
+# ----------------------------------------------------------------------------
+if (NOT TARGET utilidades)
+  message(STATUS "baixando a biblioteca de utilidades...")
+  FetchContent_Declare(
+    utilidades
+    GIT_REPOSITORY https://github.com/potalej/utilidades.git
+    GIT_TAG main
+  )
+  FetchContent_MakeAvailable(utilidades)
+endif()
+# ============================================================================
+
+# ============================================================================
+#> Condicionamento
+# ----------------------------------------------------------------------------
+## Contem rotinas para condicionar valores iniciais para que atendam a 
+## restricoes desejadas, como integrais primeiras ou equilibrio (virial).
+## Depende das bibliotecas "ALEATORIO", "JSON_UTILS" e "UTILIDADES".
+# ----------------------------------------------------------------------------
+if (NOT TARGET valores_iniciais)
+  message(STATUS "baixando a biblioteca de valores iniciais...")
+  FetchContent_Declare(
+    valores_iniciais
+    GIT_REPOSITORY https://github.com/potalej/valores-iniciais.git
+    GIT_TAG main
+  )
+  FetchContent_MakeAvailable(valores_iniciais)
+endif()
+# ============================================================================
 
 
 # ============================================================================
@@ -176,18 +215,6 @@ target_link_libraries(conexao_mod PRIVATE tipos)
 # ============================================================================
 
 # ============================================================================
-#> Aleatorio
-# ----------------------------------------------------------------------------
-# Contem rotinas de geracao de valores aleatorios. Eh chamada pelo modulo
-# de condicionamento.
-# ----------------------------------------------------------------------------
-add_library(aleatorio 
-  "./src/libs/aleatorio.f90" 
-)
-target_link_libraries(aleatorio PRIVATE tipos)
-# ============================================================================
-
-# ============================================================================
 #> Octree
 # ----------------------------------------------------------------------------
 # Esta biblioteca implementa a separacao de vetores 3D em uma octree (arvore
@@ -199,22 +226,6 @@ add_library(octree
 )
 target_link_libraries(octree PRIVATE tipos)
 # ============================================================================
-
-# ============================================================================
-#> Utilidades
-# ----------------------------------------------------------------------------
-# Esta contem rotinas e funcoes dos antigos modulos MECANICA e AUXILIARES,
-# ou seja, contem tanto rotinas para resolucao de sistemas lineares, calculo
-# de autovalores e afins, como tambem rotinas para calculo de energia total,
-# momento angular, tensor de inercia e afins.
-# ----------------------------------------------------------------------------
-add_library(utilidades
-  "./src/libs/utilidades.f90" 
-)
-target_link_libraries(utilidades PRIVATE tipos)
-# ============================================================================
-
-
 
 # ============================================================================
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Modulos =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -278,24 +289,6 @@ target_link_libraries(colisoes PRIVATE
 )
 # ============================================================================
 
-# ============================================================================
-#> Condicionamento
-# ----------------------------------------------------------------------------
-## Contem rotinas para condicionar valores iniciais para que atendam a 
-## restricoes desejadas, como integrais primeiras ou equilibrio (virial).
-## Depende das bibliotecas "ALEATORIO", "JSON_UTILS" e "UTILIDADES".
-# ----------------------------------------------------------------------------
-add_library(condicionamento
-  "./src/calcs/condicionamento/condicoes_iniciais.f90"  
-  "./src/calcs/condicionamento/condicionamento.f90"  
-)
-target_link_libraries(condicionamento PRIVATE
-  utilidades
-  ${OpenBLAS_LIB}
-  aleatorio
-  tipos
-  json_utils_mod
-)
 # ============================================================================
 
 # ============================================================================
@@ -390,7 +383,7 @@ target_link_libraries(simulacao PRIVATE
   integracao
   conexao_mod
   utilidades
-  condicionamento
+  valores_iniciais
   colisoes
   corretor
 )

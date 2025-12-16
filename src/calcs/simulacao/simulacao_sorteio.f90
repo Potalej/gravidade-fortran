@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   11 de novembro de 2025
+!   16 de dezembro de 2025
 !
 ! Autoria:
 !   oap
@@ -15,6 +15,7 @@ MODULE simulacao_sorteio
   USE tipos
   USE simulador_mod
   USE condicoes_iniciais
+  USE sorteio_mod
   USE arquivos_mod
   USE json_module
   IMPLICIT NONE
@@ -24,13 +25,68 @@ MODULE simulacao_sorteio
 CONTAINS
 
 ! ************************************************************
+!! Geracao de configuracoes a partir do json_value
+!
+! Objetivos:
+!   Converte json_value em objetos sorteio e sorteio_vetores.
+!
+! Modificado:
+!   16 de dezembro de 2025
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE configuracoes_sorteio (dados, configs)
+  TYPE(json_value), POINTER, INTENT(IN) :: dados
+  TYPE(sorteio), POINTER, INTENT(INOUT) :: configs
+  TYPE(json_value), POINTER :: sorteio_json
+  LOGICAL :: encontrado
+
+  ! Configuracoes basicas
+  CALL json % get(dados, "N", configs % N)
+  configs % G = json_get_float(dados, "G")
+  configs % amortecedor = json_get_float(dados, 'integracao.amortecedor')
+  configs % modo = json_get_string(dados, "modo")
+  CALL json % get(dados, "massas_iguais", configs % massas_iguais, encontrado)
+  IF (.NOT. encontrado) configs % massas_iguais = .FALSE.
+
+  ! Parte de sorteio
+  CALL json % get (dados, "sorteio", sorteio_json)
+
+  ! Integrais primeiras desejadas
+  configs % ed = json_get_float(sorteio_json, "integrais.energia_total")
+  configs % jd = json_get_float(sorteio_json, "integrais.angular_total")
+  configs % pd = json_get_float(sorteio_json, "integrais.linear_total")
+
+  ! Configuracoes das massas 
+  ALLOCATE(configs % massas)
+  configs % massas % distribuicao = json_get_string(sorteio_json, "massas.distribuicao")
+  configs % massas % regiao = json_get_string(sorteio_json, "massas.regiao")
+  configs % massas % intervalo = json_get_float_vec(sorteio_json, "massas.intervalo")
+  CALL json % get(sorteio_json, "massas.normalizadas", configs % massas % normalizado, encontrado)
+  IF (.NOT. encontrado) configs % massas % normalizado = .FALSE.
+
+  ! Configuracoes das posicoes
+  ALLOCATE(configs % posicoes)
+  configs % posicoes % distribuicao = json_get_string(sorteio_json, "posicoes.distribuicao")
+  configs % posicoes % regiao = json_get_string(sorteio_json, "posicoes.regiao")
+  configs % posicoes % intervalo = json_get_float_vec(sorteio_json, "posicoes.intervalo")
+  
+  ! Configuracoes dos momentos
+  ALLOCATE(configs % momentos)
+  configs % momentos % distribuicao = json_get_string(sorteio_json, "momentos.distribuicao")
+  configs % momentos % regiao = json_get_string(sorteio_json, "momentos.regiao")
+  configs % momentos % intervalo = json_get_float_vec(sorteio_json, "momentos.intervalo")
+END SUBROUTINE
+
+! ************************************************************
 !! Metodo principal
 !
 ! Objetivos:
 !   Aplica o sorteio e faz a simulacao.
 !
 ! Modificado:
-!   11 de novembro de 2025
+!   16 de dezembro de 2025
 !
 ! Autoria:
 !   oap
@@ -39,18 +95,18 @@ SUBROUTINE simular_sorteio (arquivo, out_dir, out_ext)
   CHARACTER(LEN=*), INTENT(IN) :: arquivo
   CHARACTER(LEN=*), INTENT(IN) :: out_dir, out_ext
   TYPE(json_value), POINTER :: infos
-  CHARACTER(LEN=:), ALLOCATABLE :: modo
-  REAL(pf) :: eps
   ! Vetores
   REAL(pf), allocatable :: massas(:), posicoes(:,:), momentos(:,:)
+  TYPE(sorteio), POINTER :: sorteio_infos
+
+  ALLOCATE(sorteio_infos)
 
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo, infos)
-  modo = json_get_string(infos, "modo")
-  eps = json_get_float(infos, 'integracao.amortecedor')
 
   ! Faz o condicionamento
-  CALL condicionar(infos, massas, posicoes, momentos, modo, eps)
+  CALL configuracoes_sorteio(infos, sorteio_infos)
+  CALL condicionar(sorteio_infos, massas, posicoes, momentos)
 
   ! Roda a simulacao no intervalo [t0, tf]
   CALL rodar_simulacao(out_dir, out_ext, infos, massas, posicoes, momentos)
@@ -65,7 +121,7 @@ END SUBROUTINE simular_sorteio
 !   valores iniciais.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   16 de dezembro de 2025
 !
 ! Autoria:
 !   oap
@@ -74,18 +130,18 @@ SUBROUTINE sorteio_salvar (arquivo_in, out_dir)
   IMPLICIT NONE
   CHARACTER(LEN=*) :: arquivo_in
   CHARACTER(LEN=*), INTENT(IN) :: out_dir
-  REAL(pf) :: eps
   REAL(pf), ALLOCATABLE :: massas(:), posicoes(:,:), momentos(:,:)
   TYPE(json_value), POINTER :: infos
-  CHARACTER(LEN=:), ALLOCATABLE :: modo
+  TYPE(sorteio), POINTER :: sorteio_infos
+
+  ALLOCATE(sorteio_infos)
 
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo_in, infos)
-  modo = json_get_string(infos, "modo")
-  eps = json_get_float(infos, 'integracao.amortecedor')
 
   ! Faz o condicionamento
-  CALL condicionar(infos, massas, posicoes, momentos, modo, eps)
+  CALL configuracoes_sorteio(infos, sorteio_infos)
+  CALL condicionar(sorteio_infos, massas, posicoes, momentos)
 
   ! Verifica se o diretorio de saida existe
   CALL diretorio_vi(out_dir)
