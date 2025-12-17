@@ -33,12 +33,12 @@ sh helpers/compilar_gerar.sh
 
 ### 🚩 Flags
 
-Há duas flags disponíveis. A primeira é a PRECISAO, que pode ser 32, 64 (padrão) ou 128, e todas as variáveis de tipo `REAL(pf)` terão a precisão desejada. Exemplo de uso:
+Há três flags disponíveis. A primeira é a PRECISAO, que pode ser 32, 64 (padrão) ou 128, e todas as variáveis de tipo `REAL(pf)` terão a precisão desejada. Exemplo de uso:
 ```
 cmake -B build -DPRECISAO=64 ...
 ```
 
-A outra flag é a do [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html), que ativa o GNU Profiler, utilizado para análise de desempenho. Para ativar, basta usar:
+Outra flag é a do [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html), que ativa o GNU Profiler, utilizado para análise de desempenho. Para ativar, basta usar:
 ```
 cmake -B build -DGPROF=ON ...
 ```
@@ -46,6 +46,13 @@ Após rodar uma simulação com o programa compilado com gprof, será gerado um 
 ```
 gprof gravidade.exe gmon.out > relatorio.txt
 ```
+
+A outra flag é a respeito das bibliotecas [utilidades](https://github.com/potalej/ncorpos-utilidades) e
+[valores-iniciais](https://github.com/potalej/ncorpos-valores-iniciais). Elas são baixadas pelo CMakeLists direto do repositório do GitHub uma única vez e depois sua versão local é reutilizada. Para forçar a atualização, basta passar a flag:
+```
+cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
+```
+que as versões locais serão substituídas pelas mais recentes, baixadas novamente do repositório.
 
 ## 🧮 Simulando
 

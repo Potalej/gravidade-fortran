@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.9.2
+project("gravidade" VERSION 0.9.3
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -16,6 +16,7 @@ enable_language(Fortran)
 # Para baixar as coisas se necessario
 include(FetchContent)
 include(repos.cmake)
+option(FORCAR_ATUALIZAR_REPO "Forcar download/atualizacao das bibliotecas" OFF)
 
 # Data e hora de compilacao
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
@@ -126,9 +127,22 @@ add_subdirectory(libs/json-fortran)
 # ou seja, contem tanto rotinas para resolucao de sistemas lineares, calculo
 # de autovalores e afins, como tambem rotinas para calculo de energia total,
 # momento angular, tensor de inercia e afins.
+# Foi separada do programa principal, entao precisa ser baixada. Baixa somente
+# se for necessario ou forcado a isso. Por padrao, uma vez que tenha sido 
+# baixada, sua versao local eh utilizada. Para forcar a atualizacao, basta 
+# rodar:
+# > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
-if (NOT TARGET utilidades)
-  message(STATUS "baixando a biblioteca de utilidades...")
+# diretorio
+set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/utilidades")
+
+# baixa se for o caso
+if (EXISTS "${LOCAL_LIB_DIR_UT}" AND NOT FORCAR_ATUALIZAR_REPO)
+  message(STATUS "Usando a biblioteca utilidades ja presente em libs/")
+  add_subdirectory(${LOCAL_LIB_DIR_UT}/utilidades-src utilidades)
+else()
+  message(STATUS "Baixando a biblioteca de utilidades...")
+  set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/utilidades)
   FetchContent_Declare(
     utilidades
     GIT_REPOSITORY ${UTILIDADES_REPO}
@@ -139,14 +153,26 @@ endif()
 # ============================================================================
 
 # ============================================================================
-#> Condicionamento
+#> Valores iniciais
 # ----------------------------------------------------------------------------
-## Contem rotinas para condicionar valores iniciais para que atendam a 
-## restricoes desejadas, como integrais primeiras ou equilibrio (virial).
-## Depende das bibliotecas "ALEATORIO", "JSON_UTILS" e "UTILIDADES".
+# Biblioteca para geracao de valores iniciais. Foi separada do programa
+# principal, mas serve para gerar valores iniciais e condicioná-los se for
+# o caso.
+# Baixa somente se for necessario ou forcado a isso. Por padrao, uma vez que
+# tenha sido baixada, sua versao local eh utilizada. Para forcar a 
+# atualizacao, basta rodar:
+# > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
-if (NOT TARGET valores_iniciais)
-  message(STATUS "baixando a biblioteca de valores iniciais...")
+# diretorio
+set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/valores_iniciais")
+
+# baixa se for o caso
+if (EXISTS "${LOCAL_LIB_DIR_VI}" AND NOT FORCAR_ATUALIZAR_REPO)
+  message(STATUS "Usando a biblioteca valores-iniciais ja presente em libs/")
+  add_subdirectory(${LOCAL_LIB_DIR_VI}/valores_iniciais-src valores_iniciais)
+else()
+  message(STATUS "Baixando a biblioteca de valores iniciais...")
+  set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/valores_iniciais)
   FetchContent_Declare(
     valores_iniciais
     GIT_REPOSITORY ${VALORES_INICIAIS_REPO}
@@ -154,6 +180,7 @@ if (NOT TARGET valores_iniciais)
   )
   FetchContent_MakeAvailable(valores_iniciais)
 endif()
+
 # ============================================================================
 
 

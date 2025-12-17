@@ -52,3 +52,7 @@ relatorio.txt
 
 # do Python
 __pycache__
+
+# bibliotecas externas
+libs/utilidades
+libs/valores_iniciais

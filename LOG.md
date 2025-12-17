@@ -1,5 +1,15 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-12-17] v0.9.3: Bibliotecas externas e uso offline
+
+Para quando for necessário rodar o programa offline, as bibliotecas de utilidades e de valores iniciais serão baixadas automaticamente uma única vez e depois sua versão local será utilizada. Para forçar a atualização, basta apagar as pastas em libs/ ou então usar a flag:
+```
+cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
+```
+que a versão mais atualizada será baixada.
+
+---
+
 ## [2025-12-17] v0.9.2: repos.cmake
 
 Só para facilitar um pouco a manutenção dessas coisas.
