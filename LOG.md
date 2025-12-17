@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-12-17] v0.9.2: repos.cmake
+
+Só para facilitar um pouco a manutenção dessas coisas.
+
+---
+
 ## [2025-12-17] v0.9.1: Adaptação para rotina do valores-iniciais
 
 Fiz uma modificação na biblioteca de valores iniciais, então precisei fazer uma pequena alteração no gravidade-fortran.

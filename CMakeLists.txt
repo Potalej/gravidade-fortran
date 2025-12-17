@@ -8,13 +8,14 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.9.1
+project("gravidade" VERSION 0.9.2
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
 
 # Para baixar as coisas se necessario
 include(FetchContent)
+include(repos.cmake)
 
 # Data e hora de compilacao
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
@@ -130,8 +131,8 @@ if (NOT TARGET utilidades)
   message(STATUS "baixando a biblioteca de utilidades...")
   FetchContent_Declare(
     utilidades
-    GIT_REPOSITORY https://github.com/potalej/utilidades.git
-    GIT_TAG main
+    GIT_REPOSITORY ${UTILIDADES_REPO}
+    GIT_TAG ${UTILIDADES_TAG}
   )
   FetchContent_MakeAvailable(utilidades)
 endif()
@@ -148,8 +149,8 @@ if (NOT TARGET valores_iniciais)
   message(STATUS "baixando a biblioteca de valores iniciais...")
   FetchContent_Declare(
     valores_iniciais
-    GIT_REPOSITORY https://github.com/potalej/valores-iniciais.git
-    GIT_TAG main
+    GIT_REPOSITORY ${VALORES_INICIAIS_REPO}
+    GIT_TAG ${VALORES_INICIAIS_TAG}
   )
   FetchContent_MakeAvailable(valores_iniciais)
 endif()
