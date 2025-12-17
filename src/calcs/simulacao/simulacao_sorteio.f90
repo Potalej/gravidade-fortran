@@ -47,8 +47,6 @@ SUBROUTINE configuracoes_sorteio (dados, configs)
   configs % G = json_get_float(dados, "G")
   configs % amortecedor = json_get_float(dados, 'integracao.amortecedor')
   configs % modo = json_get_string(dados, "modo")
-  CALL json % get(dados, "massas_iguais", configs % massas_iguais, encontrado)
-  IF (.NOT. encontrado) configs % massas_iguais = .FALSE.
 
   ! Parte de sorteio
   CALL json % get (dados, "sorteio", sorteio_json)
@@ -59,7 +57,6 @@ SUBROUTINE configuracoes_sorteio (dados, configs)
   configs % pd = json_get_float(sorteio_json, "integrais.linear_total")
 
   ! Configuracoes das massas 
-  ALLOCATE(configs % massas)
   configs % massas % distribuicao = json_get_string(sorteio_json, "massas.distribuicao")
   configs % massas % regiao = json_get_string(sorteio_json, "massas.regiao")
   configs % massas % intervalo = json_get_float_vec(sorteio_json, "massas.intervalo")
@@ -67,13 +64,11 @@ SUBROUTINE configuracoes_sorteio (dados, configs)
   IF (.NOT. encontrado) configs % massas % normalizado = .FALSE.
 
   ! Configuracoes das posicoes
-  ALLOCATE(configs % posicoes)
   configs % posicoes % distribuicao = json_get_string(sorteio_json, "posicoes.distribuicao")
   configs % posicoes % regiao = json_get_string(sorteio_json, "posicoes.regiao")
   configs % posicoes % intervalo = json_get_float_vec(sorteio_json, "posicoes.intervalo")
   
   ! Configuracoes dos momentos
-  ALLOCATE(configs % momentos)
   configs % momentos % distribuicao = json_get_string(sorteio_json, "momentos.distribuicao")
   configs % momentos % regiao = json_get_string(sorteio_json, "momentos.regiao")
   configs % momentos % intervalo = json_get_float_vec(sorteio_json, "momentos.intervalo")
