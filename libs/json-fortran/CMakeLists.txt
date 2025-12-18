@@ -1,5 +1,6 @@
 # lib/json-fortran/CMakeLists.txt
 # json-fortran 9.0.3 (fev/2025)
+project(json_fortran VERSION 9.0.3)
 
 add_library(jsonfortran STATIC
   json_file_module.F90
@@ -13,6 +14,8 @@ add_library(jsonfortran STATIC
 # Agora sim, o alvo jsonfortran já existe
 set_target_properties(jsonfortran PROPERTIES
   Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories(jsonfortran PUBLIC

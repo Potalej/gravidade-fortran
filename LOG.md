@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-12-18] v0.9.4: Melhorias no CMakeLists.txt
+
+Fiz algumas mudanças no conteudo que é exibido na tela pelo CMakeLists. Ficou mais organizado e legivel.
+Também concertei a detecção do Python, que agora olha primeiro para o ambiente virtual se for o caso (como o conda) e depois para a máquina.
+
+---
+
 ## [2025-12-17] v0.9.3: Bibliotecas externas e uso offline
 
 Para quando for necessário rodar o programa offline, as bibliotecas de utilidades e de valores iniciais serão baixadas automaticamente uma única vez e depois sua versão local será utilizada. Para forçar a atualização, basta apagar as pastas em libs/ ou então usar a flag:

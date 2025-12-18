@@ -7,8 +7,8 @@
 #   > cmake -B build -G Ninja
 # ============================================================================
 
-cmake_minimum_required(VERSION 3.7)
-project("gravidade" VERSION 0.9.3
+cmake_minimum_required(VERSION 3.15)
+project("gravidade" VERSION 0.9.4
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -16,7 +16,7 @@ enable_language(Fortran)
 # Para baixar as coisas se necessario
 include(FetchContent)
 include(repos.cmake)
-option(FORCAR_ATUALIZAR_REPO "Forcar download/atualizacao das bibliotecas" OFF)
+option(DFORCAR_ATUALIZAR_REPO "Forcar download/atualizacao das bibliotecas" OFF)
 
 # Data e hora de compilacao
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
@@ -41,7 +41,7 @@ include_directories(${CMAKE_BINARY_DIR}/mod)
 option(GPROF "Habilitar criacao de perfil gprof" OFF)
 
 if (GPROF)
-  message(STATUS "GNU Profiler (gprof) ativado")
+  message(STATUS "[debug] GNU Profiler (gprof) ativado")
   add_compile_options(-pg)
   add_link_options(-pg)
 endif()
@@ -106,6 +106,7 @@ target_include_directories(gravidade PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 # ============================================================================
 # Procura pelo OpenBLAS
 # ----------------------------------------------------------------------------
+message("\n> Biblioteca externa: OpenBLAS")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(OpenBLAS REQUIRED)
 
@@ -117,7 +118,10 @@ ENDIF()
 # ============================================================================
 # Inclui o JSONFortran
 # ----------------------------------------------------------------------------
+message("\n> Biblioteca externa: JSON-Fortran")
 add_subdirectory(libs/json-fortran)
+get_target_property(JF_VERSAO jsonfortran VERSION)
+message(STATUS "Versao: ${JF_VERSAO}")
 # ============================================================================
 
 # ============================================================================
@@ -136,19 +140,31 @@ add_subdirectory(libs/json-fortran)
 # diretorio
 set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/utilidades")
 
+message("\n> Biblioteca externa: utilidades")
+
 # baixa se for o caso
 if (EXISTS "${LOCAL_LIB_DIR_UT}" AND NOT FORCAR_ATUALIZAR_REPO)
-  message(STATUS "Usando a biblioteca utilidades ja presente em libs/")
+  file(READ "${LOCAL_LIB_DIR_UT}/versao.txt" UT_VERSAO)
+  message(STATUS "Usando a biblioteca local: ${UT_VERSAO}")
   add_subdirectory(${LOCAL_LIB_DIR_UT}/utilidades-src utilidades)
 else()
   message(STATUS "Baixando a biblioteca de utilidades...")
-  set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/utilidades)
+  set(FETCHCONTENT_BASE_DIR ${LOCAL_LIB_DIR_UT})
   FetchContent_Declare(
     utilidades
     GIT_REPOSITORY ${UTILIDADES_REPO}
     GIT_TAG ${UTILIDADES_TAG}
   )
   FetchContent_MakeAvailable(utilidades)
+  
+  # captura a versao
+  get_target_property(UTILIDADES_VERSAO utilidades VERSION)
+  message(STATUS "Versão da biblioteca utilidades = ${UTILIDADES_VERSAO}")
+
+  # salva a versao e a data em um .txt
+  file(WRITE "${LOCAL_LIB_DIR_UT}/versao.txt" 
+      "v${UTILIDADES_VERSAO} (imp.: ${BUILD_DATE} ${BUILD_TIME})")
+  
 endif()
 # ============================================================================
 
@@ -166,23 +182,35 @@ endif()
 # diretorio
 set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/valores_iniciais")
 
+message("\n> Biblioteca externa: valores-iniciais")
+
 # baixa se for o caso
 if (EXISTS "${LOCAL_LIB_DIR_VI}" AND NOT FORCAR_ATUALIZAR_REPO)
-  message(STATUS "Usando a biblioteca valores-iniciais ja presente em libs/")
+  file(READ "${LOCAL_LIB_DIR_VI}/versao.txt" VI_VERSAO)
+  message(STATUS "Usando a biblioteca local: ${VI_VERSAO}")
   add_subdirectory(${LOCAL_LIB_DIR_VI}/valores_iniciais-src valores_iniciais)
+
 else()
   message(STATUS "Baixando a biblioteca de valores iniciais...")
-  set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/valores_iniciais)
+  set(FETCHCONTENT_BASE_DIR ${LOCAL_LIB_DIR_VI})
   FetchContent_Declare(
     valores_iniciais
     GIT_REPOSITORY ${VALORES_INICIAIS_REPO}
     GIT_TAG ${VALORES_INICIAIS_TAG}
   )
   FetchContent_MakeAvailable(valores_iniciais)
-endif()
 
+  # captura a versao
+  get_target_property(VI_VERSAO valores_iniciais VERSION)
+  message(STATUS "Versão da biblioteca valores_iniciais = ${VI_VERSAO}")
+
+  # salva a versao e a data em um .txt
+  file(WRITE "${LOCAL_LIB_DIR_VI}/versao.txt"
+      "v${VI_VERSAO} (imp.: ${BUILD_DATE} ${BUILD_TIME})")
+endif()
 # ============================================================================
 
+message("")
 
 # ============================================================================
 # =-=-=-=-=-=-=-=-=-=-=-=-=-=- Bibliotecas locais =-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -359,25 +387,30 @@ target_link_libraries(pyplot PRIVATE
   tipos
   arquivos
 )
+# para detectar dentro de ambientes conda
+set(Python_FIND_STRATEGY LOCATION)
+set(Python_FIND_VIRTUALENV FIRST)
 find_program(PYTHON NAMES python python3 QUIET)
+
+message("> Python")
 IF(PYTHON)
+  message(STATUS "Python localizado (${PYTHON})")
   find_package(Python COMPONENTS Interpreter REQUIRED QUIET)
 
   # procura pelo matplotlib
   execute_process(
-    COMMAND pip show matplotlib
+    COMMAND ${Python_EXECUTABLE} -m pip show matplotlib
     RESULT_VARIABLE EXIT_CODE
     OUTPUT_QUIET
+    ERROR_QUIET
   )
 
   # Se nao achar, so da o WARNING
-  IF(NOT EXIT_CODE EQUAL 0)
-    IF(NOT EXIT_MATPLOTLIB EQUAL 0)
-      message(WARNING "A dependencia 'matplotlib' nao foi encontrada. Nao sera possivel criar graficos.")
-    ENDIF()
+  IF(NOT EXIT_CODE EQUAL 0 AND NOT EXIT_MATPLOTLIB EQUAL 0)
+    message(WARNING "A dependencia 'matplotlib' nao foi encontrada. Nao sera possivel criar graficos.")
+  ELSE()
+    message(STATUS "matplotlib localizado.\n")
   ENDIF()
-
-  message(STATUS "Python localizado.")
 ELSE()
   message(WARNING "Python nao encontrado! Nao sera possivel criar graficos.")
 ENDIF()
