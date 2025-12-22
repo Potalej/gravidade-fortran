@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2025-12-22] v0.9.5: Bibliotecas externas com git submodules
+
+Git modules é uma ferramenta bem útil, aparentemente. Melhor que o jeito estranho que eu tinha feito na v0.9.3. O importante é que está funcionando e só precisa de internet uma vez! A menos, claro, que algo mude no utilidades ou no valores-iniciais.
+
+---
+
 ## [2025-12-18] v0.9.4: Melhorias no CMakeLists.txt
 
 Fiz algumas mudanças no conteudo que é exibido na tela pelo CMakeLists. Ficou mais organizado e legivel.

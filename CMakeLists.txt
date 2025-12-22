@@ -8,14 +8,12 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 0.9.4
+project("gravidade" VERSION 0.9.5
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
 
 # Para baixar as coisas se necessario
-include(FetchContent)
-include(repos.cmake)
 option(DFORCAR_ATUALIZAR_REPO "Forcar download/atualizacao das bibliotecas" OFF)
 
 # Data e hora de compilacao
@@ -137,35 +135,13 @@ message(STATUS "Versao: ${JF_VERSAO}")
 # rodar:
 # > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
-# diretorio
-set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/utilidades")
-
 message("\n> Biblioteca externa: utilidades")
 
-# baixa se for o caso
-if (EXISTS "${LOCAL_LIB_DIR_UT}" AND NOT FORCAR_ATUALIZAR_REPO)
-  file(READ "${LOCAL_LIB_DIR_UT}/versao.txt" UT_VERSAO)
-  message(STATUS "Usando a biblioteca local: ${UT_VERSAO}")
-  add_subdirectory(${LOCAL_LIB_DIR_UT}/utilidades-src utilidades)
-else()
-  message(STATUS "Baixando a biblioteca de utilidades...")
-  set(FETCHCONTENT_BASE_DIR ${LOCAL_LIB_DIR_UT})
-  FetchContent_Declare(
-    utilidades
-    GIT_REPOSITORY ${UTILIDADES_REPO}
-    GIT_TAG ${UTILIDADES_TAG}
-  )
-  FetchContent_MakeAvailable(utilidades)
-  
-  # captura a versao
-  get_target_property(UTILIDADES_VERSAO utilidades VERSION)
-  message(STATUS "Versão da biblioteca utilidades = ${UTILIDADES_VERSAO}")
-
-  # salva a versao e a data em um .txt
-  file(WRITE "${LOCAL_LIB_DIR_UT}/versao.txt" 
-      "v${UTILIDADES_VERSAO} (imp.: ${BUILD_DATE} ${BUILD_TIME})")
-  
-endif()
+# diretorio
+set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_utilidades")
+add_subdirectory(${LOCAL_LIB_DIR_UT} utilidades)
+get_target_property(UTILIDADES_VERSAO utilidades VERSION)
+message(STATUS "Versão da biblioteca utilidades: ${UTILIDADES_VERSAO}")
 # ============================================================================
 
 # ============================================================================
@@ -179,35 +155,13 @@ endif()
 # atualizacao, basta rodar:
 # > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
-# diretorio
-set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/valores_iniciais")
-
 message("\n> Biblioteca externa: valores-iniciais")
 
-# baixa se for o caso
-if (EXISTS "${LOCAL_LIB_DIR_VI}" AND NOT FORCAR_ATUALIZAR_REPO)
-  file(READ "${LOCAL_LIB_DIR_VI}/versao.txt" VI_VERSAO)
-  message(STATUS "Usando a biblioteca local: ${VI_VERSAO}")
-  add_subdirectory(${LOCAL_LIB_DIR_VI}/valores_iniciais-src valores_iniciais)
-
-else()
-  message(STATUS "Baixando a biblioteca de valores iniciais...")
-  set(FETCHCONTENT_BASE_DIR ${LOCAL_LIB_DIR_VI})
-  FetchContent_Declare(
-    valores_iniciais
-    GIT_REPOSITORY ${VALORES_INICIAIS_REPO}
-    GIT_TAG ${VALORES_INICIAIS_TAG}
-  )
-  FetchContent_MakeAvailable(valores_iniciais)
-
-  # captura a versao
-  get_target_property(VI_VERSAO valores_iniciais VERSION)
-  message(STATUS "Versão da biblioteca valores_iniciais = ${VI_VERSAO}")
-
-  # salva a versao e a data em um .txt
-  file(WRITE "${LOCAL_LIB_DIR_VI}/versao.txt"
-      "v${VI_VERSAO} (imp.: ${BUILD_DATE} ${BUILD_TIME})")
-endif()
+# diretorio
+# set(VI_UTILIDADES_LOCAL OFF) # Indica que nao vai usar a versao local da biblioteca
+set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_valores_iniciais")
+add_subdirectory(${LOCAL_LIB_DIR_VI} valores_iniciais)
+message(STATUS "Versão da biblioteca valores-iniciais: ${NCORPOS_VI_PROJECT_VERSION}")
 # ============================================================================
 
 message("")
