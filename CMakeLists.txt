@@ -118,19 +118,17 @@ if (FETCHJSONFORTRAN OR PRECISAO EQUAL "32" OR PRECISAO EQUAL "128" OR NOT DEFIN
   
   include(FetchContent)
 
-  set(JSON_REAL_KIND "REAL128" CACHE STRING "Real kind parameter")
-
   FetchContent_Declare(
     jsonfortran
     GIT_REPOSITORY https://github.com/jacobwilliams/json-fortran.git
-    GIT_TAG 9.1.0
+    GIT_TAG 9.2.0
     GIT_SHALLOW TRUE
   )
   FetchContent_MakeAvailable(jsonfortran)
 
   target_compile_definitions(jsonfortran
-    INTERFACE
-      $<$<CONFIG:Release>:-DREAL128>   # Se for o tipo REAL128
+    INTERFACE 
+      $<$<CONFIG:Release>:-DREAL${PRECISAO}>   # Se for o tipo REAL128
   )
 
   target_include_directories(jsonfortran
