@@ -43,8 +43,6 @@ teste/
 pyutils/*
 !pyutils/ex_servidor.py
 presets/*
-!presets/valores_iniciais/exemplo_vi.json
-!presets/condicionar/exemplo.json
 
 # GNU profiler
 gmon.out

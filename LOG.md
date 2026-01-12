@@ -1,5 +1,14 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-01-12] v1.0.0!
+
+- README.md e helper do programa melhor documentados;
+- Biblioteca JSON-Fortran sendo importada via pacotes por padrão, e podendo ser compilada localmente se desejado ou se necessário (com -DPRECISAO diferente de 64).
+- Identidade visual (kkkk).
+- Tudo funcionando (aparentemente)!
+
+---
+
 ## [2025-12-22] v0.9.5: Bibliotecas externas com git submodules
 
 Git modules é uma ferramenta bem útil, aparentemente. Melhor que o jeito estranho que eu tinha feito na v0.9.3. O importante é que está funcionando e só precisa de internet uma vez! A menos, claro, que algo mude no utilidades ou no valores-iniciais.

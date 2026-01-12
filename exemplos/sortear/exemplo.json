@@ -1,11 +1,11 @@
 {
-    "modo": "sorteio_ip_iterativo",
+    "modo": "sorteio_aarseth_modificado",
     
     "G": 1.0,
-    "N": 100,
+    "N": 50,
     "paralelo": false,
     "gpu": false,
-    "massas_iguais": true,
+    "massas_iguais": false,
     "exibir": false,
 
     "sorteio": {
@@ -20,9 +20,9 @@
             "distribuicao": "uniforme"
         },
         "posicoes": {
-            "intervalo": [-5.0, 5.0, 0.1],
+            "intervalo": [-10.0, 10.0, 0.5],
             "distribuicao": "uniforme",
-            "regiao":       "cubo"
+            "regiao":       "esfera"
         },
         "momentos": {
             "intervalo": [-1.0, 1.0],
@@ -33,17 +33,17 @@
 
     "integracao": {
         "metodo": "verlet",
-        "timestep": 0.01,
-        "amortecedor": 0.1,
+        "timestep": 0.005,
+        "amortecedor": 0.0,
         "t0": 0,
-        "tf": 10,
-        "checkpoints": 10
+        "tf": 40,
+        "checkpoints": 40
     },
 
     "colisoes": {
-        "colidir": false,
+        "colidir": true,
         "metodo": "direto",
-        "densidade": 59.68310365946074
+        "densidade": 4.774648292756859
     },
 
     "correcao": {

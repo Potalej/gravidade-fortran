@@ -1,81 +1,136 @@
-# 🪐 gravidade-fortran 🪐
+<h1 align="center">
+    <img src="img/gf-logo.png" width="500">
+</h1>
 
-A mesma gravidade, só que em Fortran. Vamo que vamo :)
+<p align="center">
+    <img src="https://img.shields.io/github/languages/top/potalej/gravidade-fortran?label=Fortran&logo=fortran&labelColor=%236f4c91&color=gray" alt="fortran">
+    <img src="https://img.shields.io/github/languages/code-size/potalej/gravidade-fortran?label=tamanho&labelColor=%236f4c91&color=gray" alt="tamanho">
+    <img src="https://img.shields.io/github/last-commit/potalej/gravidade-fortran?label=alterado&labelColor=%236f4c91&color=gray" alt="ultimo commit">
+    <img src="https://img.shields.io/github/issues/potalej/gravidade-fortran?label=issues&labelColor=%236f4c91&color=gray" alt="issues">
+</p>
+
+<p align="center">
+    <img src="https://img.shields.io/badge/JSON--Fortran-v9.1.0-dark?logo=fortran&color=blue" alt="json-fortran">
+    <img src="https://img.shields.io/badge/ncorpos--utilidades-v1.0.0-brightgreen?logo=fortran&color=blue" alt="ncorpos-utilidades">
+    <img src="https://img.shields.io/badge/ncorpos--valores--iniciais-v0.2.5-dark?logo=fortran&color=blue" alt="ncorpos-valores-iniciais">
+</p>
+
+<p align="center">A mesma gravidade, só que em Fortran. Vamo que vamo :)</p>
 
 ## ⚙️ Compilando
 
-Para gerar uma build com o gerador desejado, basta rodar
+Depois de clonar o repositório, rode
 
 ```
-cmake -B build -G "gerador"
+git submodule update --init --recursive
 ```
 
-Por exemplo, usando o Ninja:
+para as bibliotecas [ncorpos-valores-iniciais](https://github.com/potalej/ncorpos-valores-iniciais) e [ncorpos-utilidades](https://github.com/potalej/ncorpos-utilidades) ficarem disponíveis.
+
+Para compilar:
+
+```
+cmake -B build
+cd build 
+make
+cd ..
+```
+
+ou usando, por exemplo, o Ninja:
 
 ```
 cmake -B build -G Ninja
 ninja -C build
 ```
 
-Um executável será gerado no diretório raiz.
-
-Outra possibilidade é com o uso dos helpers. Use:
-
-```
-sh helpers/build.sh
-```
-
-para compilar o programa. Se quiser compilar e rodar um exemplo de preset, use:
-
-```
-sh helpers/compilar_gerar.sh
-```
+Um executável será copiado para o diretório raiz.
 
 ### 🚩 Flags
 
-Há três flags disponíveis. A primeira é a PRECISAO, que pode ser 32, 64 (padrão) ou 128, e todas as variáveis de tipo `REAL(pf)` terão a precisão desejada. Exemplo de uso:
+#### `PRECISAO=64`
+
+Pode ser 32, 64 (padrão) ou 128. Todas as variáveis do tipo `REAL(pf)` terão a precisão definida. Exemplo de uso:
+
 ```
-cmake -B build -DPRECISAO=64 ...
+cmake -B build -DPRECISAO=128
 ```
 
-Outra flag é a do [gprof](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html), que ativa o GNU Profiler, utilizado para análise de desempenho. Para ativar, basta usar:
+> [!WARNING]
+> Ao utilizar uma precisão diferente de 64, a opção `FETCHJSONFORTRAN` abaixo será desconsiderada e o JSON-Fortran será compilado localmente com a precisão correspondente.
+
+<h4 id="fetchjsonfortran">
+
+`FETCHJSONFORTRAN=OFF`
+
+</h4>
+
+Se ativada, baixa uma versão recente da API [JSON-Fortran](https://github.com/jacobwilliams/json-fortran) e a compila localmente; isso pode demorar. Por padrão, vem desativada e tenta usar uma versão disponibilizada via gerenciador de pacotes (e.g.: conda). Exemplo de uso:
+
+```
+cmake -B build -DFETCHJSONFORTRAN=ON
+```
+
+#### `USAR_GPU=OFF` (experimental)
+
+Ativa a paralelização em GPU utilizando o OpenMP offload. Foi implementado para experimentar e aprender, não utilize.
+
+#### `GPROF=OFF`
+
+Ativa o [GNU Profiler](https://ftp.gnu.org/old-gnu/Manuals/gprof-2.9.1/html_mono/gprof.html), utilizado para análise de desempenho. Para ativar, basta usar:
+
 ```
 cmake -B build -DGPROF=ON ...
 ```
-Após rodar uma simulação com o programa compilado com gprof, será gerado um arquivo "gmon.out" que fornece um relatório usando o comando:
-```
-gprof gravidade.exe gmon.out > relatorio.txt
-```
 
-A outra flag é a respeito das bibliotecas [utilidades](https://github.com/potalej/ncorpos-utilidades) e
-[valores-iniciais](https://github.com/potalej/ncorpos-valores-iniciais). Elas são baixadas pelo CMakeLists direto do repositório do GitHub uma única vez e depois sua versão local é reutilizada. Para forçar a atualização, basta passar a flag:
+Após rodar uma simulação com o programa compilado com gprof, será gerado um arquivo "gmon.out" que fornece um relatório usando o comando:
+
 ```
-cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
+gprof gravidade gmon.out > relatorio.txt
 ```
-que as versões locais serão substituídas pelas mais recentes, baixadas novamente do repositório.
 
 ## 🧮 Simulando
+
+### Configurações
+
+Para todos os casos de simulação que seguem, os seguintes parâmetros podem ser passados para modificar o comportamento do programa:
+
+#### `-ps, --pasta-saida`
+
+Por padrão, a pasta de saída do programa é "out". Caso queira utilizar outra pasta, basta informar o nome:
+
+```bash
+./gravidade [...] -ps minha_pasta
+```
+
+#### `-es, --extensao-saida`
+
+O programa suporta dois tipos de saída: ".csv" e ".bin" (padrão). Para escolher, basta informar:
+
+```bash
+./gravidade [...] -es .csv
+```
 
 ### Presets para geração
 
 É possível utilizar presets (i.e., arquivos com configurações pré-definidas) para gerar valores iniciais aleatórios com determinadas condições, como com uma energia total desejada, por exemplo.
 
-Com base em um preset modelo disponível em "presets/", escreva seu preset e rode com:
+Com base nos presets disponíveis em "exemplos/", escreva seu preset e rode com:
 
 ```
 ./gravidade -s SEU_ARQUIVO.json
 ```
 
-Há três modos para geração aleatória no momento, que geram valores iniciais aleatórios e os condicionam:
-- `sorteio_ip_iterativo`: Condicionamento iterativo;
-- `sorteio_ip_direto`: Condicionamento direto;
-- `sorteio_aarseth`: Condiciona diretamente e depois aplica o proposto por (Aarseth, 2003) para obter o equilíbrio de virial.
+Os seguintes modos de condicionamento de valores iniciais estão disponíveis:
+- `sorteio_ip_iterativo`: Condicionamento iterativo. Suporta potencial amortecido.
+- `sorteio_ip_direto`: Condicionamento direto. Não suporta potencial amortecido.
+- `sorteio_aarseth`: Condicionamento direto para $E=-1/4$ e outras integrais nulas, começando em equilíbrio. Não suporta potencial amortecido. Proposto por (Aarseth, 2003).
+- `sorteio_aarseth_modificado`: Condicionamento direto ou iterativo (a depender) para $E=-1/4$ e outas integrais nulas, começando em equilíbrio. Suporta potencial amortecido, utilizando o condicionamento iterativo se for o caso.
 
-Confira [aqui](/presets/condicionar/exemplo.json) um exemplo de arquivo de valores para sorteio.
+Confira [aqui](/exemplos/sortear/exemplo.json) um exemplo de arquivo de valores para sorteio.
 
 ### Valores iniciais
 
-Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através da opção `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível no diretório PRESETs.
+Se já tiver os valores iniciais do problema e quiser utilizá-los, é possível através do modo `-vi`. Um modelo de valores iniciais de um problema de três corpos com trajetória em formato de lemniscata está disponível nos exemplos.
 
 Para rodar este caso, utilize:
 
@@ -83,7 +138,7 @@ Para rodar este caso, utilize:
 ./gravidade -vi SEU_ARQUIVO.json
 ```
 
-Confira [aqui](/presets/valores_iniciais/exemplo_vi.json) um exemplo de arquivo de valores iniciais.
+Confira [aqui](/exemplos/valores_iniciais/exemplo.json) um exemplo de arquivo de valores iniciais.
 
 ### Visualizando 🧐
 É possível visualizar as simulações de duas formas.
@@ -111,7 +166,7 @@ Os métodos de integração implementados são:
         - [Runge-Kutta de ordem 2 (RK2)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta);
         - [Runge-Kutta de ordem 3 (RK3)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta);
         - [Runge-Kutta de ordem 4 (RK4)](https://pt.wikipedia.org/wiki/M%C3%A9todo_de_Runge-Kutta#O_m%C3%A9todo_Runge%E2%80%93Kutta_cl%C3%A1ssico_de_quarta_ordem);
-        - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method) (INDISPONÍVEL);
+        - [Runge-Kutta-Fehlberg (RKF45)](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method) (DESATIVADO TEMPORARIAMENTE);
 - Métodos simpléticos:
     - [Euler simplético](https://en.wikipedia.org/wiki/Symplectic_integrator#A_first-order_example);
     - [Velocity-Verlet](https://en.wikipedia.org/wiki/Verlet_integration#Velocity_Verlet);
@@ -128,15 +183,12 @@ Também há três aplicações para modificar soluções:
 2. Colisões perfeitamente elásticas entre os corpos.
 3. Um amortecedor no potencial, que impede aproximações muito intensas. Para poucos corpos pode gerar instabilidades, mas é útil para grandes quantidades de corpos.
 
-As massas, posições e momentos lineares são armazenados em arquivos .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vv.csv", onde "v" se refere à versão do dia, iniciando em 001 e indo até 999.
+As massas, posições e momentos lineares são armazenados em arquivos .bin (padrão) ou .csv no diretório "data". Para evitar sobreescrita de dados, o nome do arquivo captura a data corrente no formato "aaaammdd_vvv.*", onde "v" se refere à versão do dia, iniciando em 001 e indo até 999.
 
-A análise dos dados pode ser feita com Python através de [gravidade-analise](https://github.com/Potalej/gravidade-analise).
+## 📚 Dependências
 
-## 📚 Bibliotecas utilizadas
-
-- [OpenBLAS](https://github.com/jacobwilliams/json-fortran/tree/master): Rotinas numéricas de álgebra linear. Geralmente não é difícil de instalar, então [está sendo importada manualmente](https://github.com/Potalej/gravidade-fortran/blob/main/cmake/FindOpenBLAS.cmake).
-- [JSON-Fortran](https://github.com/jacobwilliams/json-fortran/): Rotinas para manipulação de arquivos JSON. Esta teve o "src" de sua versão 9.0.3 (fev/2025) disponibilizado localmente para facilitar o uso em diferentes máquinas, e seus arquivos estão no diretório ["lib/json-fortran"](https://github.com/Potalej/gravidade-fortran/tree/main/lib/json-fortran).
-
+- [OpenBLAS](https://github.com/OpenMathLib/OpenBLAS): Rotinas numéricas de álgebra linear. Instale via algum gerenciador de pacotes, como conda ou pacman. Os diretórios onde OpenBLAS é procurado [estão aqui](https://github.com/Potalej/gravidade-fortran/blob/main/cmake/FindOpenBLAS.cmake); se der erro, provavelmente o erro está aqui.
+- [JSON-Fortran](https://github.com/jacobwilliams/json-fortran/): Rotinas para manipulação de arquivos JSON via Fortran. O CMake por padrão procurará a biblioteca no sistema, então instale via pacotes. Se não for possível, ative a flag [`-DFETCHJSONFORTRAN=ON`](#fetchjsonfortran) que uma versão recente do JSON-Fortran será compilada localmente junto do programa.
 
 ## Referências
 
@@ -145,4 +197,5 @@ A análise dos dados pode ser feita com Python através de [gravidade-analise](h
 * BERTSEKAS, Dmitri Panteli. Nonlinear Programming. 3ed. Nashua: Athena Scientific, 2016.
 * HAIRER, Ernst; WANNER, Gerhard; LUBICH, Christian. Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations. Heidelberg: Springer-Verlag, 2006. DOI: 10.1007/3-540-30666-8. Disponível em: https://doi.org/10.1007/3-540-30666-8.
 * ROMA, Alexandre et al. Métodos para a solução numérica de equações diferenciais ordinárias a valores iniciais. São Paulo: Notas de aula, 2019.
-* OKUNBOR, D. I.; SKEEL, R. D. Canonical Runge—Kutta—Nyström methods of orders five and six. Journal of Computational and Applied Mathematics, v. 51, n. 3, p. 375–382, jun. 1994. 
+* OKUNBOR, D. I.; SKEEL, R. D. Canonical Runge—Kutta—Nyström methods of orders five and six. Journal of Computational and Applied Mathematics, v. 51, n. 3, p. 375–382, jun. 1994.
+* POTALEJ, O. A. Simulação numérica do problema de N-corpos gravitacional. 2024. Trabalho de Conclusão de Curso (Graduação) – Instituto de Matemática e Estatística, Universidade de São Paulo, São Paulo, 2024. Disponível em: https://doi.org/10.11606/003256212

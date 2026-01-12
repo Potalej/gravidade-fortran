@@ -7,7 +7,7 @@
 # ja ficara disponivel para uso.
 # ============================================================================
 
-set(INTEGRADORES_SOURCE
+set(INTEGRADORES_TRADICIONAIS
   # Metodos de Euler
   "./src/calcs/integracao/euler/euler_exp.f90" # (explicito)
   "./src/calcs/integracao/euler/euler_imp.f90" # (implicito)
@@ -16,7 +16,9 @@ set(INTEGRADORES_SOURCE
   "./src/calcs/integracao/rk/rungekutta2.f90" 
   "./src/calcs/integracao/rk/rungekutta3.f90" 
   "./src/calcs/integracao/rk/rungekutta4.f90" 
+CACHE STRING "Lista de integradores tradicionais")
 
+set(INTEGRADORES_SIMPLETICOS
   # Metodos Simpleticos basicos
   "./src/calcs/integracao/simpleticos/verlet.f90"     # (Verlet)
   "./src/calcs/integracao/simpleticos/euler_simp.f90" # (Euler Simpletico)
@@ -32,7 +34,11 @@ set(INTEGRADORES_SOURCE
   # Metodos de Stormer-Verlet Compostos
   "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90"  # (ordem 8)
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" # (ordem 10)
+CACHE STRING "Lista de integradores tradicionais")
 
+set(INTEGRADORES_SOURCE
+  ${INTEGRADORES_TRADICIONAIS}
+  ${INTEGRADORES_SIMPLETICOS}
 CACHE STRING "Lista de integradores")
 
 # Listas formatadas para o Fortran
@@ -41,34 +47,69 @@ set(INTEGRADORES_CLASSES "")
 set(INTEGRADORES_LISTA "")
 set(INTEGRADORES_SELECT "")
 
-# Contador para facilitar a formatacao
-set(CONTADOR 0)
-list(LENGTH INTEGRADORES_SOURCE QUANTIDADE_INTEGRADORES)
-
 foreach(src ${INTEGRADORES_SOURCE})
-  # Adiciona no contador
-  math(EXPR CONTADOR "${CONTADOR} + 1")
-
+  # Captura o arquivo
   get_filename_component(fname ${src} NAME_WE) # ex: euler_exp
   string(TOUPPER ${fname} FNAME_UP) # caso queira usar maiúsculas
 
-  # 1. USE
+  # USE no script
   string(APPEND INTEGRADORES_USE "  USE ${fname}\n")
 
-  # 2. TYPE
+  # TYPE no script
   string(APPEND INTEGRADORES_CLASSES "  TYPE(integracao_${fname}), TARGET, SAVE :: INT_${fname}\n")
 
-  # 3. LISTA
+  # CASE do metodo no script
+  string(APPEND INTEGRADORES_SELECT "    CASE ('${fname}'); integrador => INT_${fname}\n")
+endforeach()
+
+# Agora gera as strings
+# Contador para facilitar a formatacao
+set(CONTADOR 0)
+
+# Primeiro, a string de tradicionais
+list(LENGTH INTEGRADORES_TRADICIONAIS QUANTIDADE_INTEGRADORES)
+string(APPEND INTEGRADORES_LISTA "WRITE(*,*)\n")
+string(APPEND INTEGRADORES_LISTA "\n  WRITE(*,'(A)') '     - TRADICIONAIS:'\n")
+foreach(src ${INTEGRADORES_TRADICIONAIS})
+  # Captura o arquivo
+  get_filename_component(fname ${src} NAME_WE)
+  string(TOUPPER ${fname} FNAME_UP)
+
+  # Adiciona no contador
+  math(EXPR CONTADOR "${CONTADOR} + 1")
+
+  # Adiciona na string
   if (CONTADOR EQUAL 1)
-    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '    ${fname}, '\n")
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '         ${fname}, '\n")
   elseif(CONTADOR EQUAL QUANTIDADE_INTEGRADORES)
     string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)') '${fname}.'\n")
   else()
     string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '${fname}, '\n")
   endif()
+endforeach()
 
-  # 4. DEFINIR_METODO
-  string(APPEND INTEGRADORES_SELECT "    CASE ('${fname}'); integrador => INT_${fname}\n")
+string(APPEND INTEGRADORES_LISTA "WRITE(*,*)\n")
+
+# Agora os simpleticos
+set(CONTADOR 0)
+list(LENGTH INTEGRADORES_SIMPLETICOS QUANTIDADE_INTEGRADORES)
+string(APPEND INTEGRADORES_LISTA "\n  WRITE(*,'(A)') '     - SIMPLETICOS:'\n")
+foreach(src ${INTEGRADORES_SIMPLETICOS})
+  # Captura o arquivo
+  get_filename_component(fname ${src} NAME_WE)
+  string(TOUPPER ${fname} FNAME_UP)
+
+  # Adiciona no contador
+  math(EXPR CONTADOR "${CONTADOR} + 1")
+
+  # Adiciona na string
+  if (CONTADOR EQUAL 1)
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '         ${fname}, '\n")
+  elseif(CONTADOR EQUAL QUANTIDADE_INTEGRADORES)
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)') '${fname}.'\n")
+  else()
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '${fname}, '\n")
+  endif()
 endforeach()
 
 # Gera o arquivo a partir do template

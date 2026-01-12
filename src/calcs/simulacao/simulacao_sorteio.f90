@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   16 de dezembro de 2025
+!   05 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -17,7 +17,6 @@ MODULE simulacao_sorteio
   USE condicoes_iniciais
   USE sorteio_mod
   USE arquivos_mod
-  USE json_module
   IMPLICIT NONE
   PRIVATE
   PUBLIC simular_sorteio, sorteio_salvar
@@ -81,7 +80,7 @@ END SUBROUTINE
 !   Aplica o sorteio e faz a simulacao.
 !
 ! Modificado:
-!   16 de dezembro de 2025
+!   05 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -99,9 +98,9 @@ SUBROUTINE simular_sorteio (arquivo, out_dir, out_ext)
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo, infos)
 
-  ! Faz o condicionamento
+  ! Gera os valores iniciais e faz o seu condicionamento
   CALL configuracoes_sorteio(infos, sorteio_infos)
-  CALL condicionar(sorteio_infos, massas, posicoes, momentos)
+  CALL gerar_condicionar(sorteio_infos, massas, posicoes, momentos)
 
   ! Roda a simulacao no intervalo [t0, tf]
   CALL rodar_simulacao(out_dir, out_ext, infos, massas, posicoes, momentos)
@@ -134,9 +133,9 @@ SUBROUTINE sorteio_salvar (arquivo_in, out_dir)
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo_in, infos)
 
-  ! Faz o condicionamento
+  ! Gera os valores iniciais e faz o seu condicionamento
   CALL configuracoes_sorteio(infos, sorteio_infos)
-  CALL condicionar(sorteio_infos, massas, posicoes, momentos)
+  CALL gerar_condicionar(sorteio_infos, massas, posicoes, momentos)
 
   ! Verifica se o diretorio de saida existe
   CALL diretorio_vi(out_dir)

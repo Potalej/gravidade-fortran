@@ -8,13 +8,10 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 0.9.5
+project("gravidade" VERSION 1.0.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
-
-# Para baixar as coisas se necessario
-option(DFORCAR_ATUALIZAR_REPO "Forcar download/atualizacao das bibliotecas" OFF)
 
 # Data e hora de compilacao
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
@@ -28,9 +25,6 @@ set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -O3 -march=native -fopenmp")
 message("\n******************************************")
 message("#        gravidade-fortran v${CMAKE_PROJECT_VERSION}        #")
 message("******************************************")
-
-# Diretorio para .mod
-include_directories(${CMAKE_BINARY_DIR}/mod)
 # ============================================================================
 
 # ============================================================================
@@ -117,9 +111,50 @@ ENDIF()
 # Inclui o JSONFortran
 # ----------------------------------------------------------------------------
 message("\n> Biblioteca externa: JSON-Fortran")
-add_subdirectory(libs/json-fortran)
-get_target_property(JF_VERSAO jsonfortran VERSION)
-message(STATUS "Versao: ${JF_VERSAO}")
+option(FETCHJSONFORTRAN "Compilar o json-fortran localmente" OFF)
+
+if (FETCHJSONFORTRAN OR PRECISAO EQUAL "32" OR PRECISAO EQUAL "128")
+  message(STATUS "Baixando do repositório para compilar localmente. Isso pode demorar um pouco...")
+  
+  include(FetchContent)
+
+  set(JSON_REAL_KIND "REAL128" CACHE STRING "Real kind parameter")
+
+  FetchContent_Declare(
+    jsonfortran
+    GIT_REPOSITORY https://github.com/jacobwilliams/json-fortran.git
+    GIT_TAG 9.1.0
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(jsonfortran)
+
+  target_compile_definitions(jsonfortran
+    INTERFACE
+      $<$<CONFIG:Release>:-DREAL128>   # Se for o tipo REAL128
+  )
+
+  target_include_directories(jsonfortran
+    INTERFACE
+      ${jsonfortran_BINARY_DIR}
+  )
+
+elseif (DEFINED ENV{CONDA_PREFIX})
+  message(STATUS "Ambiente conda ativo, verificando instalacao...")
+  set(JSONFORTRAN_LIB "$ENV{CONDA_PREFIX}/lib/libjsonfortran.so")
+  set(JSONFORTRAN_INC "$ENV{CONDA_PREFIX}/include")
+  
+  if (EXISTS "${JSONFORTRAN_LIB}")
+    add_library(jsonfortran::jsonfortran SHARED IMPORTED)
+    set_target_properties(jsonfortran::jsonfortran PROPERTIES
+      IMPORTED_LOCATION "${JSONFORTRAN_LIB}"
+      INTERFACE_INCLUDE_DIRECTORIES "${JSONFORTRAN_INC}"
+    )
+    add_library(jsonfortran ALIAS jsonfortran::jsonfortran)
+    message(STATUS "JSON-Fortran habilitado via conda!")
+  else()
+    message(FATAL_ERROR "JSON-Fortran nao encontrado no conda! Instale no conda ou compile localmente atraves da flag -DFETCHJSONFORTRAN=ON")
+  endif()
+endif()
 # ============================================================================
 
 # ============================================================================
@@ -129,19 +164,13 @@ message(STATUS "Versao: ${JF_VERSAO}")
 # ou seja, contem tanto rotinas para resolucao de sistemas lineares, calculo
 # de autovalores e afins, como tambem rotinas para calculo de energia total,
 # momento angular, tensor de inercia e afins.
-# Foi separada do programa principal, entao precisa ser baixada. Baixa somente
-# se for necessario ou forcado a isso. Por padrao, uma vez que tenha sido 
-# baixada, sua versao local eh utilizada. Para forcar a atualizacao, basta 
-# rodar:
-# > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
 message("\n> Biblioteca externa: utilidades")
 
 # diretorio
 set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_utilidades")
 add_subdirectory(${LOCAL_LIB_DIR_UT} utilidades)
-get_target_property(UTILIDADES_VERSAO utilidades VERSION)
-message(STATUS "Versão da biblioteca utilidades: ${UTILIDADES_VERSAO}")
+message(STATUS "Versão da biblioteca utilidades: ${NCORPOS_UTILIDADES_PROJECT_VERSION}")
 # ============================================================================
 
 # ============================================================================
@@ -150,15 +179,10 @@ message(STATUS "Versão da biblioteca utilidades: ${UTILIDADES_VERSAO}")
 # Biblioteca para geracao de valores iniciais. Foi separada do programa
 # principal, mas serve para gerar valores iniciais e condicioná-los se for
 # o caso.
-# Baixa somente se for necessario ou forcado a isso. Por padrao, uma vez que
-# tenha sido baixada, sua versao local eh utilizada. Para forcar a 
-# atualizacao, basta rodar:
-# > cmake -B build -DFORCAR_ATUALIZAR_REPO=ON
 # ----------------------------------------------------------------------------
 message("\n> Biblioteca externa: valores-iniciais")
 
 # diretorio
-# set(VI_UTILIDADES_LOCAL OFF) # Indica que nao vai usar a versao local da biblioteca
 set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_valores_iniciais")
 add_subdirectory(${LOCAL_LIB_DIR_VI} valores_iniciais)
 message(STATUS "Versão da biblioteca valores-iniciais: ${NCORPOS_VI_PROJECT_VERSION}")

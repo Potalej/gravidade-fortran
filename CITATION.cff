@@ -4,9 +4,11 @@ message: >-
   Se for usar pra alguma coisa, cita o repositorio
   usando esse arquivo aqui.
 type: software
+version: 1.0.0
+date-released: 2026-01-12
 authors:
   - given-names: Octavio Augusto Potalej
-    email: oapotalej@usp.br
+    email: oapotalej@ime.usp.br
     affiliation: Universidade de São Paulo
 repository-code: 'https://github.com/Potalej/gravidade-fortran'
 abstract: >-

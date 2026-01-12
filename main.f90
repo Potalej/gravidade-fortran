@@ -21,7 +21,7 @@ PROGRAM main
   IMPLICIT NONE
 
   CHARACTER(256)  :: arq ! Arquivo
-  CHARACTER(15)   :: acao ! Modo em que sera operado
+  CHARACTER(30)   :: acao ! Modo em que sera operado
   CHARACTER(15)   :: comando_opcional
   CHARACTER(256)  :: out_dir
   CHARACTER(10)   :: out_ext
@@ -69,14 +69,14 @@ PROGRAM main
     CASE ('-h', '--help')
       CALL help()
       STOP
-    
-    ! Usa um preset para gerar valores e simular
-    CASE ('-s', '--sorteio')
-      CALL simular_sorteio(arq, TRIM(out_dir), TRIM(out_ext))
 
     ! Usa um preset para gerar valores e salva-los, sem simular
-    CASE ('-sv', '--sorteio-salvar')
+    CASE ('-s', '--sorteio')
       CALL sorteio_salvar(arq, TRIM(out_dir))
+
+    ! Usa um preset para gerar valores e simular
+    CASE ('-ss', '--sorteio-simular')
+      CALL simular_sorteio(arq, TRIM(out_dir), TRIM(out_ext))
     
     ! Valores iniciais
     CASE ('-vi', '--valores-iniciais')
@@ -106,31 +106,49 @@ CONTAINS
       WRITE (*,*) 'v', version_string, '_', precisao, ' (', build_date, ' ', build_time, ')'
     ENDIF
     WRITE (*,*)
-    WRITE (*,*) 'SINOPSE:'
-    WRITE (*,*) '   # ./gravidade [--help|-h]'
-    WRITE (*,*) '   # ./gravidade [OPCAO] [ARQUIVO]'
+    WRITE (*,*) 'USO:'
+    WRITE (*,*) '    gravidade [--help|-h]'
+    WRITE (*,*) '    gravidade <operacao> <arquivo> <parametro:opcional>'
     WRITE (*,*)
-    WRITE (*,*) 'OPCOES:'
-    WRITE (*,*) '   -h, --help'
-    WRITE (*,*) '         Exibe a ajuda.'
+    WRITE (*,*) '## MODOS DE OPERACAO:'
     WRITE (*,*)
-    WRITE (*,*) '   (-s, --sorteio) [arquivo]' 
-    WRITE (*,*) '         Utiliza um preset informado para gerar valores iniciais aleatorios'
+    WRITE (*,*) '    -s, --sorteio'
+    WRITE (*,*) '        Gera valores iniciais a partir de um preset'
     WRITE (*,*)
-    WRITE (*,*) '   (-vi, --valores-iniciais) [arquivo]' 
-    WRITE (*,*) '         Utiliza os valores iniciais contidos em um arquivo informado para simular.'
+    WRITE (*,*) '    -ss, --sorteio-simular'
+    WRITE (*,*) '        Gera valores iniciais a partir de um preset e roda a simulacao.'
     WRITE (*,*)
-    WRITE (*,*) '   (-e, --exibir) [arquivo]' 
-    WRITE (*,*) '         Gera um grafico com as trajetorias dos corpos no arquivo informado.'
+    WRITE (*,*) '    -vi, --valores-iniciais'
+    WRITE (*,*) '        Simula usando valores iniciais fornecidos em arquivo.'
     WRITE (*,*)
-    WRITE (*,*) 'PARAMETROS:'
-    WRITE (*,*) '   (-ps, --pasta-saida) [diretorio]'
-    WRITE (*,*) '         Cria o diretorio `diretorio` se nao existir e o utiliza como pasta de saida.'
+    WRITE (*,*) '    -e, --exibir'
+    WRITE (*,*) '        Exibe graficamente o resultado de uma simulacao.'
     WRITE (*,*)
-    WRITE (*,*) 'INTEGRADORES DISPONIVEIS:'
-    
-    
+    WRITE (*,*) '## PARAMETROS:'
+    WRITE (*,*)
+    WRITE (*,*) '    (-ps, --pasta-saida) <diretorio>'
+    WRITE (*,*) '        Cria o diretorio `diretorio` se nao existir e o utiliza como pasta de saida.'
+    WRITE (*,*)
+    WRITE (*,*) '    (-es, --extensao-saida) <extensao>'
+    WRITE (*,*) '        Escolhe a extensao do arquivo de dados, podendo ser .csv ou .bin (padrao).'
+    WRITE (*,*)
+    WRITE (*,*) '## INTEGRADORES DISPONIVEIS:'    
     CALL listar_integradores_disponiveis()
+    WRITE (*,*)
+    WRITE (*,*) '## EXEMPLOS:'
+    WRITE (*,*)
+    WRITE (*,*) '    - Sorteio de valores iniciais:'
+    WRITE (*,*) '        gravidade --sorteio exemplos/sortear/exemplo.json'
+    WRITE (*,*)
+    WRITE (*,*) '    - Sorteio de valores iniciais e simulacao:'
+    WRITE (*,*) '        gravidade --sorteio-simular exemplos/sortear/exemplo.json'
+    WRITE (*,*)
+    WRITE (*,*) '    - Simulacao a partir de arquivo de valores iniciais:'
+    WRITE (*,*) '        gravidade --valores-iniciais exemplos/valores_iniciais/exemplo.json'
+    WRITE (*,*) '   '
+    WRITE (*,*) '    - Exibicao grafica de resultado de simulacao:'
+    WRITE (*,*) '        gravidade --exibir exemplos/exibir/lemniscata.csv'
+    WRITE (*,*)
   END SUBROUTINE help
 
   ! Imprime o cabecalho do programa
