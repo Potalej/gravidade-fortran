@@ -113,7 +113,7 @@ ENDIF()
 message("\n> Biblioteca externa: JSON-Fortran")
 option(FETCHJSONFORTRAN "Compilar o json-fortran localmente" OFF)
 
-if (FETCHJSONFORTRAN OR PRECISAO EQUAL "32" OR PRECISAO EQUAL "128")
+if (FETCHJSONFORTRAN OR PRECISAO EQUAL "32" OR PRECISAO EQUAL "128" OR NOT DEFINED ENV{CONDA_PREFIX})
   message(STATUS "Baixando do repositório para compilar localmente. Isso pode demorar um pouco...")
   
   include(FetchContent)
