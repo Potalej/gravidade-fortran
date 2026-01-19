@@ -83,7 +83,7 @@ SUBROUTINE corrigir (corme, cormnt, G, massas, posicoes, momentos, corrigiu, H, 
   REAL(pf), INTENT(IN)    :: G, massas(:), eps
   REAL(pf), INTENT(INOUT) :: posicoes(:,:), momentos(:,:)
   LOGICAL,  INTENT(INOUT) :: corrigiu
-  INTEGER                 :: N, a, INFO, b, contador = 0, pivos(4)
+  INTEGER                 :: N, a, INFO, b, contador = 0
   REAL(pf)                :: JJt(4, 4), vetG(4)
   REAL(pf), ALLOCATABLE   :: grads(:,:), gradsT(:,:), vetorCorrecao(:)
   REAL(pf)                :: H, J(3)

@@ -1,5 +1,15 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-01-19] v1.0.1: Otimizações e correções
+
+- CMakeLists.txt corrigido para compilar JSON-Fortran com REAL128 corretamente;
+- Os integradores agora definem SUBROUTINES metodo e metodo_mi em vez de FUNCTIONS;
+- As forças agora são computadas em operações escalares em vez de vetoriais. Isso trouxe melhora significativa de performance;
+- Correções de warnings apontados pelo GPROF;
+- Icônica frase de srta ros!
+
+---
+
 ## [2026-01-12] v1.0.0!
 
 - README.md e helper do programa melhor documentados;

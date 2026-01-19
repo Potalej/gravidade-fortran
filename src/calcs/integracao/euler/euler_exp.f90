@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   14 de setembro de 2024 (criado)
-!   12 de julho de 2025 (modificado)
+!   18 de janeiro de 2026 (modificado)
 !
 ! Autoria:
 !   oap
@@ -36,33 +36,30 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_euler_exp), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   INTEGER :: a
 
   ! Integrando as posicoes
   DO a = 1, self % N
-    R1(a,:) = R(a,:) + self % h * P(a,:) / self % m(a)
+    R(a,:) = R(a,:) + (self % h / self % m(a)) * P(a,:)
   END DO
 
   ! Integrando as velocidades
-  P1 = P + self%h * FSomas_ant
+  P = P + self%h * FSomas
 
-  metodo(1,:,:) = R1
-  metodo(2,:,:) = P1
-  metodo(3,:,:) = self % forcas(R1)
+  ! Atualizando as forcas
+  FSomas = self % forcas(R)
 
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico
@@ -71,29 +68,26 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_euler_exp), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
 
   ! Integrando as posicoes
-  R1 = R + self % h * self % m_inv * P
+  R = R + self % h * self % m_inv * P
 
   ! Integrando as velocidades
-  P1 = P + self%h * (self%m2 * FSomas)
+  P = P + self%h * (self%m2 * FSomas)
 
-  metodo_mi(1,:,:) = R1
-  metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = self%forcas(R)
+  ! Atualizando as forcas
+  FSomas = self%forcas(R)
 
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 END MODULE euler_exp

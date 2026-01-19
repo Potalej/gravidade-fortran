@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   11 de novembro de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -64,7 +64,8 @@ MODULE simulacao
     ! J0: Momento angular total inicial
     ! Ptot0: Momento linear total inicial
     ! Rcm0: Centro de massas inicial
-    REAL(pf), ALLOCATABLE :: E0, J0(:), Ptot0(:), Rcm0(:)
+    ! errene: Erro na energia total (E0 - E)
+    REAL(pf), ALLOCATABLE :: E0, J0(:), Ptot0(:), Rcm0(:), errene
     
     ! Metodo
     CHARACTER(LEN=:), ALLOCATABLE :: metodo
@@ -83,6 +84,9 @@ MODULE simulacao
     CHARACTER(LEN=:), ALLOCATABLE :: colisoes_modo
     REAL(pf), ALLOCATABLE :: raios(:)
 
+    ! Imprimir informacoes
+    LOGICAL :: status = .TRUE.
+
     ! Exibir
     LOGICAL :: exibir = .FALSE.
     TYPE(conexao_socket) :: conexao
@@ -99,20 +103,20 @@ MODULE simulacao
 
   END TYPE simular
 
-  ! Instanciamento
-  TYPE(simular) :: simulador
-
 CONTAINS
 
-SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext)
+SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   CLASS(simular), INTENT(INOUT) :: self
   CHARACTER(LEN=*), INTENT(IN) :: out_dir, out_ext
+  LOGICAL, OPTIONAL :: p_status
   TYPE(json_value), POINTER :: infos
   REAL(pf) :: m(:), R0(:,:), P0(:,:)
   REAL(pf) :: h, colmd, densidade, ec, f_prod_q
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
   LOGICAL :: encontrado
   INTEGER :: a
+
+  self % status = MERGE(p_status, .TRUE., PRESENT(p_status))
 
   !> Faz uma copia do dicionario de informacoes
   CALL json_clone(infos, self % infos)
@@ -140,6 +144,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext)
   self % N = SIZE(m)
   !> Integrais primeiras
   self % E0 = energia_total(self%G, self%m, R0, P0, self%potsoft)
+  self % errene = 0.0_pf
   self % J0 = momento_angular_total(R0, P0)
   self % Ptot0 = momento_linear_total(P0)
   self % rcm0 = centro_massas(self%m, R0)
@@ -172,6 +177,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext)
   colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
   self % colmd = colmd
   ! Deixando os raios calculados de antemao
+  IF (ALLOCATED(self % raios)) DEALLOCATE(self % raios)
   ALLOCATE(self % raios(self % N))
   DO a = 1, self % N
     self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
@@ -199,6 +205,8 @@ SUBROUTINE inicializar_data (self, out_dir, out_ext)
   CLASS(simular), INTENT(INOUT) :: self
   CHARACTER(LEN=*), INTENT(IN) :: out_dir
   CHARACTER(LEN=*), INTENT(IN) :: out_ext
+
+  self % Arq % status = self % status
 
   ! Define o diretorio de saida
   CALL self % Arq % definir_diretorio_saida(out_dir, out_ext)
@@ -242,10 +250,10 @@ SUBROUTINE inicializar_metodo (self, h)
   CALL json % get(self%infos, 'exibir', self % exibir, encontrado)
   IF (.NOT. encontrado) self % exibir = .FALSE.
   !> Definindo o metodo
-  CALL definir_metodo(self%integrador, self%metodo)
+  CALL definir_metodo(self%integrador, self%metodo, self%status)
 
   ! Inicializando o integrador
-  CALL self % integrador % iniciar(self%infos, self%h, self%M, self%E0, self%J0)
+  CALL self % integrador % iniciar(self%infos, self%h, self%M)
 
   ! Atualizando as constantes se for necessario
   CALL self % integrador % atualizar_constantes()
@@ -257,6 +265,7 @@ END SUBROUTINE
 
 SUBROUTINE rodar (self, qntdPassos)
   CLASS(simular), INTENT(INOUT) :: self
+  LOGICAL :: exibir
   INTEGER, INTENT(IN) :: qntdPassos
   INTEGER :: qntd_por_rodada, passo, sub_passo
   REAL(pf) :: inst_t, subinst_t, t0, tf
@@ -265,7 +274,7 @@ SUBROUTINE rodar (self, qntdPassos)
   REAL(pf) :: E
   LOGICAL :: corrigiu
 
-  WRITE (*, '(a)') '  > iniciando simulacao...'
+  IF (self % status) WRITE (*, '(a)') '  > iniciando simulacao...'
   R1 = self % R0
   P1 = self % P0
 
@@ -338,8 +347,8 @@ SUBROUTINE rodar (self, qntdPassos)
 
   IF (self % exibir) CALL self % conexao % encerrar_conexao()
 
-  WRITE (*, '(a)') '  > simulacao encerrada!'
-  WRITE (*,*)
+  IF (self % status) WRITE (*, '(a)') '  > simulacao encerrada!'
+  IF (self % status) WRITE (*,*)
 
   CALL self % arq % fechar()
 
@@ -386,6 +395,7 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
 
   ! Erro na energia
   errene = EC + EP - self % E0
+  self % errene = errene
 
   ! Tamanho do sistema
   momine = momento_inercia(self % M, R)
@@ -395,16 +405,16 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
   self % virial = (i * self % virial + virial)/(i+1)
   
   ! Montando a string de output
-  WRITE(saida, '(5X,A,I8,4X,A,F12.3,2X,A,F10.2)') '-> Passo:', i, ' / Tempo:', tempo_total, ' / t:', inst_t
+  IF (self % status) WRITE(saida, '(5X,A,I8,4X,A,F12.3,2X,A,F10.2)') '-> Passo:', i, ' / Tempo:', tempo_total, ' / t:', inst_t
 
-  WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', self % virial
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', self % virial
   saida = TRIM(saida)//char(10)//TRIM(char_real)
 
-  WRITE(char_real, '(A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil
+  IF (self % status) WRITE(char_real, '(A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil
   saida = TRIM(saida)//" / "//TRIM(char_real)
   
-  WRITE (*,*) TRIM(saida)
-  WRITE (*,*)
+  IF (self % status) WRITE (*,*) TRIM(saida)
+  IF (self % status) WRITE (*,*)
 
 END SUBROUTINE
 

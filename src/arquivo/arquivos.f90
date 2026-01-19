@@ -11,7 +11,7 @@
 !   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   11 de novembro de 2025
+!   18 de janeiro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -21,6 +21,7 @@ MODULE arquivos
   USE diretorio
   USE string_utils
   USE json_utils_mod
+  USE omp_lib
 
   IMPLICIT NONE
   PUBLIC arquivo, ler_csv, capturar_unidade
@@ -41,6 +42,9 @@ MODULE arquivos
 
     !> Diretorios padrao
     CHARACTER(:), ALLOCATABLE :: dir_out
+
+    !> Exibir status (writes/prints)
+    LOGICAL :: status = .FALSE.
 
     CONTAINS
       !> Rotinas e funcoes
@@ -191,15 +195,15 @@ SUBROUTINE criar_data (self, qntd_corpos, dimensao)
   INTEGER, INTENT(IN)           :: qntd_corpos, dimensao
   INTEGER(kind=4)               :: id_arq_data, id_arq_info, id_arq_bkp
 
-  WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
+  IF (self % status) WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
 
   ! cria formatacao
   CALL self % criar_formatos(qntd_corpos, dimensao)
-  WRITE (*, '(a)') '  > formato : ' // self % formato
+  IF (self % status) WRITE (*, '(a)') '  > formato : ' // self % formato
 
   ! criacao do nome do diretorio
   CALL self % gerar_nome_diretorio()
-  WRITE (*,'(a)') '  > diretorio de saida: ' // self % dir_arq
+  IF (self % status) WRITE (*,'(a)') '  > diretorio de saida: ' // self % dir_arq
 
   ! cria o diretorio
   CALL criar_dir(self % dir_arq, self % dir_out // "/data")
@@ -226,8 +230,8 @@ SUBROUTINE criar_data (self, qntd_corpos, dimensao)
   self % id_arq_bkp = id_arq_bkp
   OPEN(id_arq_bkp, file = self % nome_arq_bkp, status='new')
 
-  WRITE (*,'(a)') '  > arquivos criados!'
-  WRITE (*,*)
+  IF (self % status) WRITE (*,'(a)') '  > arquivos criados!'
+  IF (self % status) WRITE (*,*)
 
 END SUBROUTINE criar_data
 
@@ -346,7 +350,7 @@ SUBROUTINE inicializar_arquivo_info (self, infos, version_string, precisao)
   REAL(pf)         :: G, h, soft
   LOGICAL          :: corrigir, colidir ! correcao
   CHARACTER(len=:), ALLOCATABLE :: metodo, colidir_modo ! colisao
-  REAL(pf)         :: corme, colmd
+  REAL(pf)         :: corme
   INTEGER          :: cormnt
   LOGICAL          :: paralelo, gpu ! forcas paralelas, gpu
   CHARACTER(20)    :: data_hora_str
@@ -397,7 +401,11 @@ SUBROUTINE inicializar_arquivo_info (self, infos, version_string, precisao)
   WRITE (self % id_arq_info, '(*(g0,1x))') "-- total passos: " 
   WRITE (self % id_arq_info, '(*(g0,1x))') "-- t0: ", t0
   WRITE (self % id_arq_info, '(*(g0,1x))') "-- tf: ", tf
-  WRITE (self % id_arq_info, '(*(g0,1x,1x))') "-- paralelizacao: ", paralelo, gpu
+  !$OMP PARALLEL
+  !$OMP SINGLE
+    WRITE (self % id_arq_info, '(*(g0,1x,1x,1x))') "-- paralelizacao: ", paralelo, gpu, omp_get_num_threads()
+  !$OMP END SINGLE
+  !$OMP END PARALLEL
   
   IF (corrigir) THEN
     WRITE (self % id_arq_info, '(*(g0,1x))') "-- correcao: ", corrigir

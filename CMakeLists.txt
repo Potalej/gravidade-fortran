@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.0.0
+project("gravidade" VERSION 1.0.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -124,12 +124,10 @@ if (FETCHJSONFORTRAN OR PRECISAO EQUAL "32" OR PRECISAO EQUAL "128" OR NOT DEFIN
     GIT_TAG 9.2.0
     GIT_SHALLOW TRUE
   )
-  FetchContent_MakeAvailable(jsonfortran)
 
-  target_compile_definitions(jsonfortran
-    INTERFACE 
-      $<$<CONFIG:Release>:-DREAL${PRECISAO}>   # Se for o tipo REAL128
-  )
+  set(JSON_REAL_KIND "REAL${PRECISAO}" CACHE INTERNAL "Tipo da variavel real do JSON-Fortran")
+  
+  FetchContent_MakeAvailable(jsonfortran)
 
   target_include_directories(jsonfortran
     INTERFACE
@@ -412,6 +410,7 @@ add_library(simulacao
   "./src/calcs/simulacao/simulacao_vi.f90"
   "./src/calcs/simulacao/simulacao.f90"
   "./src/calcs/simulacao/simulador.f90"
+  "testes.f90"
 )
 target_link_libraries(simulacao PRIVATE
   tipos

@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   14 de setembro de 2024 (criado)
-!   12 de julho de 2025 (atualizado)
+!   18 de janeiro de 2026 (atualizado)
 !
 ! Autoria:
 !   oap
@@ -41,41 +41,35 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_ruth3), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
 
   ! i = 3
-  P1 = P + d3 * self % h * FSomas_ant
-  R1 = R + c3 * self % h * P1 * self % massasInvertidas
+  P = P + d3 * self % h * FSomas
+  R = R + c3 * self % h * P * self % massasInvertidas
 
   ! i = 2
-  FSomas_prox = self%forcas(R1)
-  P1 = P1 + d2 * self % h * FSomas_prox
-  R1 = R1 + c2 * self % h * P1 * self % massasInvertidas
+  FSomas = self%forcas(R)
+  P = P + d2 * self % h * FSomas
+  R = R + c2 * self % h * P * self % massasInvertidas
 
   ! i = 1
-  FSomas_prox = self%forcas(R1)
-  P1 = P1 + d1 * self % h * FSomas_prox
-  R1 = R1 + c1 * self % h * P1 * self % massasInvertidas
+  FSomas = self%forcas(R)
+  P = P + d1 * self % h * FSomas
+  R = R + c1 * self % h * P * self % massasInvertidas
 
   ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
+  FSomas = self%forcas(R)
 
-  metodo(1,:,:) = R1
-  metodo(2,:,:) = P1
-  metodo(3,:,:) = FSomas_prox
-
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico (massas iguais)
@@ -84,39 +78,33 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
   IMPLICIT NONE
   class(integracao_ruth3), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   
   ! i = 3
-  P1 = P + d3 * self % h * (self % m2 * FSomas_ant)
-  R1 = R + c3 * self % h * self % m_inv * P1
+  P = P + d3 * self % h * (self % m2 * FSomas)
+  R = R + c3 * self % h * self % m_inv * P
 
   ! i = 2
-  FSomas_prox = self%forcas(R1)
-  P1 = P1 + d2 * self % h * (self % m2 * FSomas_prox)
-  R1 = R1 + c2 * self % h * self % m_inv * P1
+  FSomas = self%forcas(R)
+  P = P + d2 * self % h * (self % m2 * FSomas)
+  R = R + c2 * self % h * self % m_inv * P
 
   ! i = 1
-  FSomas_prox = self%forcas(R1)
-  P1 = P1 + d1 * self % h * (self % m2 * FSomas_prox)
-  R1 = R1 + c1 * self % h * self % m_inv * P1
+  FSomas = self%forcas(R)
+  P = P + d1 * self % h * (self % m2 * FSomas)
+  R = R + c1 * self % h * self % m_inv * P
 
   ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
+  FSomas = self%forcas(R)
 
-  metodo_mi(1,:,:) = R1
-  metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = FSomas_prox
-
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 END MODULE ruth3

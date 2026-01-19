@@ -6,7 +6,7 @@
 !   integradores disponiveis.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -29,17 +29,20 @@ CONTAINS
 !! Define o integrador a partir da string
 !
 ! Modificado:
-!   07 de agosto de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE definir_metodo (integrador, metodo)
+SUBROUTINE definir_metodo (integrador, metodo, p_status)
   CLASS(integracao), POINTER, INTENT(OUT) :: integrador
   CHARACTER(LEN=*), INTENT(IN) :: metodo
+  LOGICAL, OPTIONAL :: p_status
+  LOGICAL :: status
+  status = MERGE(p_status, .TRUE., PRESENT(p_status))
 
   ! Definicao dinamica do metodo
-  WRITE (*,'(a)') 'METODO: ', metodo
+  IF (status) WRITE (*,'(a)') 'METODO: ', metodo
   
   SELECT CASE (TRIM(metodo))
 @INTEGRADORES_SELECT@

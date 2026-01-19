@@ -10,12 +10,15 @@
 </p>
 
 <p align="center">
-    <img src="https://img.shields.io/badge/JSON--Fortran-v9.1.0-dark?logo=fortran&color=blue" alt="json-fortran">
-    <img src="https://img.shields.io/badge/ncorpos--utilidades-v1.0.0-brightgreen?logo=fortran&color=blue" alt="ncorpos-utilidades">
+    <img src="https://img.shields.io/badge/JSON--Fortran-v9.2.0-dark?logo=fortran&color=blue" alt="json-fortran">
+    <img src="https://img.shields.io/badge/ncorpos--utilidades-v1.0.1-brightgreen?logo=fortran&color=blue" alt="ncorpos-utilidades">
     <img src="https://img.shields.io/badge/ncorpos--valores--iniciais-v0.2.5-dark?logo=fortran&color=blue" alt="ncorpos-valores-iniciais">
 </p>
 
 <p align="center">A mesma gravidade, só que em Fortran. Vamo que vamo :)</p>
+
+> *"Meus N-corpos, minhas regras"*   
+> — ros
 
 ## ⚙️ Compilando
 

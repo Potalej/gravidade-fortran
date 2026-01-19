@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -26,36 +26,37 @@ MODULE integrador
   TYPE, ABSTRACT :: integracao
     ! m: Massas
     REAL(pf), ALLOCATABLE :: m(:)
-	REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
-	
-	! Massas iguais
-	LOGICAL  :: mi
-	REAL(pf) :: m_esc, m_inv, m2
-	REAL(pf128) :: m_esc_128, m_inv_128, m2_128
+    REAL(pf), ALLOCATABLE :: massasInvertidas(:,:)
+    
+    ! Massas iguais
+    LOGICAL  :: mi
+    REAL(pf) :: m_esc, m_inv, m2
+    REAL(pf128) :: m_esc_128, m_inv_128, m2_128
 
     ! Distancias entre os corpos
-	REAL(pf), ALLOCATABLE :: distancias(:)
+    REAL(pf), ALLOCATABLE :: distancias(:)
+    REAL(pf), ALLOCATABLE :: fs(:,:)
 
     ! h: Passo de integracao
-	! G: Constante de gravitacao
-	! potsoft: Softening do potencial
-	REAL(pf) :: h, G, potsoft, potsoft2
+    ! G: Constante de gravitacao
+    ! potsoft: Softening do potencial
+    REAL(pf) :: h, G, potsoft, potsoft2
 
-	! dim: Dimensao do problema
-	! N: Quantidade de partículas
-	INTEGER :: dim = 3, N
+    ! dim: Dimensao do problema
+    ! N: Quantidade de partículas
+    INTEGER :: dim = 3, N
 
-	! Se vai ou nao usar paralelizacao
-	LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
+    ! Se vai ou nao usar paralelizacao
+    LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
 
-	! Funcao de forcas (aceleracao)
-	PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
-	PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
+    ! Funcao de forcas (aceleracao)
+    PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
+    PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
 
-  CONTAINS
-	PROCEDURE :: iniciar, inicializar_massas, atualizar_constantes, &
-								 forcas, metodo, metodo_mi, aplicar
-								
+    CONTAINS
+    PROCEDURE :: iniciar, inicializar_massas, atualizar_constantes, &
+                  forcas, metodo, metodo_mi, aplicar
+                  
   END TYPE integracao
 
 CONTAINS
@@ -68,18 +69,17 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE iniciar (self, infos, timestep, massas, E0, J0)
+SUBROUTINE iniciar (self, infos, timestep, massas)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) 			:: self
   TYPE(json_value), POINTER, INTENT(IN) :: infos
   REAL(pf), INTENT(IN), allocatable :: massas(:)
-  REAL(pf), INTENT(IN) :: timestep, E0, J0(3)
-  INTEGER :: a, i
+  REAL(pf), INTENT(IN) :: timestep
   LOGICAL :: encontrado
 
   !> Quantidade de particulas
@@ -90,7 +90,7 @@ SUBROUTINE iniciar (self, infos, timestep, massas, E0, J0)
 
   !> Constantes
   self % G = json_get_float(infos, 'G') ! Const. de Gravitacao
-  self % h = timestep 									! Tamanho de passo
+  self % h = timestep                   ! Tamanho de passo
   !> Amortecedor
   self % potsoft = json_get_float(infos, 'integracao.amortecedor')
   self % potsoft2 = self % potsoft * self % potsoft
@@ -206,21 +206,20 @@ END FUNCTION forcas
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   
   ! Cada integrador precisa ter um metodo definido, que substitui esta funcao vazia
   WRITE (*,*) 'OPS'
 
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico (massas iguais)
@@ -229,21 +228,20 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   
   ! Cada integrador precisa ter um metodo definido, que substitui esta funcao vazia
   WRITE (*,*) 'OPS'
 
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 ! ************************************************************
 !! Atualiza as constantes se necessario
@@ -263,7 +261,7 @@ END SUBROUTINE atualizar_constantes
 !! Aplicacao do metodo
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -271,18 +269,17 @@ END SUBROUTINE atualizar_constantes
 SUBROUTINE aplicar (self, R, P)
   class (integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P
-  REAL(pf), DIMENSION(self%N, self%dim) :: FSomas_ant
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: resultado
 
-  FSomas_ant = self%forcas(R)
-  IF (self % mi) THEN
-    resultado = self % metodo_mi(R, P, FSomas_ant)
-  ELSE
-    resultado = self % metodo(R, P, FSomas_ant)
+  IF (.NOT. ALLOCATED(self % fs)) THEN
+    ALLOCATE(self % fs(self % N, 3))
+    self % fs = self % forcas(R)
   ENDIF
 
-  R = resultado(1,:,:)
-  P = resultado(2,:,:)
+  IF (self % mi) THEN
+    CALL self % metodo_mi(R, P, self % fs)
+  ELSE
+    CALL self % metodo(R, P, self % fs)
+  ENDIF
 END SUBROUTINE
 
 END MODULE integrador

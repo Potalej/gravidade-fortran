@@ -6,7 +6,7 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -57,7 +57,10 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft2, distancias) RESULT(forcas)
       distancias(indice+1) = SQRT(distancia)
 
       ! Adiciona na matriz      
-      forcas(a,:) = forcas(a,:) + Fab
+      ! forcas(a,:) = forcas(a,:) + Fab
+      forcas(a,1) = forcas(a,1) + Fab(1)
+      forcas(a,2) = forcas(a,2) + Fab(2)
+      forcas(a,3) = forcas(a,3) + Fab(3)
     END DO
   END DO
   !$OMP END DO
@@ -94,8 +97,13 @@ FUNCTION forcas_seq (m, R, G, N, dim, potsoft2, distancias) RESULT(forcas)
       indice = indice + 1
 
       ! Adiciona na matriz
-      forcas(a,:) = forcas(a,:) + Fab
-      forcas(b,:) = forcas(b,:) - Fab
+      forcas(a,1) = forcas(a,1) + Fab(1)
+      forcas(a,2) = forcas(a,2) + Fab(2)
+      forcas(a,3) = forcas(a,3) + Fab(3)
+
+      forcas(b,1) = forcas(b,1) - Fab(1)
+      forcas(b,2) = forcas(b,2) - Fab(2)
+      forcas(b,3) = forcas(b,3) - Fab(3)
     END DO
   END DO
 
@@ -103,20 +111,23 @@ END FUNCTION forcas_seq
 
 ! Calculo das forcas para o sequencial e o paralelo (CPU)
 FUNCTION calcular_forca (G, m, R, a, b, potsoft2, dist) RESULT(Fab)
-  REAL(pf), INTENT(IN) :: G, m(:), R(:,:), potsoft2
-  INTEGER,  INTENT(IN) :: a, b
+  REAL(pf), INTENT(IN)    :: G, m(:), R(:,:), potsoft2
+  INTEGER,  INTENT(IN)    :: a, b
   REAL(pf), INTENT(INOUT) :: dist
-  REAL(pf) :: dist_pot
-  REAL(pf) :: distancia3, dist_inv, Fab(3)
+  REAL(pf) :: Fab(3)
+  REAL(pf) :: dx, dy, dz, r2, rinv
 
-  Fab = R(b,:) - R(a,:)
-  
-  dist = Fab(1)*Fab(1) + Fab(2)*Fab(2) + Fab(3)*Fab(3)
-  dist_pot = dist + potsoft2
-  distancia3 = dist_pot * SQRT(dist_pot)
-  dist_inv = G * m(a) * m(b) * 1.0_pf/distancia3
+  dx = R(b,1) - R(a,1)
+  dy = R(b,2) - R(a,2)
+  dz = R(b,3) - R(a,3)
 
-  Fab = Fab * dist_inv
+  dist = dx*dx + dy*dy + dz*dz
+  r2 = dist + potsoft2
+  rinv = G * m(a) * m(b) / (r2 * SQRT(r2))
+
+  Fab(1) = dx * rinv
+  Fab(2) = dy * rinv
+  Fab(3) = dz * rinv
 END FUNCTION calcular_forca
 
 ! GPU

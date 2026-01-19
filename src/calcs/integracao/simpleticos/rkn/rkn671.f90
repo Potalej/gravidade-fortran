@@ -119,14 +119,13 @@ END SUBROUTINE atualizar_constantes
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_rkn671), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
   REAL(pf), DIMENSION(self%N, self%dim) :: P_prod
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
   
   INTEGER :: i, j
 
@@ -150,19 +149,18 @@ FUNCTION metodo (self, R, P, FSomas_ant)
     ENDIF
 
     ! Calcula fi
-    FSomas_prox = self%forcas(y(i,:,:))
-    fi(i,:,:) = FSomas_prox * self % massasInvertidas
+    FSomas = self%forcas(y(i,:,:))
+    fi(i,:,:) = FSomas * self % massasInvertidas
 
     ! Adiciona nas posicoes e momentos
     R1 = R1 + self % h * self % h * b(i) * fi(i,:,:)
-    P1 = P1 + self % h * g(i) * FSomas_prox
+    P1 = P1 + self % h * g(i) * FSomas
   END DO
 
-  metodo(1,:,:) = R1
-  metodo(2,:,:) = P1
-  metodo(3,:,:) = 0.0_pf
+  R = R1
+  P = P1
 
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico (massas iguais)
@@ -176,12 +174,11 @@ END FUNCTION metodo
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
   IMPLICIT NONE
   class(integracao_rkn671), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
+  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1
   REAL(pf), DIMENSION(SIZE(c), self%N, self%dim) :: fi
   REAL(pf), DIMENSION(self%N, self%dim) :: yi
   INTEGER :: i, j
@@ -203,18 +200,17 @@ FUNCTION metodo_mi (self, R, P, FSomas_ant)
     ENDIF
 
     ! Calcula fi
-    FSomas_prox = self%forcas(yi)
-    fi(i,:,:) = FSomas_prox
+    FSomas = self%forcas(yi)
+    fi(i,:,:) = FSomas
 
     ! Adiciona nas posicoes e momentos
-    R1 = R1 + (self%h * self%h) * (b(i) * FSomas_prox)
-    P1 = P1 + self % h * (g(i) * FSomas_prox)
+    R1 = R1 + (self%h * self%h) * (b(i) * FSomas)
+    P1 = P1 + self % h * (g(i) * FSomas)
   END DO
 
-  metodo_mi(1,:,:) = R1
-  metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = 0.0_pf
+  R = R1
+  P = P1
 
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 END MODULE rkn671

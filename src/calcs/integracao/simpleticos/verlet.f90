@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   15 de marco de 2024 (criado)
-!   12 de julho de 2025 (modificado)
+!   18 de janeiro de 2026 (modificado)
 !
 ! Autoria:
 !   oap
@@ -36,34 +36,30 @@ CONTAINS
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_verlet), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
 
   ! Integrando as posicoes
-  R1 = (P + 0.5_pf * self%h * FSomas_ant) * self%massasInvertidas
-  R1 = R + self % h * R1
+  R = R + self % h * (P + 0.5_pf * self%h * FSomas) * self%massasInvertidas
+
+  ! Velocidades
+  P = P + 0.5_pf * self % h * FSomas
 
   ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
+  FSomas = self%forcas(R)
 
   ! Integrando as velocidades
-  P1 = P + 0.5_pf*self%h*(FSomas_ant + FSomas_prox)
+  P = P + 0.5_pf * self % h * FSomas
 
-  metodo(1,:,:) = R1
-  metodo(2,:,:) = P1
-  metodo(3,:,:) = FSomas_prox
-
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico
@@ -72,36 +68,33 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_verlet), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: R1, P1, FSomas_prox
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   REAL(pf) :: const
+  
+  const = 0.5_pf * self % h * self % m_esc ! Constante auxiliar
 
   ! Integrando as posicoes
-  const = 0.5_pf * self % h * self % m_esc
-  R1 = P * self % m_inv + const * FSomas_ant
-  R1 = R + self % h * R1
+  R = R + self % h * (P * self % m_inv + const * FSomas)
+
+  ! Velocidades
+  const = const * self % m_esc
+  P = P + const*Fsomas
 
   ! Calcula as novas forcas
-  FSomas_prox = self%forcas(R1)
+  FSomas = self%forcas(R)
 
   ! Integrando as velocidades
-  const = const * self % m_esc
-  P1 = P + const*(Fsomas_ant + FSomas_prox)
+  P = P + const*Fsomas
 
-  metodo_mi(1,:,:) = R1
-  metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = FSomas_prox
-
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 END MODULE verlet

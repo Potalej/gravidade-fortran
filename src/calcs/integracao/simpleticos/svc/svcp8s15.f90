@@ -7,7 +7,7 @@
 !   Referencia: (Hairer et al, 2006, p.157)
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -86,40 +86,29 @@ END SUBROUTINE atualizar_constantes
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo (self, R, P, FSomas_ant)
+SUBROUTINE metodo (self, R, P, FSomas)
 
   IMPLICIT NONE
   class(integracao_svcp8s15), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
-  REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   INTEGER :: i
   REAL(pf) :: h ! tamanho de passo dinamico
-
-  R1 = R
-  P1 = P
-  FSomas = FSomas_ant
 
   DO i=size(s),1,-1
     h = s(i) * self % h
 
-    P_meio = P1 + 0.5_pf * h * FSomas
-    R1 = R1 + h * P_meio * self % massasInvertidas
-    FSomas = self%forcas(R1)
-    P1 = P_meio + 0.5_pf * h * FSomas
+    P = P + 0.5_pf * h * FSomas
+    R = R + h * P * self % massasInvertidas
+    FSomas = self%forcas(R)
+    P = P + 0.5_pf * h * FSomas
   END DO
 
-  metodo(1,:,:) = R1
-  metodo(2,:,:) = P1
-  metodo(3,:,:) = FSomas
-
-END FUNCTION metodo
+END SUBROUTINE metodo
 
 ! ************************************************************
 !! Metodo numerico (massas iguais)
@@ -128,41 +117,30 @@ END FUNCTION metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   12 de julho de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 !
-FUNCTION metodo_mi (self, R, P, FSomas_ant)
+SUBROUTINE metodo_mi (self, R, P, FSomas)
   IMPLICIT NONE
   class(integracao_svcp8s15), INTENT(INOUT) :: self
-  REAL(pf), DIMENSION(self%N, self%dim), INTENT(IN) :: R, P, FSomas_ant
-  REAL(pf), DIMENSION(self%N, self%dim) :: P_meio, R1, P1
-  REAL(pf), DIMENSION(self%N, self%dim) :: FSomas
-  REAL(pf), DIMENSION(3, self%N, self%dim) :: metodo_mi
+  REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   INTEGER :: i
 
-  R1 = R
-  P1 = P
-  FSomas = FSomas_ant
-
   i = size(s_128)
-  P_meio = P1 + self%h * (a(i) * FSomas)
-  R1 = R1 + self%h * b(i) * P_meio
-  FSomas = self%forcas(R1)
-  P1 = P_meio + self%h * (a(i) * FSomas)
+  P = P + self%h * (a(i) * FSomas)
+  R = R + self%h * b(i) * P
+  FSomas = self%forcas(R)
 
   DO i=size(s_128)-1,1,-1
-    P_meio = P_meio + self%h * (a_consec(i) * FSomas)
-    R1 = R1 + self%h * b(i) * P_meio
-    FSomas = self%forcas(R1)
-    P1 = P_meio + self%h * (a(i) * FSomas)
+    P = P + self%h * (a_consec(i) * FSomas)
+    R = R + self%h * b(i) * P
+    FSomas = self%forcas(R)
   END DO
 
-  metodo_mi(1,:,:) = R1
-  metodo_mi(2,:,:) = P1
-  metodo_mi(3,:,:) = FSomas
+  P = P + self%h * (a(size(s_128)) * FSomas)
 
-END FUNCTION metodo_mi
+END SUBROUTINE metodo_mi
 
 END MODULE svcp8s15

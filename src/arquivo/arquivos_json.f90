@@ -9,7 +9,7 @@
 !   01 de maio de 2025
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   18 de janeiro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -28,16 +28,20 @@ CONTAINS
 !! Leitura de valores de sorteio
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   18 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE ler_json (arquivo, dados)
+SUBROUTINE ler_json (arquivo, dados, p_exibir)
     CHARACTER(LEN=*), INTENT(IN) :: arquivo
-    TYPE(json_value), POINTER, INTENT(INOUT) :: dados    
+    TYPE(json_value), POINTER, INTENT(INOUT) :: dados
+    LOGICAL, OPTIONAL :: p_exibir
+    LOGICAL :: exibir
 
-    WRITE (*,'(A)') 'PRESET: '//arquivo
+    exibir = MERGE(p_exibir, .TRUE., PRESENT(p_exibir))
+
+    IF (exibir) WRITE (*,'(A)') 'PRESET: '//arquivo
     CALL json % parse(file=arquivo, p=dados)
 END SUBROUTINE ler_json
 
@@ -157,10 +161,6 @@ SUBROUTINE salvar_vi_json (diretorio, infos_sorteio, massas, posicoes, momentos,
 
     ! Salva o arquivo
     CALL json % print(infos_sorteio, TRIM(diretorio//nome_arq))
-    
-    ! Limpa a memoria
-    NULLIFY(modo, vi, ap, am)
-    CALL json % destroy(infos_sorteio)
 END SUBROUTINE salvar_vi_json
 
 END MODULE arquivos_json

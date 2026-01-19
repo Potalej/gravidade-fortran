@@ -84,10 +84,8 @@ SUBROUTINE plotar_trajetorias (R, absc, orde)
   INTEGER                   :: absc, orde
   REAL(pf),INTENT(INOUT)    :: R(:,:,:)
   INTEGER                   :: i, escala
-  INTEGER (kind=4) ierror
-  CHARACTER(11)              :: dir = './out/plot/'
+  CHARACTER(11)             :: dir = './out/plot/'
   CHARACTER(19)             :: novo_dir
-  CHARACTER(28)             :: path_comando
   CHARACTER(4)              :: i_int
   CHARACTER(:), ALLOCATABLE :: data_dir
   LOGICAL                   :: existe=.TRUE.
