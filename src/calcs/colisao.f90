@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   03 de agosto de 2025
+!   20 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -123,7 +123,7 @@ END SUBROUTINE verificar_e_colidir_octree
 !     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   24 de julho de 2025
+!   20 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -134,52 +134,27 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios, dists)
   INTEGER :: a, b
   LOGICAL :: paralelo, colidiram(INT(size(m)*(size(m)-1)/2))
   REAL(pf) :: raios(size(m)), dist
-  
   REAL(pf) :: dists(:)
   INTEGER :: indice
 
   colidiram=.FALSE.
-
-  IF (paralelo) THEN
-    !$OMP PARALLEL SHARED(colidiram, P) PRIVATE(a, b, indice)
-    !$OMP DO
-    DO a = 1, SIZE(m)
-      DO b = 1, SIZE(m)
-        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
-        IF (a == b .OR. colidiram(indice)) THEN
-          CYCLE
+  DO a = 2, SIZE(m)
+    DO b = 1, a-1
+      indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+      
+      IF (a == b .OR. colidiram(indice)) THEN
+        CYCLE
+      ENDIF
+      
+      dist = dists(indice)
+      IF (dist <= raios(a) + raios(b)) THEN
+        IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
+          colidiram(indice) = .TRUE.
+          CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
         ENDIF
-
-        IF (dists(indice) <= raios(a) + raios(b)) THEN
-          IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
-            colidiram(indice) = .TRUE.
-            CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
-          ENDIF
-        ENDIF 
-      END DO
+      ENDIF 
     END DO
-    !$OMP END DO
-    !$OMP END PARALLEL
-  ELSE
-    DO a = 2, SIZE(m)
-      DO b = 1, a-1
-        indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
-        
-        IF (a == b .OR. colidiram(indice)) THEN
-          CYCLE
-        ENDIF
-        
-        dist = dists(indice)
-        IF (dist <= raios(a) + raios(b)) THEN
-          IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
-            colidiram(indice) = .TRUE.
-            CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
-            ! WRITE(*,*) 'colidiram normal:', a,b, NORM2(R(b,:)-R(a,:)) ! debug
-          ENDIF
-        ENDIF 
-      END DO
-    END DO
-  ENDIF
+  END DO
 END SUBROUTINE verificar_e_colidir_direto
 
 ! ************************************************************
