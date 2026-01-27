@@ -6,7 +6,7 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -21,23 +21,18 @@ MODULE funcoes_forca_mi
 CONTAINS
 
 ! Paralelo (CPU)
-FUNCTION forcas_mi_par (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
+FUNCTION forcas_mi_par (R, G, N, dim, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft2
-  
-  REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
-  INTEGER :: indice
-
-  REAL(pf), DIMENSION(dim) :: Fab
-  INTEGER :: a, b
-  REAL(pf) :: distancia
+  REAL(pf), DIMENSION(dim)    :: Fab
   REAL(pf), DIMENSION(N, dim) :: forcas
+  INTEGER  :: a, b
   
   forcas = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas, distancias) PRIVATE(Fab, distancia, a, b, indice)
+  !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, a, b)
   !$OMP DO
   DO a = 1, N
     DO b = 1, N
@@ -46,15 +41,8 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
       ENDIF
 
       ! Calculo da forca
-      Fab = calcular_forca(G, R, a, b, potsoft2, distancia)
+      Fab = calcular_forca(G, R, a, b, potsoft2)
 
-      IF (a > b) THEN
-        indice = (a-1)*(a-2)/2 + (b-1)
-      ELSE
-        indice = (b-1)*(b-2)/2 + (a-1)
-      ENDIF
-      distancias(indice+1) = SQRT(distancia)
-      
       ! Adiciona na matriz      
       forcas(a,1) = forcas(a,1) + Fab(1)
       forcas(a,2) = forcas(a,2) + Fab(2)
@@ -67,32 +55,22 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
 END FUNCTION forcas_mi_par
 
 ! Sequencial 
-FUNCTION forcas_mi_seq (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
+FUNCTION forcas_mi_seq (R, G, N, dim, potsoft2) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft2
-
-  REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
-  INTEGER :: indice
-
-  REAL(pf), DIMENSION(dim) :: Fab
-  INTEGER :: a, b
-  REAL(pf) :: distancia
+  REAL(pf), DIMENSION(dim)    :: Fab
   REAL(pf), DIMENSION(N, dim) :: forcas
+  INTEGER  :: a, b
 
   forcas(:,:) = 0.0_pf
-  indice = 1
 
   DO a = 2, N
     DO b = 1, a - 1
       ! Calculo da forca
-      Fab = calcular_forca(G, R, a, b, potsoft2, distancia)
+      Fab = calcular_forca(G, R, a, b, potsoft2)
 
-      ! Salva a distancia
-      distancias(indice) = SQRT(distancia)
-      indice = indice + 1
-      
       ! Adiciona na matriz
       forcas(a,1) = forcas(a,1) + Fab(1)
       forcas(a,2) = forcas(a,2) + Fab(2)
@@ -107,12 +85,11 @@ FUNCTION forcas_mi_seq (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
 END FUNCTION forcas_mi_seq
 
 ! Calculo das forcas para o sequencial e o paralelo (CPU)
-FUNCTION calcular_forca (G, R, a, b, potsoft2, dist) RESULT(Fab)
+FUNCTION calcular_forca (G, R, a, b, potsoft2) RESULT(Fab)
   REAL(pf), INTENT(IN)    :: G, R(:,:), potsoft2
   INTEGER,  INTENT(IN)    :: a, b
-  REAL(pf), INTENT(INOUT) :: dist
   REAL(pf) :: Fab(3)
-  REAL(pf) :: dx, dy, dz, r2, rinv
+  REAL(pf) :: dx, dy, dz, r2, rinv, dist
 
   dx = R(b,1) - R(a,1)
   dy = R(b,2) - R(a,2)
@@ -129,12 +106,10 @@ END FUNCTION calcular_forca
 
 ! GPU
 #ifdef USAR_GPU
-FUNCTION forcas_mi_par_gpu (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
+FUNCTION forcas_mi_par_gpu (R, G, N, dim, potsoft2) RESULT(forcas)
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf),                    INTENT(IN) :: G, potsoft2
-
-  REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
   REAL(pf), DIMENSION(N, dim) :: forcas
 
   INTEGER :: i, j, indice, chunk_size
@@ -144,7 +119,7 @@ FUNCTION forcas_mi_par_gpu (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   chunk_size = 64
   
   ! 1. Manter dados na GPU entre chamadas
-  !$OMP target data map(to: R) map(from: forcas, distancias)
+  !$OMP target data map(to: R) map(from: forcas)
   
   ! 2. Inicializacao otimizada
   !$OMP target teams distribute parallel do simd num_teams(N/256) thread_limit(256)
@@ -153,7 +128,7 @@ FUNCTION forcas_mi_par_gpu (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
   END DO
   
   ! 3. Calculo das forcas
-  !$OMP target teams distribute parallel do private(dx, dy, dz, r2, rinv, indice) &
+  !$OMP target teams distribute parallel do private(dx, dy, dz, r2, rinv) &
   !$OMP num_teams(480) thread_limit(256)
   DO i = 1, N
     ! Loop interno sem collapse
@@ -178,9 +153,6 @@ FUNCTION forcas_mi_par_gpu (R, G, N, dim, potsoft2, distancias) RESULT(forcas)
       forcas(j,2) = forcas(j,2) - dy * rinv
       !$OMP atomic update
       forcas(j,3) = forcas(j,3) - dz * rinv
-      
-      indice = (i-1)*(2*N-i)/2 + (j-i)
-      distancias(indice) = SQRT(r2 - potsoft2)
     END DO
   END DO
   

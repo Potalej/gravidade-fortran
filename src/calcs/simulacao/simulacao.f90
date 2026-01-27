@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -300,8 +300,7 @@ SUBROUTINE rodar (self, qntdPassos)
       !> Colide, se for o caso
       IF (self % colidir) THEN
         CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
-                                self%raios, self%colisoes_modo, &
-                                self%integrador%distancias)
+                                self%raios, self%colisoes_modo)
       END IF
 
       !> Se for exibir, envia os dados
@@ -313,7 +312,7 @@ SUBROUTINE rodar (self, qntdPassos)
 
     !> Se for corrigir, calcula a energia total para ver se precisa
     IF (self % corrigir) THEN
-      E = energia_total(self%G, self%m, R1, P1, self%potsoft, self%integrador%distancias)
+      E = energia_total(self%G, self%m, R1, P1, self%potsoft)
 
       !> Se o erro for maior que o permitido, corrige
       IF (ABS(E - self%E0) >= self%corme) THEN

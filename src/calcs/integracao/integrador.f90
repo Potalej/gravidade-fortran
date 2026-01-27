@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -33,8 +33,7 @@ MODULE integrador
     REAL(pf) :: m_esc, m_inv, m2
     REAL(pf128) :: m_esc_128, m_inv_128, m2_128
 
-    ! Distancias entre os corpos
-    REAL(pf), ALLOCATABLE :: distancias(:)
+    ! Vetor de forcas entre os corpos
     REAL(pf), ALLOCATABLE :: fs(:,:)
 
     ! h: Passo de integracao
@@ -69,7 +68,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -94,9 +93,6 @@ SUBROUTINE iniciar (self, infos, timestep, massas)
   !> Amortecedor
   self % potsoft = json_get_float(infos, 'integracao.amortecedor')
   self % potsoft2 = self % potsoft * self % potsoft
-
-  !> Vetor de distancias dos corpos
-  ALLOCATE(self % distancias(INT(self%N * (self%N-1)/2)))
 
   !> Uso (ou nao) do paralelismo
   CALL json % get(infos, 'paralelo', self % paralelo)
@@ -179,7 +175,7 @@ END SUBROUTINE inicializar_massas
 !! Calculo das forcas conforme as massas
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -192,10 +188,10 @@ FUNCTION forcas (self, R)
   
   IF (self % mi) THEN
     forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
-                    self%potsoft2, self%distancias)
+                    self%potsoft2)
   ELSE
     forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
-                    self%potsoft2, self%distancias)
+                    self%potsoft2)
   ENDIF
 END FUNCTION forcas
 

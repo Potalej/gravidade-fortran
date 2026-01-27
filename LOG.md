@@ -1,5 +1,9 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-01-20] v1.0.3: Removendo o vetorzão de distâncias
+
+- O vetorzão de tamanho N * (N-1) / 2 adicionado na versão v0.4.6 só consumia memória e pouco tinha efeito prático positivo nas simulações. Sendo assim, foi removido.
+
 ## [2026-01-20] v1.0.2: Correção nas colisões
 
 - O paralelismo nas colisões no geral é mais lento e ainda por cima problemático, podendo ter sobreescrevimento de valores e tudo mais. Melhor tirar!

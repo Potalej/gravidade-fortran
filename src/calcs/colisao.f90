@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   20 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -30,22 +30,21 @@ CONTAINS
 !   particulas.
 !
 ! Modificado:
-!   24 de julho de 2025
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P, paralelo, raios, modo, dists)
+SUBROUTINE verificar_e_colidir (m, R, P, paralelo, raios, modo)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:) ! maximo de aproximacao
   LOGICAL  :: paralelo
   REAL(pf) :: raios(size(m))
   CHARACTER(LEN=*), INTENT(IN) :: modo
-  REAL(pf) :: dists(:)
 
   ! Aplica colisoes conforme o modo
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN
-    CALL verificar_e_colidir_direto(m, R, P, paralelo, raios, dists)
+    CALL verificar_e_colidir_direto(m, R, P, paralelo, raios)
   ELSE IF (TRIM(modo) == 'octree') THEN
     CALL verificar_e_colidir_octree(m, R, P, paralelo, raios)
   ELSE
@@ -123,18 +122,17 @@ END SUBROUTINE verificar_e_colidir_octree
 !     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   20 de janeiro de 2026
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios, dists)
+SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:)
   INTEGER :: a, b
   LOGICAL :: paralelo, colidiram(INT(size(m)*(size(m)-1)/2))
   REAL(pf) :: raios(size(m)), dist
-  REAL(pf) :: dists(:)
   INTEGER :: indice
 
   colidiram=.FALSE.
@@ -146,7 +144,7 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios, dists)
         CYCLE
       ENDIF
       
-      dist = dists(indice)
+      dist = NORM2(R(b,:) - R(a,:))
       IF (dist <= raios(a) + raios(b)) THEN
         IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
           colidiram(indice) = .TRUE.

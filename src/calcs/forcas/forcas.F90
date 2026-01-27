@@ -12,7 +12,7 @@
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   27 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -29,24 +29,22 @@ MODULE funcoes_forca
 
 !> Interface com o basico das funcoes de forca
   ABSTRACT INTERFACE
-    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft2, distancias)
+    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft2)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft2
-        REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
 
-    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft2, distancias)
+    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft2)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf),                    INTENT(IN) :: G, potsoft2
-        REAL(pf), DIMENSION(INT(N*(N-1)/2)), INTENT(INOUT) :: distancias
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
   END INTERFACE
