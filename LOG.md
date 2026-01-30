@@ -1,13 +1,24 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-01-29] v1.1.0: Métodos multipasso! (issue #7)
+
+- Otimização no cálculo da distâncias na colisões (utilizando a definição escalar, válida somente para R3!)
+- Implementados os métodos de passo múltiplo explícitos e lineares de Adam-Bashforth de ordens 2, 3, 4 e 5.
+- Esses métodos não funcionam com colisões elásticas, pois elas criam descontinuidades!
+
+---
+
 ## [2026-01-20] v1.0.3: Removendo o vetorzão de distâncias
 
 - O vetorzão de tamanho N * (N-1) / 2 adicionado na versão v0.4.6 só consumia memória e pouco tinha efeito prático positivo nas simulações. Sendo assim, foi removido.
+
+---
 
 ## [2026-01-20] v1.0.2: Correção nas colisões
 
 - O paralelismo nas colisões no geral é mais lento e ainda por cima problemático, podendo ter sobreescrevimento de valores e tudo mais. Melhor tirar!
 
+---
 
 ## [2026-01-19] v1.0.1: Otimizações e correções
 

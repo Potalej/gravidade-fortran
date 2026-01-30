@@ -36,9 +36,18 @@ set(INTEGRADORES_SIMPLETICOS
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" # (ordem 10)
 CACHE STRING "Lista de integradores tradicionais")
 
+set(INTEGRADORES_MULTIPASSO
+  # Adam-Bashforth
+  "./src/calcs/integracao/multipasso/ab/ab2.f90"
+  "./src/calcs/integracao/multipasso/ab/ab3.f90"
+  "./src/calcs/integracao/multipasso/ab/ab4.f90"
+  "./src/calcs/integracao/multipasso/ab/ab5.f90"
+CACHE STRING "Lista de integradores multipasso")
+
 set(INTEGRADORES_SOURCE
   ${INTEGRADORES_TRADICIONAIS}
   ${INTEGRADORES_SIMPLETICOS}
+  ${INTEGRADORES_MULTIPASSO}
 CACHE STRING "Lista de integradores")
 
 # Listas formatadas para o Fortran
@@ -95,6 +104,30 @@ set(CONTADOR 0)
 list(LENGTH INTEGRADORES_SIMPLETICOS QUANTIDADE_INTEGRADORES)
 string(APPEND INTEGRADORES_LISTA "\n  WRITE(*,'(A)') '     - SIMPLETICOS:'\n")
 foreach(src ${INTEGRADORES_SIMPLETICOS})
+  # Captura o arquivo
+  get_filename_component(fname ${src} NAME_WE)
+  string(TOUPPER ${fname} FNAME_UP)
+
+  # Adiciona no contador
+  math(EXPR CONTADOR "${CONTADOR} + 1")
+
+  # Adiciona na string
+  if (CONTADOR EQUAL 1)
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '         ${fname}, '\n")
+  elseif(CONTADOR EQUAL QUANTIDADE_INTEGRADORES)
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)') '${fname}.'\n")
+  else()
+    string(APPEND INTEGRADORES_LISTA "  WRITE(*,'(A)',ADVANCE='NO') '${fname}, '\n")
+  endif()
+endforeach()
+
+string(APPEND INTEGRADORES_LISTA "WRITE(*,*)\n")
+
+# Agora os multipasso
+set(CONTADOR 0)
+list(LENGTH INTEGRADORES_MULTIPASSO QUANTIDADE_INTEGRADORES)
+string(APPEND INTEGRADORES_LISTA "\n  WRITE(*,'(A)') '     - Multipasso:'\n")
+foreach(src ${INTEGRADORES_MULTIPASSO})
   # Captura o arquivo
   get_filename_component(fname ${src} NAME_WE)
   string(TOUPPER ${fname} FNAME_UP)

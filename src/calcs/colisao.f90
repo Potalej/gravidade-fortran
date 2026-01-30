@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -122,7 +122,7 @@ END SUBROUTINE verificar_e_colidir_octree
 !     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -144,8 +144,8 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios)
         CYCLE
       ENDIF
       
-      dist = NORM2(R(b,:) - R(a,:))
-      IF (dist <= raios(a) + raios(b)) THEN
+      dist = (R(b,1) - R(a,1))**2 + (R(b,2) - R(a,2))**2 + (R(b,3) - R(a,3))**2
+      IF (dist <= (raios(a) + raios(b))**2) THEN
         IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
           colidiram(indice) = .TRUE.
           CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))

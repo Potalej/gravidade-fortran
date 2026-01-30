@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -19,7 +19,7 @@ MODULE integrador
   USE json_utils_mod
   IMPLICIT NONE
   PRIVATE
-  PUBLIC integracao
+  PUBLIC integracao, iniciar_base
 
 !> Esta eh a classe de integracao, da qual todos os metodos de 
 !  integracao devem ser filhos.
@@ -52,9 +52,16 @@ MODULE integrador
     PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
     PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
 
+    ! Se eh um metodo multipasso. 0 se nao eh, > 0 se for
+    INTEGER :: multipasso = 0
+    REAL(pf), ALLOCATABLE :: Ps_ant(:,:,:), Fs_ant(:,:,:)
+    INTEGER :: mp_rb_idx ! indice do ring buffer para metodos multipasso
+
     CONTAINS
-    PROCEDURE :: iniciar, inicializar_massas, atualizar_constantes, &
-                  forcas, metodo, metodo_mi, aplicar
+      PROCEDURE :: iniciar => iniciar_base
+      PROCEDURE :: inicializar_massas, atualizar_constantes, &
+                   forcas, metodo, metodo_mi, aplicar, &
+                   mp_rb ! multipasso ring-buffer
                   
   END TYPE integracao
 
@@ -68,12 +75,12 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE iniciar (self, infos, timestep, massas)
+SUBROUTINE iniciar_base (self, infos, timestep, massas)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) 			:: self
   TYPE(json_value), POINTER, INTENT(IN) :: infos
@@ -103,13 +110,16 @@ SUBROUTINE iniciar (self, infos, timestep, massas)
   !> Modulo: funcoes_forca
   CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, &
 	  				  self%forcas_funcao, self%forcas_mi_funcao)
-END SUBROUTINE iniciar
+
+  ! Mesmo que nao seja um metodo multipasso, inicia o indice do ring buffer
+  self % mp_rb_idx = 1
+END SUBROUTINE iniciar_base
 
 ! ************************************************************
 !! Inicializa as massas
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -126,6 +136,7 @@ SUBROUTINE inicializar_massas (self, infos, massas)
   IF (.NOT. encontrado) self % mi = .FALSE.
 
   !> Alocando vetor de massas
+  IF (ALLOCATED(self % m)) DEALLOCATE(self % m)
   ALLOCATE(self % m (self % N))
   self % m = massas
 
@@ -162,6 +173,7 @@ SUBROUTINE inicializar_massas (self, infos, massas)
     ENDIF
   ELSE  
     ! vetor de massas invertidas
+    IF (ALLOCATED(self % massasInvertidas)) DEALLOCATE(self % massasInvertidas)
     ALLOCATE(self % massasInvertidas (self % N, self % dim))
     DO a = 1, self % N
       DO i = 1, self % dim
@@ -276,6 +288,30 @@ SUBROUTINE aplicar (self, R, P)
   ELSE
     CALL self % metodo(R, P, self % fs)
   ENDIF
+
+  ! Atualiza o indice do ring buffer se for multipasso
+  IF (self % multipasso > 0) self % mp_rb_idx = self % mp_rb()
 END SUBROUTINE
+
+! ************************************************************
+!! (MULTIPASSOS) Indice do ring buffer
+!
+! Modificado:
+!   29 de janeiro de 2026
+!
+! Autoria:
+!   oap
+!
+PURE INTEGER FUNCTION mp_rb (self, k)
+  CLASS (integracao), INTENT(IN) :: self
+  INTEGER, OPTIONAL, INTENT(IN)  :: k
+
+  IF (.NOT. PRESENT(k)) THEN
+    mp_rb = modulo(self%mp_rb_idx-2, self%multipasso-1) + 1
+  ELSE  
+    mp_rb = modulo(self%mp_rb_idx+k-2, self%multipasso-1) + 1
+  ENDIF
+END FUNCTION mp_rb
+
 
 END MODULE integrador

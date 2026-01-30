@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   29 de janeiro de 2026
 !
 ! Autoria:
 !   oap
@@ -69,7 +69,8 @@ MODULE simulacao
     
     ! Metodo
     CHARACTER(LEN=:), ALLOCATABLE :: metodo
-    CLASS(integracao), POINTER :: integrador
+    CLASS(integracao), POINTER :: integrador, integrador_auxiliar
+    CHARACTER(LEN=9) :: metodo_inicializacao_multipasso = "svcp10s35"
 
     ! Diretorio onde ficara salvo
     CHARACTER(LEN=:), ALLOCATABLE :: dir
@@ -162,9 +163,6 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   CALL json % get(infos, 'gpu', self%gpu, encontrado)
   IF (.NOT. encontrado) self%gpu = .FALSE.
 
-  !## Sobre a integracao numerica ##!
-  CALL self % inicializar_metodo(h)
-
   !## Sobre a correcao numerica ##!
   CALL json % get(infos, 'correcao.corrigir', self % corrigir)
   self % corme = json_get_float(infos, 'correcao.margem_erro')
@@ -182,6 +180,9 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   DO a = 1, self % N
     self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
   END DO
+
+  !## Sobre a integracao numerica ##!
+  CALL self % inicializar_metodo(h)
 
   !> Copia o arquivo de valores iniciais
   CALL diretorio_data(out_dir)
@@ -239,6 +240,9 @@ SUBROUTINE inicializar_metodo (self, h)
   REAL(pf), INTENT(IN) :: h
   LOGICAL :: encontrado
 
+  REAL(pf), ALLOCATABLE :: R(:,:), P(:,:)
+  INTEGER :: pre_passo
+
   self % h = h  ! Timestep
   !> Metodo
   self % metodo = json_get_string(self%infos, 'integracao.metodo')
@@ -260,6 +264,37 @@ SUBROUTINE inicializar_metodo (self, h)
 
   ! Se for plotar em tempo real, precisa inicializar tambem
   IF (self % exibir) CALL self % conexao % inicializar_plot_tempo_real(self % N)
+
+  ! Se for multipasso, faz a inicializacao
+  IF (self % integrador % multipasso > 0) THEN
+    ! Se estiver com colisoes ativadas, encerra o programa
+    IF (self % colidir) THEN
+      WRITE (*,*) "!!! ATENCAO!!!"
+      WRITE (*,*) "Metodos multipasso nao funcionam com choques elasticos!"
+      WRITE (*,*) "Escolha um metodo de passo simples."
+      STOP
+    ENDIF
+
+    ! Define um metodo auxiliar so para poder dar a quantidade de passos necessaria
+    CALL definir_metodo(self%integrador_auxiliar, self%metodo_inicializacao_multipasso, .FALSE.)
+    CALL self % integrador_auxiliar % iniciar(self%infos, -self%h, self%M)
+    CALL self % integrador_auxiliar % atualizar_constantes()
+
+    ! Para inicializar o metodo no instante correto, serao dados passos para tras
+    R = self % R0
+    P = self % P0
+
+    DO pre_passo = 1, self % integrador % multipasso - 1
+      ! Faz a integracao
+      CALL self % integrador_auxiliar % aplicar(R, P)
+      ! Agora salva
+      self % integrador % Ps_ant(pre_passo, :, :) = P
+      self % integrador % Fs_ant(pre_passo, :, :) = self % integrador_auxiliar % fs
+    END DO
+
+    ! Liberando a memoria
+    NULLIFY(self % integrador_auxiliar)
+  ENDIF
 END SUBROUTINE
 
 
