@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   14 de setembro de 2024 (criado)
-!   18 de janeiro de 2026 (modificado)
+!   26 de marco de 2026 (modificado)
 !
 ! Autoria:
 !   oap
@@ -64,7 +64,7 @@ SUBROUTINE metodo (self, R, P, FSomas)
     ! Calcula as novas forcas
     FSomas = self%forcas(Rchute)
 
-    IF (NORM2(R1 - Rchute) < self % h * self % h) EXIT
+    IF (NORM2(R1 - Rchute) < self % h ** 4) EXIT
     R1 = Rchute
   END DO
 
@@ -106,7 +106,7 @@ SUBROUTINE metodo_mi (self, R, P, FSomas)
     ! Calcula as novas forcas
     FSomas = self%forcas(Rchute)
 
-    IF (NORM2(R1 - Rchute) < self % h * self % h) EXIT
+    IF (NORM2(R1 - Rchute) < self % h ** 4) EXIT
     R1 = Rchute
   END DO
 

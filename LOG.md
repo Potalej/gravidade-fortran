@@ -1,5 +1,18 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-03-26] v1.2.0: Mais métodos simpléticos!
+
+- Implementados os métodos de Euler Compostos:
+  - ecp4s5 (McLachlan, 1995): 4a ordem, 5 estágios.
+  - ecp4s6 (Blanes & Moan, 2002): 4a ordem, 6 estágios.
+- Implementados os métodos de Stormer-Verlet Compostos:
+  - svcp6s9 (Kahan & Li, 1997): 6a ordem, 9 estágios.
+  - svcp8s17: 8a ordem, 17 estágios.
+- Alteração na implementação do Ruth4. Funciona da mesma forma, mas foi re-implementado numa ordem ligeiramente melhor para diminuir o erro local e alcançar precisão maior.
+- Melhorias nos coeficientes dos métodos de Runge-Kutta-Nystrom.
+
+---
+
 ## [2026-01-29] v1.1.0: Métodos multipasso! (issue #7)
 
 - Otimização no cálculo da distâncias na colisões (utilizando a definição escalar, válida somente para R3!)

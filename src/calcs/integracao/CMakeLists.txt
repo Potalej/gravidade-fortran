@@ -23,6 +23,10 @@ set(INTEGRADORES_SIMPLETICOS
   "./src/calcs/integracao/simpleticos/verlet.f90"     # (Verlet)
   "./src/calcs/integracao/simpleticos/euler_simp.f90" # (Euler Simpletico)
 
+  # Composicao de metodos de Euler Simpletico
+  "./src/calcs/integracao/simpleticos/ec/ecp4s5.f90" # (McLachlan - ordem 4)
+  "./src/calcs/integracao/simpleticos/ec/ecp4s6.f90" # (Blanes-Moan - ordem 4)
+
   # Metodos de Ruth
   "./src/calcs/integracao/simpleticos/ruth/ruth3.f90" # (ordem 3)
   "./src/calcs/integracao/simpleticos/ruth/ruth4.f90" # (ordem 4)
@@ -32,7 +36,9 @@ set(INTEGRADORES_SIMPLETICOS
   "./src/calcs/integracao/simpleticos/rkn/rkn671.f90" # (ordem 6)
 
   # Metodos de Stormer-Verlet Compostos
+  "./src/calcs/integracao/simpleticos/svc/svcp6s9.f90"  # (ordem 6)
   "./src/calcs/integracao/simpleticos/svc/svcp8s15.f90"  # (ordem 8)
+  "./src/calcs/integracao/simpleticos/svc/svcp8s17.f90"  # (ordem 8)
   "./src/calcs/integracao/simpleticos/svc/svcp10s35.f90" # (ordem 10)
 CACHE STRING "Lista de integradores tradicionais")
 

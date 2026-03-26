@@ -47,16 +47,9 @@ SUBROUTINE metodo (self, R, P, FSomas)
   class(integracao_verlet), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
 
-  ! Integrando as posicoes
-  R = R + self % h * (P + 0.5_pf * self%h * FSomas) * self%massasInvertidas
-
-  ! Velocidades
   P = P + 0.5_pf * self % h * FSomas
-
-  ! Calcula as novas forcas
+  R = R + self % h * P * self%massasInvertidas
   FSomas = self%forcas(R)
-
-  ! Integrando as velocidades
   P = P + 0.5_pf * self % h * FSomas
 
 END SUBROUTINE metodo
