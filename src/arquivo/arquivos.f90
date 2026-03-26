@@ -178,8 +178,9 @@ SUBROUTINE criar_formatos (self, qntd_corpos, dimensao)
   WRITE(frmt, '(A,I0,A)') 'G0.', prec
 
   ! cria o formato
-  self % formato = '(2(' // self % dimensao // '(' // self % qntd_corpos // '(' // frmt // ', :, ","))))'
-  self % formato_massas = '(' // self % qntd_corpos // '(' // frmt // ', :, ","))'
+  self % formato = '(2(' // self % dimensao // '(' // self % qntd_corpos
+  self % formato = self % formato // '(' // TRIM(frmt) // ', :, ","))))'
+  self % formato_massas = '(' // self % qntd_corpos // '(' // TRIM(frmt) // ', :, ","))'
 
 END SUBROUTINE criar_formatos
 
