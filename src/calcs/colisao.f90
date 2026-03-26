@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   26 de marco de 2026
 !
 ! Autoria:
 !   oap
@@ -16,7 +16,7 @@ MODULE colisao
   USE octree
   IMPLICIT NONE
   PRIVATE
-  PUBLIC verificar_e_colidir
+  PUBLIC verificar_e_colidir, verificar_colisao
 
   !> Arvore pre-instanciada para ser utilizada sem realocacao
   TYPE(arvore_octo), ALLOCATABLE :: arvore
@@ -109,6 +109,47 @@ SUBROUTINE verificar_e_colidir_octree (m, R, P, paralelo, raios)
   END DO
 
 END SUBROUTINE verificar_e_colidir_octree
+
+! ************************************************************
+!! Verifica diretamente, sem colidir
+!
+! Objetivos:
+!   Passa por cada par de particulas avaliando as distancias e
+!   taxa de variacao desta, verificando se trata-se de caso de
+!   colisao ou nao.
+!   Condicoes para colisao:
+!     1. fator <= colmd
+!     2. <rb - ra, pb - pa> < 0
+!
+! Modificado:
+!   26 de marco de 2026
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE verificar_colisao (m, R, raios, menor_dist, houve_colisao)
+  IMPLICIT NONE
+  REAL(pf) :: m(:), R(:,:)
+  INTEGER  :: a, b
+  LOGICAL  :: houve_colisao
+  REAL(pf) :: raios(size(m)), dist, menor_dist
+  INTEGER  :: indice
+
+  menor_dist = 0
+  houve_colisao = .FALSE.
+  DO a = 2, SIZE(m)
+    DO b = 1, a-1
+      indice = INT((a-1)*(a-2)/2 + (b-1)) + 1
+      dist = SQRT((R(b,1) - R(a,1))**2 + (R(b,2) - R(a,2))**2 + (R(b,3) - R(a,3))**2)
+      
+      IF (menor_dist == 0.0_pf .OR. dist < menor_dist) menor_dist = dist
+
+      IF (dist <= raios(a) + raios(b)) THEN
+        houve_colisao = .TRUE.
+      ENDIF 
+    END DO
+  END DO
+END SUBROUTINE verificar_colisao
 
 ! ************************************************************
 !! Verifica e colide direto

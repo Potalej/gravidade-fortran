@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   26 de marco de 2026
 !
 ! Autoria:
 !   oap
@@ -112,9 +112,9 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   LOGICAL, OPTIONAL :: p_status
   TYPE(json_value), POINTER :: infos
   REAL(pf) :: m(:), R0(:,:), P0(:,:)
-  REAL(pf) :: h, colmd, densidade, ec, f_prod_q
+  REAL(pf) :: h, colmd, densidade, ec, f_prod_q, menor_dist
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
-  LOGICAL :: encontrado
+  LOGICAL :: encontrado, houve_colisao
   INTEGER :: a
 
   self % status = MERGE(p_status, .TRUE., PRESENT(p_status))
@@ -170,16 +170,28 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
 
   !## Sobre as colisoes ##!
   CALL json % get(infos, 'colisoes.colidir', self % colidir)
-  self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
-  densidade = json_get_float(infos, 'colisoes.densidade')
-  colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
-  self % colmd = colmd
-  ! Deixando os raios calculados de antemao
-  IF (ALLOCATED(self % raios)) DEALLOCATE(self % raios)
-  ALLOCATE(self % raios(self % N))
-  DO a = 1, self % N
-    self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
-  END DO
+  IF (self % colidir) THEN  
+    self % colisoes_modo = json_get_string(infos, 'colisoes.metodo')
+    densidade = json_get_float(infos, 'colisoes.densidade')
+    colmd = (0.75_pf / (PI * densidade))**(1.0_pf/3.0_pf)
+    self % colmd = colmd
+    ! Deixando os raios calculados de antemao
+    IF (ALLOCATED(self % raios)) DEALLOCATE(self % raios)
+    ALLOCATE(self % raios(self % N))
+    DO a = 1, self % N
+      self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
+    END DO
+    ! Verifica se ha colisao no instante inicial
+    CALL verificar_colisao(self%m, R0, self%raios, menor_dist, houve_colisao)
+    IF (houve_colisao) THEN
+      WRITE (*,*) "!!! ATENCAO!!!"
+      WRITE (*,*) "Detectada colisao no instante inicial! Altere a densidade"
+      WRITE (*,*) "ou desabilite as colisoes!"
+      WRITE (*,*) "Menor distancia:", menor_dist
+      WRITE (*,*) "Menor raio:", MINVAL(self%raios)
+      STOP
+    ENDIF
+  ENDIF
 
   !## Sobre a integracao numerica ##!
   CALL self % inicializar_metodo(h)

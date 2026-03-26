@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-03-26] v1.2.1: Detecção de colisão na inicialização
+
+Detecta colisões nos valores iniciais. Se houver, impede que a simulação seja feita e dá um aviso informando.
+
+---
+
 ## [2026-03-26] v1.2.0: Mais métodos simpléticos!
 
 - Implementados os métodos de Euler Compostos:
