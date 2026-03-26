@@ -11,7 +11,7 @@
 !   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   18 de janeiro de 2026
+!   26 de marco de 2026
 ! 
 ! Autoria:
 !   oap
@@ -153,7 +153,7 @@ END SUBROUTINE gerar_nome_diretorio
 !   '(N(F25.7,:,","))'
 ! 
 ! Modificado:
-!   15 de marco de 2024
+!   26 de marco de 2026
 !
 ! Autoria:
 !   oap
@@ -163,6 +163,8 @@ SUBROUTINE criar_formatos (self, qntd_corpos, dimensao)
   IMPLICIT NONE
   CLASS(arquivo), INTENT(INOUT) :: self
   INTEGER, INTENT(IN)           :: qntd_corpos, dimensao
+  CHARACTER(LEN=32) :: frmt
+  INTEGER :: prec
 
   ! salva a quantidade de corpos e dimensao
   self % qntd_corpos = int_para_string(qntd_corpos)
@@ -171,8 +173,13 @@ SUBROUTINE criar_formatos (self, qntd_corpos, dimensao)
   self % qntd_corpos_int = qntd_corpos
   self % dimensao_int = dimensao
 
-  self % formato = '(2(' // self % dimensao // '(' // self % qntd_corpos // '(F25.13, :, ","))))'
-  self % formato_massas = '(' // self % qntd_corpos // '(F25.7, :, ","))'
+  ! captura a precisao
+  prec = PRECISION(0.0_pf) + 1
+  WRITE(frmt, '(A,I0,A)') 'G0.', prec
+
+  ! cria o formato
+  self % formato = '(2(' // self % dimensao // '(' // self % qntd_corpos // '(' // frmt // ', :, ","))))'
+  self % formato_massas = '(' // self % qntd_corpos // '(' // frmt // ', :, ","))'
 
 END SUBROUTINE criar_formatos
 

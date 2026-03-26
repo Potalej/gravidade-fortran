@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-03-26] v1.2.2: Correção na escrita de caracteres
+
+Melhoria na escrita de arquivos .csv.
+
+---
+
 ## [2026-03-26] v1.2.1: Detecção de colisão na inicialização
 
 Detecta colisões nos valores iniciais. Se houver, impede que a simulação seja feita e dá um aviso informando.
