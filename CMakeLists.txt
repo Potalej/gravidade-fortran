@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.2.2
+project("gravidade" VERSION 1.3.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -255,6 +255,12 @@ add_library(octree
   "./src/libs/octree.f90"
 )
 target_link_libraries(octree PRIVATE tipos)
+
+add_library(tree 
+  "./src/libs/bh/tree.f90"
+)
+target_link_libraries(tree PRIVATE tipos)
+
 # ============================================================================
 
 # ============================================================================
@@ -336,6 +342,7 @@ add_library(integracao
   "./src/calcs/forcas/forcas.F90" 
   "./src/calcs/forcas/forcas_md.F90" 
   "./src/calcs/forcas/forcas_mi.F90"
+  "./src/calcs/forcas/forcas_tree.F90"
   
   "./src/calcs/integracao/integrador.f90" 
   ${CMAKE_CURRENT_BINARY_DIR}/src/calcs/integracao/integradores.f90
@@ -345,6 +352,7 @@ add_library(integracao
 target_link_libraries(integracao PRIVATE
   tipos
   json_utils_mod
+  tree
 )
 # ============================================================================
 

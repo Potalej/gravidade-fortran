@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -48,9 +48,15 @@ MODULE integrador
     ! Se vai ou nao usar paralelizacao
     LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
 
+    ! Se vai usar arvore
+    LOGICAL :: tree = .FALSE.
+    REAL(pf) :: theta2
+
     ! Funcao de forcas (aceleracao)
     PROCEDURE(forcas_funcbase), POINTER, NOPASS    :: forcas_funcao    => NULL()
     PROCEDURE(forcas_mi_funcbase), POINTER, NOPASS :: forcas_mi_funcao => NULL()
+    PROCEDURE(forcas_tree_funcbase), POINTER, NOPASS :: forcas_tree_funcao => NULL()
+    PROCEDURE(forcas_tree_mi_funcbase), POINTER, NOPASS :: forcas_tree_mi_funcao => NULL()
 
     ! Se eh um metodo multipasso. 0 se nao eh, > 0 se for
     INTEGER :: multipasso = 0
@@ -75,7 +81,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -106,10 +112,17 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
   CALL json % get(infos, 'gpu', self % gpu, encontrado)
   IF (.NOT. encontrado) self % gpu = .FALSE.
 
+  !> Uso (ou nao) das arvores
+  CALL json % get(infos, 'integracao.tree', self % tree, encontrado)
+  IF (.NOT. encontrado) self % tree = .FALSE.
+  self % theta2 = json_get_float(infos, 'integracao.theta')
+  self % theta2 = self % theta2 * self % theta2
+
   !> Determinando as funcoes de forca a se utilizar
   !> Modulo: funcoes_forca
-  CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, &
-	  				  self%forcas_funcao, self%forcas_mi_funcao)
+  CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, self%tree, &
+	  				  self%forcas_funcao, self%forcas_mi_funcao, &
+              self%forcas_tree_funcao, self%forcas_tree_mi_funcao)
 
   ! Mesmo que nao seja um metodo multipasso, inicia o indice do ring buffer
   self % mp_rb_idx = 1
@@ -187,7 +200,7 @@ END SUBROUTINE inicializar_massas
 !! Calculo das forcas conforme as massas
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -197,13 +210,23 @@ FUNCTION forcas (self, R)
   class(integracao), INTENT(INOUT) :: self
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
-  
-  IF (self % mi) THEN
-    forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
-                    self%potsoft2)
+
+  IF (self % tree) THEN
+    IF (self % mi) THEN
+      forcas = self % forcas_tree_mi_funcao(R, self%G, self%N, self%dim, &
+                      self%potsoft, self%theta2)
+    ELSE
+      forcas = self % forcas_tree_funcao(self % m, R, self%G, self%N, self%dim, &
+                      self%potsoft, self%theta2)
+    ENDIF
   ELSE
-    forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
-                    self%potsoft2)
+    IF (self % mi) THEN
+      forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
+                      self%potsoft2)
+    ELSE
+      forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
+                      self%potsoft2)
+    ENDIF
   ENDIF
 END FUNCTION forcas
 

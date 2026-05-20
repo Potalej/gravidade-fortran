@@ -180,6 +180,10 @@ Os métodos de integração implementados são:
     - Stormer-Verlet Composto de 8ª Ordem e 15 Estágios (svcp8s15);.
     - Stormer-Verlet Composto de 10ª Ordem e 35 Estágios (svcp10s35).
 
+É possível calcular as forças de duas formas:
+- Diretamente, sem parâmetros (custo $O(N^2)$);
+- Barnes-Hut, com parâmetro $\theta > 0$ (custo $O(N \log N)$ para $N$ grande).
+
 Também há três aplicações para modificar soluções:
 
 1. Um corretor numérico que aplica correções a partir dos desvios de energia total (e outras integrais primeiras). Bastante útil para simulações com muitos corpos;

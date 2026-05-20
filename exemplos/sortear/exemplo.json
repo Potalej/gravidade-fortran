@@ -37,7 +37,9 @@
         "amortecedor": 0.0,
         "t0": 0,
         "tf": 40,
-        "checkpoints": 40
+        "checkpoints": 40,
+        "tree": false,
+        "theta": 0.0
     },
 
     "colisoes": {

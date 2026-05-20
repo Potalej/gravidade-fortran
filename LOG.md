@@ -1,5 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-05-20] v1.3.0: Barnes-Hut!
+
+- Implementação de uma árvore octree mais eficiente que a anterior, mas por enquanto usada apenas no cálculo das forças. A octree está em inglês por vir de outro projeto em que estou trabalhando, mas não faz diferença.
+- Implementação do critério de Barnes-Hut para o cálculo das forças utilizando essa octree.
+- Correção importante no integrador simplético Ruth4 com o uso de massas iguais.
+
+---
+
 ## [2026-03-26] v1.2.2: Correção na escrita de caracteres
 
 Melhoria na escrita de arquivos .csv.

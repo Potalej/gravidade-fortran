@@ -6,13 +6,16 @@
 !   paralelo (CPU) e paralelo (GPU). Tambem ha duas formas de
 !   lidar com as massas: caso com massas diferentes (MD) e com
 !   massas iguais (MI), que estao separadas em dois modulos.
+!   Alem disso, tambem eh possivel calcular as forcas
+!   diretamente ou utilizando uma arvore (octree) atraves do
+!   criterio de Barnes-Hut.
 ! 
 !   O que este modulo faz eh auxiliar a classe INTEGRACAO na
 !   inicializacao das funcoes de forca, trazendo para ca a
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -23,6 +26,7 @@ MODULE funcoes_forca
 !> Modulos de forca
   USE funcoes_forca_md
   USE funcoes_forca_mi
+  USE funcoes_forca_tree
 
   IMPLICIT NONE
   PUBLIC
@@ -47,6 +51,25 @@ MODULE funcoes_forca
         REAL(pf),                    INTENT(IN) :: G, potsoft2
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
+
+    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft, theta2)
+        IMPORT :: pf
+        IMPLICIT NONE
+        INTEGER,                     INTENT(IN) :: N, dim
+        REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
+        REAL(pf), DIMENSION(N),      INTENT(IN) :: m
+        REAL(pf),                    INTENT(IN) :: G, potsoft, theta2
+        REAL(pf), DIMENSION(N, dim) :: forcas_tree_funcbase
+    END FUNCTION forcas_tree_funcbase
+
+    FUNCTION forcas_tree_mi_funcbase (R, G, N, dim, potsoft, theta2)
+        IMPORT :: pf
+        IMPLICIT NONE
+        INTEGER,                     INTENT(IN) :: N, dim
+        REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
+        REAL(pf),                    INTENT(IN) :: G, potsoft, theta2
+        REAL(pf), DIMENSION(N, dim) :: forcas_tree_mi_funcbase
+    END FUNCTION forcas_tree_mi_funcbase
   END INTERFACE
 
 CONTAINS
@@ -55,15 +78,17 @@ CONTAINS
 !! Inicializador
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, f, f_mi)
-  LOGICAL, INTENT(IN) :: mi, pcpu, pgpu
+SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t, f_mi_t)
+  LOGICAL, INTENT(IN) :: mi, pcpu, pgpu, tree
   PROCEDURE(forcas_funcbase), POINTER, INTENT(OUT)    :: f
   PROCEDURE(forcas_mi_funcbase), POINTER, INTENT(OUT) :: f_mi
+  PROCEDURE(forcas_tree_funcbase), POINTER, INTENT(OUT) :: f_t
+  PROCEDURE(forcas_tree_mi_funcbase), POINTER, INTENT(OUT) :: f_mi_t
 
   IF (pgpu) THEN
 #ifdef USAR_GPU
@@ -80,15 +105,31 @@ SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, f, f_mi)
   ELSE
     IF (pcpu) THEN
       IF (mi) THEN
-        f_mi => forcas_mi_par
+        IF (tree) THEN
+          f_mi_t => forcas_mi_par_tree
+        ELSE
+          f_mi => forcas_mi_par
+        ENDIF
       ELSE
-        f => forcas_par
+        IF (tree) THEN
+          f_t => forcas_par_tree
+        ELSE
+          f => forcas_par
+        ENDIF
       ENDIF
     ELSE
       IF (mi) THEN
-        f_mi => forcas_mi_seq
+        IF (tree) THEN
+          f_mi_t => forcas_mi_seq_tree
+        ELSE
+          f_mi => forcas_mi_seq
+        ENDIF
       ELSE
-        f => forcas_seq
+        IF (tree) THEN
+          f_t => forcas_seq_tree
+        ELSE
+          f => forcas_seq
+        ENDIF
       ENDIF
     ENDIF
   ENDIF

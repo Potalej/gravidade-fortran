@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   14 de setembro de 2024 (criado)
-!   26 de marco de 2026 (atualizado)
+!   20 de maio de 2026 (atualizado)
 !
 ! Autoria:
 !   oap
@@ -60,7 +60,7 @@ END SUBROUTINE
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -90,8 +90,6 @@ SUBROUTINE metodo (self, R, P, FSomas)
   P = P + d1 * self % h * FSomas
   ! R = R + c1 * self % h * P * self % massasInvertidas ! c1=0
 
-  FSomas = self%forcas(R)
-
 END SUBROUTINE metodo
 
 ! ************************************************************
@@ -101,7 +99,7 @@ END SUBROUTINE metodo
 !   Aplicacao do metodo em si.
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   20 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -112,7 +110,7 @@ SUBROUTINE metodo_mi (self, R, P, FSomas)
   REAL(pf), DIMENSION(self%N, self%dim), INTENT(INOUT) :: R, P, FSomas
   
   ! i = 4
-  P = P
+  P = P + d4 * self % h * (self % m2 * FSomas)
   R = R + c4 * self % h * self % m_inv * P
 
   ! i = 3
@@ -128,7 +126,7 @@ SUBROUTINE metodo_mi (self, R, P, FSomas)
   ! i = 1
   FSomas = self%forcas(R)
   P = P + d1 * self % h * (self % m2 * FSomas)
-  R = R + c1 * self % h * self % m_inv * P
+  ! R = R + c1 * self % h * self % m_inv * P ! c1=0
 
 END SUBROUTINE metodo_mi
 

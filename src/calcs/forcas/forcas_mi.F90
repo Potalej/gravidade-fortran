@@ -14,6 +14,7 @@
 MODULE funcoes_forca_mi
 
   USE tipos
+  USE octree_mod
   USE OMP_LIB
   IMPLICIT NONE
   PUBLIC
