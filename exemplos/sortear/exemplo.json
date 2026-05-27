@@ -45,7 +45,8 @@
     "colisoes": {
         "colidir": true,
         "metodo": "direto",
-        "densidade": 4.774648292756859
+        "densidade": 4.774648292756859,
+        "permitir_choque_inicial": true
     },
 
     "correcao": {

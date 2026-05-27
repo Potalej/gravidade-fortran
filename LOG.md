@@ -1,5 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-05-26] v1.3.1: Correções e melhorias
+
+- Melhor (?) implementação da octree e do cálculo de forças usando o Barnes-Hut.
+- Remoção da antiga octree em prol da nova na detecção de colisões.
+- Variável "global" (no contexto das classes de simulação e integração) de octree, compartilhada entre o cálculo de forças e detecção de colisões.
+
+---
+
 ## [2026-05-20] v1.3.0: Barnes-Hut!
 
 - Implementação de uma árvore octree mais eficiente que a anterior, mas por enquanto usada apenas no cálculo das forças. A octree está em inglês por vir de outro projeto em que estou trabalhando, mas não faz diferença.

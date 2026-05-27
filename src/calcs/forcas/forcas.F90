@@ -15,13 +15,14 @@
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   20 de maio de 2026
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
 ! 
 MODULE funcoes_forca
   USE tipos
+  USE octree_mod
 
 !> Modulos de forca
   USE funcoes_forca_md
@@ -52,24 +53,16 @@ MODULE funcoes_forca
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
 
-    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft, theta2)
-        IMPORT :: pf
+    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft, theta2, octree)
+        IMPORT :: pf, OctreeType
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft, theta2
+        CLASS(OctreeType),        INTENT(INOUT) :: octree
         REAL(pf), DIMENSION(N, dim) :: forcas_tree_funcbase
     END FUNCTION forcas_tree_funcbase
-
-    FUNCTION forcas_tree_mi_funcbase (R, G, N, dim, potsoft, theta2)
-        IMPORT :: pf
-        IMPLICIT NONE
-        INTEGER,                     INTENT(IN) :: N, dim
-        REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
-        REAL(pf),                    INTENT(IN) :: G, potsoft, theta2
-        REAL(pf), DIMENSION(N, dim) :: forcas_tree_mi_funcbase
-    END FUNCTION forcas_tree_mi_funcbase
   END INTERFACE
 
 CONTAINS
@@ -78,17 +71,16 @@ CONTAINS
 !! Inicializador
 !
 ! Modificado:
-!   20 de maio de 2026
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t, f_mi_t)
+SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t)
   LOGICAL, INTENT(IN) :: mi, pcpu, pgpu, tree
   PROCEDURE(forcas_funcbase), POINTER, INTENT(OUT)    :: f
   PROCEDURE(forcas_mi_funcbase), POINTER, INTENT(OUT) :: f_mi
   PROCEDURE(forcas_tree_funcbase), POINTER, INTENT(OUT) :: f_t
-  PROCEDURE(forcas_tree_mi_funcbase), POINTER, INTENT(OUT) :: f_mi_t
 
   IF (pgpu) THEN
 #ifdef USAR_GPU
@@ -104,29 +96,21 @@ SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t, f_mi_t)
 #endif
   ELSE
     IF (pcpu) THEN
-      IF (mi) THEN
-        IF (tree) THEN
-          f_mi_t => forcas_mi_par_tree
-        ELSE
-          f_mi => forcas_mi_par
-        ENDIF
+      IF (tree) THEN
+        f_t => forcas_par_tree
       ELSE
-        IF (tree) THEN
-          f_t => forcas_par_tree
+        IF (mi) THEN
+          f_mi => forcas_mi_par
         ELSE
           f => forcas_par
         ENDIF
       ENDIF
     ELSE
-      IF (mi) THEN
-        IF (tree) THEN
-          f_mi_t => forcas_mi_seq_tree
-        ELSE
-          f_mi => forcas_mi_seq
-        ENDIF
+      IF (tree) THEN
+        f_t => forcas_seq_tree
       ELSE
-        IF (tree) THEN
-          f_t => forcas_seq_tree
+        IF (mi) THEN
+          f_mi => forcas_mi_seq
         ELSE
           f => forcas_seq
         ENDIF

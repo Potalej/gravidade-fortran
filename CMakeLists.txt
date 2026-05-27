@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.3.0
+project("gravidade" VERSION 1.3.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -251,12 +251,7 @@ target_link_libraries(conexao_mod PRIVATE tipos)
 # "octanaria"). No momento, a arvore eh utilizada somente pelo modulo de
 # colisoes, quando desejado.
 # ----------------------------------------------------------------------------
-add_library(octree 
-  "./src/libs/octree.f90"
-)
-target_link_libraries(octree PRIVATE tipos)
-
-add_library(tree 
+add_library(tree
   "./src/libs/bh/tree.f90"
 )
 target_link_libraries(tree PRIVATE tipos)
@@ -321,7 +316,7 @@ add_library(colisoes
 )
 target_link_libraries(colisoes PRIVATE
   tipos
-  octree
+  tree
 )
 # ============================================================================
 

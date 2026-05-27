@@ -30,6 +30,8 @@ MODULE simulacao
   USE colisao
 !> Correcao numerica
   USE correcao
+!> Octree
+  USE octree_mod
 
   IMPLICIT NONE
   PRIVATE
@@ -71,6 +73,10 @@ MODULE simulacao
     CHARACTER(LEN=:), ALLOCATABLE :: metodo
     CLASS(integracao), POINTER :: integrador, integrador_auxiliar
     CHARACTER(LEN=9) :: metodo_inicializacao_multipasso = "svcp10s35"
+
+    ! Octree
+    LOGICAL :: usar_octree
+    CLASS(OctreeType), POINTER :: octree
 
     ! Diretorio onde ficara salvo
     CHARACTER(LEN=:), ALLOCATABLE :: dir
@@ -114,7 +120,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   REAL(pf) :: m(:), R0(:,:), P0(:,:)
   REAL(pf) :: h, colmd, densidade, ec, f_prod_q, menor_dist
   REAL(pf) :: PI = 4.D0*DATAN(1.D0)
-  LOGICAL :: encontrado, houve_colisao
+  LOGICAL :: encontrado, houve_colisao, permitir_choque_inicial
   INTEGER :: a
 
   self % status = MERGE(p_status, .TRUE., PRESENT(p_status))
@@ -181,16 +187,31 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
     DO a = 1, self % N
       self % raios(a) = self % colmd * m(a)**(1.0_pf / 3.0_pf)
     END DO
-    ! Verifica se ha colisao no instante inicial
-    CALL verificar_colisao(self%m, R0, self%raios, menor_dist, houve_colisao)
-    IF (houve_colisao) THEN
-      WRITE (*,*) "!!! ATENCAO!!!"
-      WRITE (*,*) "Detectada colisao no instante inicial! Altere a densidade"
-      WRITE (*,*) "ou desabilite as colisoes!"
-      WRITE (*,*) "Menor distancia:", menor_dist
-      WRITE (*,*) "Menor raio:", MINVAL(self%raios)
-      STOP
+    ! Verifica se ha colisao no instante inicial se for o caso
+    CALL json % get(infos, 'colisoes.permitir_choque_inicial', &
+                    permitir_choque_inicial, encontrado)
+    IF (.NOT. encontrado) permitir_choque_inicial = .FALSE.
+
+    IF (.NOT. permitir_choque_inicial) THEN
+      CALL verificar_colisao(self%m, R0, self%raios, menor_dist, houve_colisao)
+
+      IF (houve_colisao) THEN
+        WRITE (*,*) "!!! ATENCAO!!!"
+        WRITE (*,*) "Detectada colisao no instante inicial! Altere a densidade"
+        WRITE (*,*) "ou desabilite as colisoes!"
+        WRITE (*,*) "Menor distancia:", menor_dist
+        WRITE (*,*) "Menor raio:", MINVAL(self%raios)
+        STOP
+      ENDIF
     ENDIF
+  ENDIF
+
+  !## Uso da octree ##!
+  CALL json % get(infos, 'integracao.tree', self % usar_octree, encontrado)
+  IF (.NOT. encontrado) self % usar_octree = .FALSE.
+  IF (self % usar_octree .OR. TRIM(self % colisoes_modo) == 'octree') THEN
+    ALLOCATE(self % octree)
+    CALL self % octree % pre_init(self % m, self % mi, self % raios, self % colidir)
   ENDIF
 
   !## Sobre a integracao numerica ##!
@@ -242,7 +263,7 @@ END SUBROUTINE inicializar_data
 !! Inicializa o integrador e o socket
 !
 ! Modificado:
-!   08 de agosto de 2025
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -270,6 +291,11 @@ SUBROUTINE inicializar_metodo (self, h)
 
   ! Inicializando o integrador
   CALL self % integrador % iniciar(self%infos, self%h, self%M)
+
+  ! Apontando a arvore se for o caso
+  IF (self % usar_octree) THEN
+    self % integrador % octree => self % octree
+  ENDIF
 
   ! Atualizando as constantes se for necessario
   CALL self % integrador % atualizar_constantes()
@@ -346,8 +372,12 @@ SUBROUTINE rodar (self, qntdPassos)
 
       !> Colide, se for o caso
       IF (self % colidir) THEN
+        IF (.NOT. self%usar_octree .AND. self%colisoes_modo=="octree") THEN
+          CALL self % octree % init(self%m, R1)
+        ENDIF
         CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
-                                self%raios, self%colisoes_modo)
+                                self%raios, self%colisoes_modo, &
+                                self%octree)
       END IF
 
       !> Se for exibir, envia os dados

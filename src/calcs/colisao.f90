@@ -6,20 +6,18 @@
 !   particulas.
 !
 ! Modificado:
-!   26 de marco de 2026
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
 !  
 MODULE colisao
   USE tipos
-  USE octree
+  USE octree_mod
+
   IMPLICIT NONE
   PRIVATE
   PUBLIC verificar_e_colidir, verificar_colisao
-
-  !> Arvore pre-instanciada para ser utilizada sem realocacao
-  TYPE(arvore_octo), ALLOCATABLE :: arvore
 CONTAINS
 
 ! ************************************************************
@@ -30,23 +28,24 @@ CONTAINS
 !   particulas.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir (m, R, P, paralelo, raios, modo)
+SUBROUTINE verificar_e_colidir (m, R, P, paralelo, raios, modo, octree)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:) ! maximo de aproximacao
   LOGICAL  :: paralelo
   REAL(pf) :: raios(size(m))
   CHARACTER(LEN=*), INTENT(IN) :: modo
+  CLASS(OctreeType), POINTER, INTENT(INOUT) :: octree
 
   ! Aplica colisoes conforme o modo
   IF (TRIM(modo) == 'T' .OR. TRIM(modo) == 'direto') THEN
     CALL verificar_e_colidir_direto(m, R, P, paralelo, raios)
   ELSE IF (TRIM(modo) == 'octree') THEN
-    CALL verificar_e_colidir_octree(m, R, P, paralelo, raios)
+    CALL verificar_e_colidir_octree(m, R, P, paralelo, raios, octree)
   ELSE
     WRITE (*,*) "ATENCAO! MODO DE COLISAO NAO IDENTIFICADO: ", modo
     CALL ABORT()
@@ -60,52 +59,49 @@ END SUBROUTINE verificar_e_colidir
 !   Utilizando uma arvore octenaria, verifica colisoes entre
 !   corpos.
 !
-! Modificado:
+! Criado:
 !   24 de julho de 2025
+! 
+! Modificado:
+!   26 de maio de 2026
 !
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE verificar_e_colidir_octree (m, R, P, paralelo, raios)
+SUBROUTINE verificar_e_colidir_octree (m, R, P, paralelo, raios, octree)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:)
-  INTEGER :: a, b, i, colididos, colisoes(size(m)-1)
+  INTEGER :: a, b, i, colididos(size(m)), colisoes(size(m), size(m)-1)
   LOGICAL :: paralelo, colidiram(size(m),size(m))
   REAL(pf) :: raios(size(m))
+  CLASS(OctreeType), POINTER, INTENT(INOUT) :: octree
 
   colidiram = .FALSE.
-
-  ! Gera e ordena as arvores binarias
-  CALL gerar_octree(arvore, size(m), m, R)
+  colididos = 0
+  colisoes = 0
 
   ! Agora percorre os corpos para detectar colisoes
   DO a=1, size(m)
-    colididos = 0
-    colisoes = 0
-    CALL verificar_colisao_octree(arvore, a, R, raios, colisoes, colididos)
+    CALL octree % detect_collisions(a, colisoes(a,:), colididos(a))
+  END DO
 
+  DO a = 1, size(m)
+    IF (colididos(a) == 0) CYCLE
+    
     ! Se tiver tido alguma colisao
-    IF (colididos > 0) THEN
-      ! DO i=1, colididos
-      DO i=1, size(M)
-        IF (ANY(colisoes==i))THEN
-          b = i
-        ELSE
-          CYCLE
-        ENDIF
-        ! b = colisoes(i)
-        IF (colidiram(a,b) .OR. colidiram(b,a)) THEN
-          CYCLE
-        ENDIF
+    DO i=1, colididos(a)
+      b = colisoes(a,i)
+      IF (colidiram(a,b) .OR. colidiram(b,a)) THEN
+        CYCLE
+      ENDIF
 
-        IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
-          colidiram(a,b) = .TRUE.
-          colidiram(b,a) = .TRUE.
-          ! WRITE(*,*) 'colidiram octree:', a,b, NORM2(R(a,:)-R(b,:)) ! debug
-          CALL colidir(m(a),R(a,:),P(a,:),m(b),R(b,:),P(b,:))
-        ENDIF
-      END DO
-    ENDIF
+      IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
+        colidiram(a,b) = .TRUE.
+        colidiram(b,a) = .TRUE.
+        ! WRITE(*,*) 'colidiram octree:', a,b, NORM2(R(a,:)-R(b,:)) ! debug
+        CALL colidir(m(a),R(a,:),P(a,:),m(b),R(b,:),P(b,:))
+      ENDIF
+    END DO
   END DO
 
 END SUBROUTINE verificar_e_colidir_octree
