@@ -1,5 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-06-02] v1.3.2: Correções e melhorias
+
+- Correção no uso de Barnes-Hut com massas iguais.
+- Incorporação do erro nos momentos linear e angular e no centro de massas do sistema na saída (print).
+- Remoção da variável incoerente "região" para o sorteio de massas.
+
+---
+
 ## [2026-05-26] v1.3.1: Correções e melhorias
 
 - Melhor (?) implementação da octree e do cálculo de forças usando o Barnes-Hut.

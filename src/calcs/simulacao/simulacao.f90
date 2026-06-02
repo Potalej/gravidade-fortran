@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   26 de marco de 2026
+!   02 de junho de 2026
 !
 ! Autoria:
 !   oap
@@ -60,6 +60,7 @@ MODULE simulacao
     REAL(pf), ALLOCATABLE :: M(:), R0(:,:), P0(:,:)
     REAL(pf) :: m_esc, m_inv, m2
     LOGICAL :: mi ! Massas iguais
+    REAL(pf), ALLOCATABLE :: R(:,:), P(:,:)
 
     !> Integrais primeiras
     ! E0: Energia total inicial
@@ -71,7 +72,7 @@ MODULE simulacao
     
     ! Metodo
     CHARACTER(LEN=:), ALLOCATABLE :: metodo
-    CLASS(integracao), POINTER :: integrador, integrador_auxiliar
+    CLASS(integracao), POINTER :: integrador => NULL(), integrador_auxiliar => NULL()
     CHARACTER(LEN=9) :: metodo_inicializacao_multipasso = "svcp10s35"
 
     ! Octree
@@ -128,6 +129,10 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   !> Faz uma copia do dicionario de informacoes
   CALL json_clone(infos, self % infos)
 
+  !## Uso da octree ##!
+  CALL json % get(infos, 'integracao.tree', self % usar_octree, encontrado)
+  IF (.NOT. encontrado) self % usar_octree = .FALSE.
+
   !## Variaveis e constantes do sistema ##!
   !> Constante de gravitacao universal
   self % G = json_get_float(infos, "G")
@@ -141,7 +146,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   self % P0 = P0 ! momentos
   !> Salva se as massas sao iguais
   CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado) self % mi = .FALSE.
+  IF (.NOT. encontrado .OR. self % usar_octree) self % mi = .FALSE.
   IF (self % mi) THEN
     self % m_esc = self % M(1)
     self % m2 = self % m_esc * self % m_esc
@@ -206,9 +211,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
     ENDIF
   ENDIF
 
-  !## Uso da octree ##!
-  CALL json % get(infos, 'integracao.tree', self % usar_octree, encontrado)
-  IF (.NOT. encontrado) self % usar_octree = .FALSE.
+  !## Inicializacao da octree ##!
   IF (self % usar_octree .OR. TRIM(self % colisoes_modo) == 'octree') THEN
     ALLOCATE(self % octree)
     CALL self % octree % pre_init(self % m, self % mi, self % raios, self % colidir)
@@ -403,6 +406,9 @@ SUBROUTINE rodar (self, qntdPassos)
       ENDIF
     END IF
 
+    self % R = R1
+    self % P = P1
+
     !> Timer
     tf = OMP_GET_WTIME()
     tempo_total = tempo_total + (tf - t0)
@@ -434,7 +440,7 @@ END SUBROUTINE
 !! Mensagens na tela que aparecem durante a simulacao
 !
 ! Modificado:
-!   25 de julho de 2025
+!   02 de junho de 2026
 !
 ! Autoria:
 !   oap
@@ -450,7 +456,8 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
   REAL(pf) :: virial, f_prod_q
   REAL(pf) :: momine, momdil
   CHARACTER(100) :: char_real
-  CHARACTER(300) :: saida
+  CHARACTER(400) :: saida
+  REAL(pf) :: Rcm(3), Ptot(3), Jtot(3)
 
   ! Se tiver amortecimento, calcula o potencial de um jeito diferente
   IF (self % potsoft .NE. 0) THEN
@@ -469,6 +476,11 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
     virial = Ec + Ec + Ep
   ENDIF
 
+  ! Centro de massas e momento linear total
+  Rcm = centro_massas(self % m, R) - self % Rcm0
+  Ptot = momento_linear_total(P) - self % Ptot0
+  Jtot = momento_angular_total(R, P) - self % J0
+
   ! Erro na energia
   errene = EC + EP - self % E0
   self % errene = errene
@@ -483,10 +495,22 @@ SUBROUTINE output_passo (self, i, tempo_total, inst_t, R, P)
   ! Montando a string de output
   IF (self % status) WRITE(saida, '(5X,A,I8,4X,A,F12.3,2X,A,F10.2)') '-> Passo:', i, ' / Tempo:', tempo_total, ' / t:', inst_t
 
-  IF (self % status) WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'E-E0: ', errene, ' / Virial: ', self % virial
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4)') 'E-E0:  ', errene
   saida = TRIM(saida)//char(10)//TRIM(char_real)
 
-  IF (self % status) WRITE(char_real, '(A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4,E12.4, E12.4)') 'JPTOT: ', Jtot(1), Jtot(2), Jtot(3)
+  saida = TRIM(saida)//char(10)//TRIM(char_real)
+
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4,E12.4, E12.4)') 'EPTOT: ', Ptot(1), Ptot(2), Ptot(3)
+  saida = TRIM(saida)//char(10)//TRIM(char_real)
+
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4,E12.4, E12.4)') 'EQCM:  ', Rcm(1), Rcm(2), Rcm(3)
+  saida = TRIM(saida)//char(10)//TRIM(char_real)
+
+  IF (self % status) WRITE(char_real, '(9X,A,E12.4,A,E12.4)') 'I: ', momine, ' / D: ', momdil
+  saida = TRIM(saida)//char(10)//TRIM(char_real)
+
+  IF (self % status) WRITE(char_real, '(A,E12.4,A,E12.4)') 'Vir: ', self % virial
   saida = TRIM(saida)//" / "//TRIM(char_real)
   
   IF (self % status) WRITE (*,*) TRIM(saida)

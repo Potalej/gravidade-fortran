@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   05 de janeiro de 2026
+!   29 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -30,7 +30,7 @@ CONTAINS
 !   Converte json_value em objetos sorteio e sorteio_vetores.
 !
 ! Modificado:
-!   16 de dezembro de 2025
+!   29 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -57,7 +57,6 @@ SUBROUTINE configuracoes_sorteio (dados, configs)
 
   ! Configuracoes das massas 
   configs % massas % distribuicao = json_get_string(sorteio_json, "massas.distribuicao")
-  configs % massas % regiao = json_get_string(sorteio_json, "massas.regiao")
   configs % massas % intervalo = json_get_float_vec(sorteio_json, "massas.intervalo")
   CALL json % get(sorteio_json, "massas.normalizadas", configs % massas % normalizado, encontrado)
   IF (.NOT. encontrado) configs % massas % normalizado = .FALSE.

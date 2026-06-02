@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   26 de maio de 2026
+!   29 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -69,10 +69,26 @@ MODULE integrador
       PROCEDURE :: inicializar_massas, atualizar_constantes, &
                    forcas, metodo, metodo_mi, aplicar, &
                    mp_rb ! multipasso ring-buffer
+      PROCEDURE :: limpar
                   
   END TYPE integracao
 
 CONTAINS
+
+
+SUBROUTINE limpar (self)
+  CLASS(integracao), INTENT(INOUT) :: self
+
+  IF (ALLOCATED(self % ps_ant)) DEALLOCATE(self % ps_ant)
+  IF (ALLOCATED(self % fs_ant)) DEALLOCATE(self % fs_ant)
+  IF (ALLOCATED(self % fs)) DEALLOCATE(self % fs)
+  IF (ALLOCATED(self % m)) DEALLOCATE(self % m)
+  IF (ALLOCATED(self % massasInvertidas)) DEALLOCATE(self % massasInvertidas)
+  NULLIFY(self % octree)
+  NULLIFY(self % forcas_funcao)
+  NULLIFY(self % forcas_mi_funcao)
+  NULLIFY(self % forcas_tree_funcao)
+END SUBROUTINE
 
 ! ************************************************************
 !! Construtor da classe
@@ -82,7 +98,7 @@ CONTAINS
 !   metodo.
 !
 ! Modificado:
-!   26 de maio de 2026
+!   29 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -95,8 +111,16 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
   REAL(pf), INTENT(IN) :: timestep
   LOGICAL :: encontrado
 
+  CALL self % limpar()
+
   !> Quantidade de particulas
   self % N = SIZE(massas)
+
+  !> Uso (ou nao) das arvores
+  CALL json % get(infos, 'integracao.tree', self % tree, encontrado)
+  IF (.NOT. encontrado) self % tree = .FALSE.
+  self % theta2 = json_get_float(infos, 'integracao.theta')
+  self % theta2 = self % theta2 * self % theta2
 
   !> Inicializando as variaveis ligadas as massas dos corpos
   CALL self % inicializar_massas(infos, massas)
@@ -113,12 +137,6 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
   CALL json % get(infos, 'gpu', self % gpu, encontrado)
   IF (.NOT. encontrado) self % gpu = .FALSE.
 
-  !> Uso (ou nao) das arvores
-  CALL json % get(infos, 'integracao.tree', self % tree, encontrado)
-  IF (.NOT. encontrado) self % tree = .FALSE.
-  self % theta2 = json_get_float(infos, 'integracao.theta')
-  self % theta2 = self % theta2 * self % theta2
-
   !> Determinando as funcoes de forca a se utilizar
   !> Modulo: funcoes_forca
   CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, self%tree, &
@@ -133,7 +151,7 @@ END SUBROUTINE iniciar_base
 !! Inicializa as massas
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   29 de maio de 2026
 !
 ! Autoria:
 !   oap
@@ -147,7 +165,7 @@ SUBROUTINE inicializar_massas (self, infos, massas)
 
   !> Massas iguais
   CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado) self % mi = .FALSE.
+  IF (.NOT. encontrado .OR. self % tree) self % mi = .FALSE.
 
   !> Alocando vetor de massas
   IF (ALLOCATED(self % m)) DEALLOCATE(self % m)
