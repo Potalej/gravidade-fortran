@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-06-03] v1.4.0: Testes!
+
+- Implementação de testes para validar a execução do programa. Por enquanto constam apenas 2: um que garante que todos os métodos são chamados e outro que verifica a (ordem de) convergência dos métodos. A ideia é ir implementando mais depois.
+- Rotina de cabeçalho passada para o gerenciador de versão.
+
+---
+
 ## [2026-06-02] v1.3.2: Correções e melhorias
 
 - Correção no uso de Barnes-Hut com massas iguais.

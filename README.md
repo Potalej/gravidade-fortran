@@ -143,6 +143,16 @@ Para rodar este caso, utilize:
 
 Confira [aqui](/exemplos/valores_iniciais/exemplo.json) um exemplo de arquivo de valores iniciais.
 
+### Testes
+
+O programa contém testes que podem ser rodados via:
+
+```
+./gravidade -t
+```
+
+Os testes rodarão e exibirão uma saída que indicará se o programa está funcionando corretamente ou não.
+
 ### Visualizando 🧐
 É possível visualizar as simulações de duas formas.
 

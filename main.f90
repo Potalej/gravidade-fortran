@@ -6,7 +6,7 @@
 !   todas as outras funcoes.
 !
 ! Modificado:
-!   10 de novembro de 2025
+!   03 de junho de 2026
 !
 ! Autoria:
 !   oap
@@ -18,6 +18,7 @@ PROGRAM main
   USE simulacao_sorteio
   USE simulacao_vi
   USE pyplot
+  USE testes_mod
   IMPLICIT NONE
 
   CHARACTER(256)  :: arq ! Arquivo
@@ -90,6 +91,10 @@ PROGRAM main
     CASE ('-d', '--dados')
       CALL rodar_dados(arq)
 
+    ! Para testes
+    CASE ('-t', '--testar')
+      CALL testar()
+
     ! Default
     CASE default
       WRITE (*,*) 'Entrada vazia!!'
@@ -124,6 +129,9 @@ CONTAINS
     WRITE (*,*) '    -e, --exibir'
     WRITE (*,*) '        Exibe graficamente o resultado de uma simulacao.'
     WRITE (*,*)
+    WRITE (*,*) '    -t, --testar'
+    WRITE (*,*) '        Roda os testes do programa.'
+    WRITE (*,*)
     WRITE (*,*) '## PARAMETROS:'
     WRITE (*,*)
     WRITE (*,*) '    (-ps, --pasta-saida) <diretorio>'
@@ -150,19 +158,6 @@ CONTAINS
     WRITE (*,*) '        gravidade --exibir exemplos/exibir/lemniscata.csv'
     WRITE (*,*)
   END SUBROUTINE help
-
-  ! Imprime o cabecalho do programa
-  SUBROUTINE cabecalho
-    WRITE(*,*)
-    WRITE(*,*) "|=========================================|"
-    WRITE(*,*) "|                    _    _         _     |"
-    WRITE(*,*) "|  __ _ _ _ __ ___ _(_)__| |__ _ __| |___ |"
-    WRITE(*,*) "| / _` | '_/ _` \ V / / _` / _` / _` / -_)|"
-    WRITE(*,*) "| \__, |_| \__,_|\_/|_\__,_\__,_\__,_\___||"
-    WRITE(*,*) "| |___/                                   |"
-    WRITE(*,*) "|=========================================|"
-    WRITE(*,*)
-  END SUBROUTINE cabecalho
      
   SUBROUTINE rodar_exibir (dir)
     IMPLICIT NONE

@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.3.2
+project("gravidade" VERSION 1.4.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -425,6 +425,22 @@ target_link_libraries(simulacao PRIVATE
   colisoes
   corretor
 )
+
+# ============================================================================
+# Modulos para testes
+# ----------------------------------------------------------------------------
+# O modulo de testes contem rotinas que validam o programa. Nao sao gerados
+# erros como em testes unitarios, mas eh exibido um relatorio ao final de cada
+# teste contendo informacoes que podem apontar o sucesso ou fracasso da rotina.
+# ----------------------------------------------------------------------------
+add_library(testes
+  "testes/testes.f90"
+  "testes/auxiliares.f90"
+)
+target_link_libraries(testes PRIVATE
+  simulacao
+  utilidades
+)
 # ============================================================================
 
 # ============================================================================
@@ -435,6 +451,7 @@ target_link_libraries(gravidade
   pyplot
   simulacao
   integracao
+  testes
 )
 # ============================================================================
 

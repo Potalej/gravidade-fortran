@@ -1,8 +1,30 @@
 module version
+  use iso_fortran_env, only: output_unit
   implicit none
   character(len=*), parameter :: version_string = "@PROJECT_VERSION@"
   character(len=*), parameter :: build_date = "@BUILD_DATE@"
   character(len=*), parameter :: build_time = "@BUILD_TIME@"
   character(len=*), parameter :: precisao = "real@PRECISAO@"
   LOGICAL, PARAMETER :: usar_gpu = @USAR_GPU_BOOL@
+  PUBLIC
+
+contains
+
+subroutine cabecalho (output)
+  integer, optional, intent(in) :: output
+  integer :: out_unit
+  out_unit = output_unit
+  if (present(output)) out_unit = output
+
+  WRITE(out_unit,*)
+  WRITE(out_unit,*) "|=========================================|"
+  WRITE(out_unit,*) "|                    _    _         _     |"
+  WRITE(out_unit,*) "|  __ _ _ _ __ ___ _(_)__| |__ _ __| |___ |"
+  WRITE(out_unit,*) "| / _` | '_/ _` \ V / / _` / _` / _` / -_)|"
+  WRITE(out_unit,*) "| \__, |_| \__,_|\_/|_\__,_\__,_\__,_\___||"
+  WRITE(out_unit,*) "| |___/                                   |"
+  WRITE(out_unit,*) "|=========================================|"
+  WRITE(out_unit,*)
+end subroutine
+
 end module version

@@ -13,7 +13,7 @@
 gravidade*
 
 # build
-/build
+/build*
 
 # CMake
 CMakeCache.txt
