@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-07-10] v1.4.1: Refatoração do cálculo de forcas_par na versão paralela (CPU) (PR #20 de jGp34)
+
+- A versão paralela de forcas_par calculava N^2 interações em vez de N(N-1)/2, pois usar a 3a Lei de Newton (Fab = -Fba) em paralelo causava uma race condition ao escrever em forcas(b,:) — o CHANGELOG (v0.2.1) confirma que isso foi uma escolha deliberada para contornar esse bug. Esta PR resolve a race condition com REDUCTION(+:forcas).
+
+---
+
 ## [2026-06-03] v1.4.0: Testes!
 
 - Implementação de testes para validar a execução do programa. Por enquanto constam apenas 2: um que garante que todos os métodos são chamados e outro que verifica a (ordem de) convergência dos métodos. A ideia é ir implementando mais depois.

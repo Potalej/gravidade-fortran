@@ -6,10 +6,11 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   10 de julho de 2026
 !
 ! Autoria:
 !   oap
+!   jGp34
 ! 
 MODULE funcoes_forca_mi
 
