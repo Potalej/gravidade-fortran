@@ -6,10 +6,11 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   27 de janeiro de 2026
+!   10 de julho de 2026
 !
 ! Autoria:
 !   oap
+!   jGp34
 ! 
 MODULE funcoes_forca_mi
 
@@ -30,28 +31,27 @@ FUNCTION forcas_mi_par (R, G, N, dim, potsoft2) RESULT(forcas)
   REAL(pf), DIMENSION(dim)    :: Fab
   REAL(pf), DIMENSION(N, dim) :: forcas
   INTEGER  :: a, b
-  
+
   forcas = 0.0_pf
 
-  !$OMP PARALLEL SHARED(forcas) PRIVATE(Fab, a, b)
-  !$OMP DO
-  DO a = 1, N
-    DO b = 1, N
-      IF (a==b) THEN
-        CYCLE
-      ENDIF
-
+  !$OMP PARALLEL DO DEFAULT(NONE) SHARED(R, G, N, potsoft2) &
+  !$OMP PRIVATE(a, b, Fab) SCHEDULE(DYNAMIC) REDUCTION(+:forcas)
+  DO a = 2, N
+    DO b = 1, a - 1
       ! Calculo da forca
       Fab = calcular_forca(G, R, a, b, potsoft2)
 
-      ! Adiciona na matriz      
+      ! Adiciona na matriz (3a Lei de Newton: Fab = -Fba)
       forcas(a,1) = forcas(a,1) + Fab(1)
       forcas(a,2) = forcas(a,2) + Fab(2)
       forcas(a,3) = forcas(a,3) + Fab(3)
+
+      forcas(b,1) = forcas(b,1) - Fab(1)
+      forcas(b,2) = forcas(b,2) - Fab(2)
+      forcas(b,3) = forcas(b,3) - Fab(3)
     END DO
   END DO
-  !$OMP END DO
-  !$OMP END PARALLEL
+  !$OMP END PARALLEL DO
 
 END FUNCTION forcas_mi_par
 
