@@ -21,6 +21,7 @@ CACHE STRING "Lista de integradores tradicionais")
 set(INTEGRADORES_SIMPLETICOS
   # Metodos Simpleticos basicos
   "./src/calcs/integracao/simpleticos/verlet.f90"     # (Verlet)
+  "./src/calcs/integracao/simpleticos/verlet_dkd.f90" # (Verlet DKD)
   "./src/calcs/integracao/simpleticos/euler_simp.f90" # (Euler Simpletico)
 
   # Composicao de metodos de Euler Simpletico

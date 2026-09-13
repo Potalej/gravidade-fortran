@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.5.1
+project("gravidade" VERSION 1.5.2
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)

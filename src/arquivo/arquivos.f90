@@ -740,7 +740,6 @@ SUBROUTINE ler_bin (nome, h, G, eps, massas, R, P)
   CHARACTER(len=*), INTENT(IN)         :: nome
   REAL(pf), INTENT(INOUT)              :: G, h, eps
   REAL(pf), ALLOCATABLE, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
-  REAL(pf), ALLOCATABLE :: array(:,:)
   INTEGER :: N, qntd
   INTEGER :: iu, i, io
   INTEGER :: t_rate, t0, tf
@@ -765,19 +764,13 @@ SUBROUTINE ler_bin (nome, h, G, eps, massas, R, P)
   READ(iu) massas
 
   ! posicoes e momentos
-  ALLOCATE(array(2*N, 3))
   ALLOCATE(R(qntd+1, N, 3), P(qntd+1, N, 3))
-  i = 1
-  DO
-    READ(iu, iostat=io) array
+  DO i = 1, qntd + 1
+    READ(iu, iostat=io) R(i,:,:), P(i,:,:)
     IF (io /= 0) exit
-    R(i,:,:) = array(1:N,:)
-    P(i,:,:) = array(N+1:,:)
-    i = i + 1
   END DO
 
   CALL SYSTEM_CLOCK(tf)
-  
   CLOSE(iu)
 
   WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", REAL(tf-t0)/REAL(t_rate), "s"

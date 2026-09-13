@@ -69,9 +69,8 @@ SUBROUTINE estatisticas_trajetoria (arquivo_in, arquivo_out)
   ! erro relativo
   DO i = 1, qntd - 1
     ! energia total
-    E(i+1) = energia_total_par(G, massas, Rs(i+1,:,:), Ps(i+1,:,:))
-    E_err_rel(i) = ABS(E(i+1) - E(1))
-    IF (E_err_rel(i) > 0) E_err_rel(i) = E_err_rel(i)/ABS(E(1))
+    E(i+1) = energia_total_par(G, massas, Rs(i+1,:,:), Ps(i+1,:,:), eps)
+    E_err_rel(i) = ABS(E(i+1) - E(1))/ABS(E(1))
 
     ! angular
     J = momento_angular_total(Rs(i+1,:,:), Ps(i+1,:,:))

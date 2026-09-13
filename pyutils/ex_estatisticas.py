@@ -56,7 +56,8 @@ axs[1].grid(True)
 
 plt.tight_layout()
 plt.savefig(f"{diretorio}img/energia.png")
-plt.show()
+# plt.show()
+plt.close()
 
 ## integrais
 integrais = nml["integrais_nml"]
@@ -89,7 +90,8 @@ axs[2].legend()
 
 plt.tight_layout()
 plt.savefig(f"{diretorio}img/integrais.png")
-plt.show()
+# plt.show()
+plt.close()
 
 ## dinamica
 dinamica = nml["dinamica_nml"]
@@ -105,4 +107,5 @@ axs[0].grid(True)
 
 plt.tight_layout()
 plt.savefig(f"{diretorio}img/dinamica.png")
-plt.show()
+# plt.show()
+plt.close()

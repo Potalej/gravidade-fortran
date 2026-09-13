@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-13] v1.5.2: Pequenas correções e Verlet DKD
+
+- Correções pontuais na estatística e na leitura de binários.
+- Verlet DKD (Drift-Kick-Drift), para poder comparar com o Rebound.
+
+---
+
 ## [2026-09-13] v1.5.1: Estatísticas
 
 - Gerador de estatísticas! Para usar, 
