@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   29 de maio de 2026
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -22,6 +22,81 @@ MODULE simulacao_sorteio
   PUBLIC simular_sorteio, sorteio_salvar
 
 CONTAINS
+
+! ************************************************************
+!! Validacao dos parametros do arquivo de entrada de sorteio
+!
+! Modificado:
+!   13 de setembro de 2026
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE parametros (infos, integracao)
+  TYPE(json_value), POINTER, INTENT(IN) :: infos
+  LOGICAL, INTENT(IN) :: integracao
+  CHARACTER(LEN=40)   :: pars(39)
+
+  pars(:) = ""
+
+  ! gerais
+  pars(1) = "modo"
+  pars(2) = "" ! nome
+  pars(3) = "N"
+  pars(4) = "G"
+
+  IF (integracao) THEN
+    pars(5) = "paralelo"
+    pars(6) = "gpu"
+    pars(7) = "massas_iguais"
+    pars(8) = "exibir"
+  ENDIF
+
+  ! sorteio
+  pars(9)  = "sorteio.integrais"
+  pars(10) = "sorteio.integrais.energia_total"
+  pars(11) = "sorteio.integrais.angular_total"
+  pars(12) = "sorteio.integrais.linear_total"
+  pars(13) = "sorteio.massas"
+  pars(14) = "sorteio.massas.normalizadas"
+  pars(15) = "sorteio.massas.intervalo"
+  pars(16) = "sorteio.massas.distribuicao"
+  pars(17) = "sorteio.posicoes"
+  pars(18) = "sorteio.posicoes.intervalo"
+  pars(19) = "sorteio.posicoes.distribuicao"
+  pars(20) = "sorteio.posicoes.regiao"
+  pars(21) = "sorteio.momentos"
+  pars(22) = "sorteio.momentos.intervalo"
+  pars(23) = "sorteio.momentos.distribuicao"
+  pars(24) = "sorteio.momentos.regiao"
+
+  IF (integracao) THEN
+    ! integracao
+    pars(25) = "integracao.metodo"
+    pars(26) = "integracao.timestep"
+    pars(27) = "integracao.amortecedor"
+    pars(28) = "integracao.t0"
+    pars(29) = "integracao.tf"
+    pars(30) = "integracao.checkpoints"
+    pars(31) = "integracao.tree"
+    pars(32) = "integracao.theta"
+
+    ! colisoes
+    pars(33) = "colisoes.colidir"
+    pars(34) = "colisoes.metodo"
+    pars(35) = "colisoes.densidade"
+    pars(36) = "colisoes.permitir_choque_inicial"
+
+    ! correcao
+    pars(37) = "correcao.corrigir"
+    pars(38) = "correcao.margem_erro"
+    pars(39) = "correcao.max_num_tentativas"
+  ENDIF
+
+  CALL validar_json(infos, pars)
+
+  print *, 'validado'
+END SUBROUTINE
 
 ! ************************************************************
 !! Geracao de configuracoes a partir do json_value
@@ -79,7 +154,7 @@ END SUBROUTINE
 !   Aplica o sorteio e faz a simulacao.
 !
 ! Modificado:
-!   05 de janeiro de 2026
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -96,6 +171,9 @@ SUBROUTINE simular_sorteio (arquivo, out_dir, out_ext)
 
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo, infos)
+
+  ! Valida o arquivo de entrada
+  CALL parametros(infos, .TRUE.)
 
   ! Gera os valores iniciais e faz o seu condicionamento
   CALL configuracoes_sorteio(infos, sorteio_infos)
@@ -114,7 +192,7 @@ END SUBROUTINE simular_sorteio
 !   valores iniciais.
 !
 ! Modificado:
-!   16 de dezembro de 2025
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -131,6 +209,9 @@ SUBROUTINE sorteio_salvar (arquivo_in, out_dir)
 
   ! Le o arquivo de configuracoes
   CALL ler_json(arquivo_in, infos)
+
+  ! Valida o arquivo de entrada
+  CALL parametros(infos, .FALSE.)
 
   ! Gera os valores iniciais e faz o seu condicionamento
   CALL configuracoes_sorteio(infos, sorteio_infos)

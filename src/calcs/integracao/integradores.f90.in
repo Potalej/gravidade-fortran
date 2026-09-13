@@ -39,7 +39,8 @@ SUBROUTINE definir_metodo (integrador, metodo, p_status)
   CHARACTER(LEN=*), INTENT(IN) :: metodo
   LOGICAL, OPTIONAL :: p_status
   LOGICAL :: status
-  status = MERGE(p_status, .TRUE., PRESENT(p_status))
+  status = .TRUE.
+  IF (PRESENT(p_status)) status = p_status
 
   ! Definicao dinamica do metodo
   IF (status) WRITE (*,'(a)') 'METODO: ', metodo

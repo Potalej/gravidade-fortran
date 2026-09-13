@@ -124,7 +124,8 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   LOGICAL :: encontrado, houve_colisao, permitir_choque_inicial
   INTEGER :: a
 
-  self % status = MERGE(p_status, .TRUE., PRESENT(p_status))
+  self % status = .TRUE.
+  IF (PRESENT(p_status)) self % status = p_status
 
   !> Faz uma copia do dicionario de informacoes
   CALL json_clone(infos, self % infos)

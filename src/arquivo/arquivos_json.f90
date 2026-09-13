@@ -9,7 +9,7 @@
 !   01 de maio de 2025
 !
 ! Modificado:
-!   18 de janeiro de 2026
+!   13 de setembro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -23,6 +23,34 @@ MODULE arquivos_json
     CHARACTER(18) :: DIR_AVI  = "/valores_iniciais/"
 
 CONTAINS
+
+! ************************************************************
+!! Validacao de um arquivo de parametros json
+!
+! Modificado:
+!   13 de setembro de 2026
+!
+! Autoria:
+!   oap
+! 
+SUBROUTINE validar_json (infos, parametros)
+    TYPE(json_value), POINTER, INTENT(IN) :: infos
+    CHARACTER(LEN=*), INTENT(IN) :: parametros(:)
+    INTEGER :: indice
+    LOGICAL :: encontrado
+
+    ! agora percorre os parametros e ve se consegue encontra-los
+    ! se forem obrigatorios
+    DO indice = 1, SIZE(parametros, 1)
+        IF (TRIM(parametros(indice)) == "") CYCLE
+
+        encontrado = json_chave_existe(infos, TRIM(parametros(indice)))
+
+        IF (.NOT. encontrado) THEN
+            STOP "O parametro "//TRIM(parametros(indice))//" nao foi informado!"
+        ENDIF
+    END DO
+END SUBROUTINE
 
 ! ************************************************************
 !! Leitura de valores de sorteio
@@ -39,7 +67,8 @@ SUBROUTINE ler_json (arquivo, dados, p_exibir)
     LOGICAL, OPTIONAL :: p_exibir
     LOGICAL :: exibir
 
-    exibir = MERGE(p_exibir, .TRUE., PRESENT(p_exibir))
+    exibir = .TRUE.
+    IF (PRESENT(p_exibir)) exibir = p_exibir
 
     IF (exibir) WRITE (*,'(A)') 'PRESET: '//arquivo
     CALL json % parse(file=arquivo, p=dados)

@@ -23,7 +23,8 @@
     "colisoes": {
         "colidir": false,
         "metodo": "direto",
-        "densidade": 37301.93978716296
+        "densidade": 37301.93978716296,
+        "permitir_choque_inicial": true
     },
     
     "correcao": {
