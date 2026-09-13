@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.5.0
+project("gravidade" VERSION 1.5.1
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -456,6 +456,19 @@ target_link_libraries(testes PRIVATE
 # ============================================================================
 
 # ============================================================================
+# Modulos para estatisticas
+# ----------------------------------------------------------------------------
+add_library(estatisticas
+  "src/libs/estatisticas.f90"
+)
+target_link_libraries(estatisticas PRIVATE
+  tipos
+  utilidades
+  arquivos
+)
+# ============================================================================
+
+# ============================================================================
 # Linka as bibliotecas no executavel
 # ----------------------------------------------------------------------------
 target_link_libraries(gravidade
@@ -464,6 +477,7 @@ target_link_libraries(gravidade
   simulacao
   integracao
   testes
+  estatisticas
 )
 # ============================================================================
 

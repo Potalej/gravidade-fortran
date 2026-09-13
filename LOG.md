@@ -1,5 +1,16 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-13] v1.5.1: Estatísticas
+
+- Gerador de estatísticas! Para usar, 
+```
+./gravidade -d caminho/data.extensao
+```
+- Leitor também em `pyutils`.
+- Adicionado o amortecedor no cabecalho dos arquivos csv e bin.
+
+---
+
 ## [2026-09-13] v1.5.0: Removendo submodules
 
 - Apesar de ser legal e modularizado, os git submodules davam um certo trabalho a mais que estava mais atrapalhando do que ajudando. Em outro caso, em outro momento, eu faço isso de novo mas direito.

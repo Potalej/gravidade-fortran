@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   02 de junho de 2026
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -234,7 +234,7 @@ END SUBROUTINE iniciar
 !! Inicializar o arquivo "data"
 !
 ! Modificado:
-!   11 de novembro de 2025
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -254,7 +254,8 @@ SUBROUTINE inicializar_data (self, out_dir, out_ext)
   self % dir = self % Arq % dir_arq
 
   ! Salva as infos de cabecalho
-  CALL self % Arq % escrever_cabecalho_data(self % h, self % G, self % M)
+  CALL self % Arq % escrever_cabecalho_data(self % h, self % G, self % potsoft, &
+                                            self % M, self % qntd_checkpoints)
 
   ! Salva as informacoes no info.txt
   CALL self % Arq % inicializar_arquivo_info(self % infos, version_string, precisao)

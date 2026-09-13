@@ -13,7 +13,7 @@
 ! 
 ! Modificado:
 !   02 de fevereiro de 2024 (criado)
-!   07 de janeiro de 2026 (modificado)
+!   13 de setembro de 2026 (modificado)
 ! 
 ! Autoria:
 !   oap
@@ -422,6 +422,34 @@ FUNCTION energia_total_esc (G, m, R, P, eps, dists) RESULT(e_tot)
     e_tot = energia_cinetica(m,P) + energia_potencial(G,m,R,eps)
   ENDIF
 END FUNCTION energia_total_esc
+
+FUNCTION energia_total_par (G, m, R, P, eps_par) RESULT(e_tot)
+  IMPLICIT NONE
+  REAL(pf) :: m(:), R(:,:), P(:,:), G
+  REAL(pf), OPTIONAL :: eps_par
+  INTEGER  :: i, j
+  REAL(pf) :: e_tot, eps
+  REAL(pf) :: distancia, distancia_inv
+  
+  eps = 0.0_pf
+  IF (PRESENT(eps_par)) eps = eps_par
+  
+  e_tot = 0.5_pf * (P(1,1)**2 + P(1,2)**2 + P(1,3)**2) / m(1)
+  !$OMP PARALLEL DO DEFAULT(NONE) &
+  !$OMP SHARED(m, R, P, G, eps) &
+  !$OMP PRIVATE(i, j, distancia, distancia_inv) &
+  !$OMP SCHEDULE(DYNAMIC) REDUCTION(+:e_tot)
+  DO i = 2, SIZE(m)
+    e_tot = e_tot + 0.5_pf * (P(i,1)**2 + P(i,2)**2 + P(i,3)**2) / m(i)
+    DO j = 1, i - 1
+      distancia = (R(i,1)-R(j,1))**2 + (R(i,2)-R(j,2))**2 + (R(i,3)-R(j,3))**2
+      distancia = SQRT(distancia + eps*eps)
+      distancia_inv = 1.0_pf/distancia
+      e_tot = e_tot - G*m(i)*m(j)*distancia_inv
+    END DO
+  END DO
+  !$OMP END PARALLEL DO
+END FUNCTION
 
 ! ************************************************************
 !! Momento de dilatacao

@@ -11,7 +11,7 @@
 !   Utiliza o JSON-Fortran.
 !   
 ! Modificado:
-!   26 de marco de 2026
+!   13 de setembro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -24,7 +24,7 @@ MODULE arquivos
   USE omp_lib
 
   IMPLICIT NONE
-  PUBLIC arquivo, ler_csv, capturar_unidade
+  PUBLIC arquivo, ler_data, capturar_unidade
 
   TYPE :: arquivo
     !> Ids dos arquivos data, info e backup
@@ -251,17 +251,18 @@ END SUBROUTINE criar_data
 !   como tamanho do passo, valor de G, etc.
 !
 ! Modificado:
-!   11 de novembro de 2025
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE escrever_cabecalho_data (self, h, G, massas)
+SUBROUTINE escrever_cabecalho_data (self, h, G, eps, massas, checkpoints)
 
   IMPLICIT NONE
   CLASS(arquivo), INTENT(IN) :: self
   REAL(pf), INTENT(IN)       :: massas(:)
-  REAL(pf)                   :: h, G
+  REAL(pf)                   :: h, G, eps
+  INTEGER,  INTENT(IN)       :: checkpoints
 
   IF (self % ext_arq_data == '.csv') THEN
     ! Salva h
@@ -270,12 +271,18 @@ SUBROUTINE escrever_cabecalho_data (self, h, G, massas)
     ! Salva G
     WRITE (self % id_arq_data, "(F25.7, :, ',')") G
 
+    ! Salva eps
+    WRITE (self % id_arq_data, "(F25.7, :, ',')") eps
+
+    ! Salva checkpoints
+    WRITE (self % id_arq_data, "(I0, :, ',')") checkpoints
+
     ! Salva as massas
     WRITE (self % id_arq_data, self % formato_massas) massas
 
   ELSE IF (self % ext_arq_data == '.bin') THEN
     ! Salva h, G, N
-    WRITE (self % id_arq_data) h, G, SIZE(massas)
+    WRITE (self % id_arq_data) h, G, eps, SIZE(massas), checkpoints
 
     ! Salva as massas
     WRITE (self % id_arq_data) massas
@@ -582,24 +589,74 @@ SUBROUTINE capturar_unidade ( iunit )
 END SUBROUTINE capturar_unidade
 
 ! ************************************************************
+!! Leitura de arquivos data
+!
+! Objetivos:
+!   Le os dados salvos em um arquivo data no formato deste script.
+!
+! Criado:
+!   13 de setembro de 2026
+!
+! Modificado:
+!   13 de setembro de 2026
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE ler_data (nome, h, G, eps, massas, R, P)
+
+  CHARACTER(len=*), INTENT(IN)         :: nome
+  REAL(pf), INTENT(INOUT)              :: G, h, eps
+  REAL(pf), allocatable, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
+  CHARACTER(LEN=3) :: extensao
+  INTEGER :: i
+
+  extensao = "-"
+
+  ! encontra o ultimo .
+  i = INDEX(nome, ".", BACK=.TRUE.)
+
+  IF (i > 0 .AND. i < LEN_TRIM(nome)) THEN
+    IF (nome(i+1:) == "bin" .OR. nome(i+1:) == "csv") THEN
+      extensao = nome(i+1:)
+    ENDIF
+  END IF
+  
+  IF (extensao == "---") THEN
+    STOP "Extensao nao identificada no arquivo "//TRIM(nome)
+  ENDIF
+
+  IF (extensao == "csv") THEN
+    CALL ler_csv(nome, h, G, eps, massas, R, P)
+  ELSE
+    CALL ler_bin(nome, h, G, eps, massas, R, P)
+  ENDIF
+
+END SUBROUTINE
+
+! ************************************************************
 !! Leitura de arquivo CSV
 !
 ! Objetivos:
 !   Le os dados salvos em um arquivo csv no formato deste script.
 !
-! Modificado:
+! Criado:
 !   15 de marco de 2024
+!
+! Modificado:
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
 !
-SUBROUTINE ler_csv (nome, h, G, massas, R, P)
+SUBROUTINE ler_csv (nome, h, G, eps, massas, R, P)
 
   CHARACTER(len=*), INTENT(IN)         :: nome
-  REAL(pf), INTENT(INOUT)              :: G, h
+  REAL(pf), INTENT(INOUT)              :: G, h, eps
   REAL(pf), allocatable, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
+  INTEGER :: qntd_linhas
   CHARACTER(len=100000)                :: massas_string
-  INTEGER :: iu, i, qntdLinhas = 0, io, qntdCorpos = 0
+  INTEGER :: iu, i, io, qntdCorpos = 0
   INTEGER :: t_rate, t0, tf
 
   WRITE(*, '(a)') "LER_CSV:"
@@ -613,6 +670,12 @@ SUBROUTINE ler_csv (nome, h, G, massas, R, P)
   ! Captura a gravidade
   READ(iu, *) G
 
+  ! Captura o amortecimento
+  READ(iu, *) eps
+
+  ! Captura a quantidade de linhas
+  READ(iu, *) qntd_linhas
+
   ! captura a string de massas
   READ(iu,'(A)') massas_string    
   
@@ -624,32 +687,28 @@ SUBROUTINE ler_csv (nome, h, G, massas, R, P)
   END DO
   qntdCorpos = qntdCorpos + 1 ! numero de virgulas = N - 1
 
-  ! captura o numero de linhas do CSV
-  DO WHILE (.TRUE.) 
-    READ(iu,*, iostat=io)
-    IF (io /= 0) exit
-    qntdLinhas = qntdLinhas+1
-  END DO
-  
   REWIND(iu)
   ! Captura o tamanho do passo
   READ(iu, *) h
 
   ! Captura a gravidade
-  READ(iu, *) G    
+  READ(iu, *) G
+  
+  ! Captura o amortecimento
+  READ(iu, *) eps
   
   ! captura as massas
   ALLOCATE(massas(qntdCorpos))
   READ(iu, *) massas
 
   ! aloca os tamanhos
-  ALLOCATE(R(qntdLinhas,qntdCorpos,3))
-  ALLOCATE(P(qntdLinhas,qntdCorpos,3))
+  ALLOCATE(R(qntd_linhas+1,qntdCorpos,3))
+  ALLOCATE(P(qntd_linhas+1,qntdCorpos,3))
 
   ! captura as posicoes e momentos
   CALL SYSTEM_CLOCK(count_rate=t_rate)
   CALL SYSTEM_CLOCK(t0)
-  DO i = 1, qntdLinhas-1
+  DO i = 1, qntd_linhas+1
     READ(iu,*) R(i,:,:),P(i,:,:)
   END DO
   CALL SYSTEM_CLOCK(tf)
@@ -660,5 +719,70 @@ SUBROUTINE ler_csv (nome, h, G, massas, R, P)
   WRITE (*,*)
 
 END SUBROUTINE ler_csv
+
+! ************************************************************
+!! Leitura de arquivo BIN
+!
+! Objetivos:
+!   Le os dados salvos em um arquivo bin no formato deste script.
+!
+! Criado:
+!   13 de setembro de 2026
+!
+! Modificado:
+!   13 de setembro de 2026
+!
+! Autoria:
+!   oap
+!
+SUBROUTINE ler_bin (nome, h, G, eps, massas, R, P)
+
+  CHARACTER(len=*), INTENT(IN)         :: nome
+  REAL(pf), INTENT(INOUT)              :: G, h, eps
+  REAL(pf), ALLOCATABLE, INTENT(INOUT) :: R(:,:,:), P(:,:,:), massas(:)
+  REAL(pf), ALLOCATABLE :: array(:,:)
+  INTEGER :: N, qntd
+  INTEGER :: iu, i, io
+  INTEGER :: t_rate, t0, tf
+
+  WRITE(*, '(a)') "LER_BIN:"
+  WRITE(*, '(a)') "  > arquivo: " // TRIM(nome)
+
+  CALL SYSTEM_CLOCK(count_rate=t_rate)
+  CALL SYSTEM_CLOCK(t0)
+
+  OPEN(NEWUNIT=iu, FILE=nome, &
+      FORM="UNFORMATTED", &
+      ACCESS="STREAM", &
+      STATUS="OLD", &
+      ACTION="READ")
+
+  ! Captura as informacoes basicas
+  READ(iu) h, G, eps, N, qntd
+
+  ! captura as massas
+  ALLOCATE(massas(N))
+  READ(iu) massas
+
+  ! posicoes e momentos
+  ALLOCATE(array(2*N, 3))
+  ALLOCATE(R(qntd+1, N, 3), P(qntd+1, N, 3))
+  i = 1
+  DO
+    READ(iu, iostat=io) array
+    IF (io /= 0) exit
+    R(i,:,:) = array(1:N,:)
+    P(i,:,:) = array(N+1:,:)
+    i = i + 1
+  END DO
+
+  CALL SYSTEM_CLOCK(tf)
+  
+  CLOSE(iu)
+
+  WRITE (*,'(a,F10.4,a)') "  > tempo de leitura: ", REAL(tf-t0)/REAL(t_rate), "s"
+  WRITE (*,*)
+
+END SUBROUTINE
 
 END MODULE arquivos

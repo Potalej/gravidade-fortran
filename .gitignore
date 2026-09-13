@@ -42,6 +42,7 @@ teste/
 /tests
 pyutils/*
 !pyutils/ex_servidor.py
+!pyutils/ex_estatisticas.py
 presets/*
 
 # GNU profiler

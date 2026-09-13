@@ -6,7 +6,7 @@
 !   todas as outras funcoes.
 !
 ! Modificado:
-!   03 de junho de 2026
+!   13 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -19,6 +19,7 @@ PROGRAM main
   USE simulacao_vi
   USE pyplot
   USE testes_mod
+  USE estatisticas_mod
   IMPLICIT NONE
 
   CHARACTER(256)  :: arq ! Arquivo
@@ -129,6 +130,9 @@ CONTAINS
     WRITE (*,*) '    -e, --exibir'
     WRITE (*,*) '        Exibe graficamente o resultado de uma simulacao.'
     WRITE (*,*)
+    WRITE (*,*) '    -d, --dados'
+    WRITE (*,*) '        Gera dados sobre uma simulacao.'
+    WRITE (*,*)
     WRITE (*,*) '    -t, --testar'
     WRITE (*,*) '        Roda os testes do programa.'
     WRITE (*,*)
@@ -163,10 +167,10 @@ CONTAINS
     IMPLICIT NONE
     CHARACTER(len=*) :: dir
     REAL(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
-    REAL(pf) :: G, h
+    REAL(pf) :: G, h, eps
 
     ! Abre o arquivo salvo para leitura
-    CALL ler_csv(dir, h, G, massas, R, P)
+    CALL ler_data(dir, h, G, eps, massas, R, P)
     
     ! Exibe as trajetorias
     CALL plotar_trajetorias(R,1,2)
@@ -176,14 +180,13 @@ CONTAINS
   SUBROUTINE rodar_dados (dir)
     IMPLICIT NONE
     CHARACTER(len=*) :: dir
-    REAL(pf), allocatable:: R(:,:,:), P(:,:,:), massas(:)
-    REAL(pf) :: G, h
+    CHARACTER(len=LEN(TRIM(dir))+8) :: dir_out
 
-    ! Abre o arquivo salvo para leitura
-    CALL ler_csv(dir, h, G, massas, R, P)
-    
-    ! Exibe as trajetorias
-    CALL plotar_trajetorias(R,1,2)
+    ! remove o final
+    ! dir = caminho/data.csv ou caminho/data.bin
+    ! dir_out = caminho/
+    dir_out = TRIM(dir(1:LEN(TRIM(dir)) - 8) // "estatisticas.nml")
+    CALL estatisticas_trajetoria(dir, dir_out)
   END SUBROUTINE
 
 END program
