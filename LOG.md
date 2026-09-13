@@ -1,8 +1,16 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-13] v1.5.0: Removendo submodules
+
+- Apesar de ser legal e modularizado, os git submodules davam um certo trabalho a mais que estava mais atrapalhando do que ajudando. Em outro caso, em outro momento, eu faço isso de novo mas direito.
+
+---
+
 ## [2026-09-13] v1.4.2: Validação de parâmetros
 
 - Para garantir que todos os parâmetros necessários para geração de valores iniciais e para a simulação numérica sejam passados, adicionei um validador em cada tipo de simulador.
+
+---
 
 ## [2026-07-10] v1.4.1: Refatoração do cálculo de forcas_par na versão paralela (CPU) (PR #20 de jGp34)
 

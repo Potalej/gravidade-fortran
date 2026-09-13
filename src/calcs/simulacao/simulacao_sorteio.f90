@@ -94,8 +94,6 @@ SUBROUTINE parametros (infos, integracao)
   ENDIF
 
   CALL validar_json(infos, pars)
-
-  print *, 'validado'
 END SUBROUTINE
 
 ! ************************************************************

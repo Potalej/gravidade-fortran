@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.4.2
+project("gravidade" VERSION 1.5.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -164,9 +164,13 @@ endif()
 message("\n> Biblioteca externa: utilidades")
 
 # diretorio
-set(LOCAL_LIB_DIR_UT "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_utilidades")
-add_subdirectory(${LOCAL_LIB_DIR_UT} utilidades)
-message(STATUS "Versão da biblioteca utilidades: ${NCORPOS_UTILIDADES_PROJECT_VERSION}")
+add_library(utilidades
+  "./src/libs/utilidades/utilidades.f90"
+)
+target_link_libraries(utilidades PRIVATE
+  ${OpenBLAS_LIB} # utilizada no corretor
+  tipos
+)
 # ============================================================================
 
 # ============================================================================
@@ -179,9 +183,17 @@ message(STATUS "Versão da biblioteca utilidades: ${NCORPOS_UTILIDADES_PROJECT_V
 message("\n> Biblioteca externa: valores-iniciais")
 
 # diretorio
-set(LOCAL_LIB_DIR_VI "${CMAKE_CURRENT_SOURCE_DIR}/libs/ncorpos_valores_iniciais")
-add_subdirectory(${LOCAL_LIB_DIR_VI} valores_iniciais)
-message(STATUS "Versão da biblioteca valores-iniciais: ${NCORPOS_VI_PROJECT_VERSION}")
+add_library(valores_iniciais
+  "./src/libs/valores_iniciais/aleatorio.f90"
+  "./src/libs/valores_iniciais/condicionamento.f90"
+  "./src/libs/valores_iniciais/condicoes_iniciais.f90"
+  "./src/libs/valores_iniciais/sorteio.f90"
+)
+target_link_libraries(valores_iniciais PRIVATE
+  ${OpenBLAS_LIB} # utilizada no corretor
+  tipos
+  utilidades
+)
 # ============================================================================
 
 message("")
