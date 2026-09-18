@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-17] v1.5.3: Correções nas colisões
+
+- O critério < dq, dp > estava errado, faltava dividir pelas massas. No caso de massas iguais não faz diferença, mas para massas diferentes pode fazer.
+- Melhorada a implementação de detecção de colisões usando a octree, funcionando mesmo quando as forças são calculadas diretamente.
+
+---
+
 ## [2026-09-13] v1.5.2: Pequenas correções e Verlet DKD
 
 - Correções pontuais na estatística e na leitura de binários.

@@ -6,7 +6,7 @@
 !   particulas.
 !
 ! Modificado:
-!   26 de maio de 2026
+!   17 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -63,7 +63,7 @@ END SUBROUTINE verificar_e_colidir
 !   24 de julho de 2025
 ! 
 ! Modificado:
-!   26 de maio de 2026
+!   17 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -71,36 +71,28 @@ END SUBROUTINE verificar_e_colidir
 SUBROUTINE verificar_e_colidir_octree (m, R, P, paralelo, raios, octree)
   IMPLICIT NONE
   REAL(pf) :: m(:), R(:,:), P(:,:)
-  INTEGER :: a, b, i, colididos(size(m)), colisoes(size(m), size(m)-1)
-  LOGICAL :: paralelo, colidiram(size(m),size(m))
+  INTEGER :: a, b
+  INTEGER :: colisoes(INT(size(m)*(size(m)-1)/2))
+  LOGICAL :: paralelo
   REAL(pf) :: raios(size(m))
   CLASS(OctreeType), POINTER, INTENT(INOUT) :: octree
+  INTEGER :: indice
 
-  colidiram = .FALSE.
-  colididos = 0
   colisoes = 0
 
   ! Agora percorre os corpos para detectar colisoes
   DO a=1, size(m)
-    CALL octree % detect_collisions(a, colisoes(a,:), colididos(a))
+    CALL octree % detect_collisions(a, colisoes)
   END DO
 
-  DO a = 1, size(m)
-    IF (colididos(a) == 0) CYCLE
-    
-    ! Se tiver tido alguma colisao
-    DO i=1, colididos(a)
-      b = colisoes(a,i)
-      IF (colidiram(a,b) .OR. colidiram(b,a)) THEN
-        CYCLE
-      ENDIF
+  DO a = 2, SIZE(m)
+    DO b = 1, a - 1
+      indice = (a-1)*(a-2)/2 + b
+      if (colisoes(indice) <= 0) CYCLE
 
-      IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)-P(a,:)) < 0) THEN
-        colidiram(a,b) = .TRUE.
-        colidiram(b,a) = .TRUE.
-        ! WRITE(*,*) 'colidiram octree:', a,b, NORM2(R(a,:)-R(b,:)) ! debug
+      if (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)/m(b)-P(a,:)/m(a)) < 0) THEN
         CALL colidir(m(a),R(a,:),P(a,:),m(b),R(b,:),P(b,:))
-      ENDIF
+      endif
     END DO
   END DO
 
@@ -159,7 +151,7 @@ END SUBROUTINE verificar_colisao
 !     2. <rb - ra, pb - pa> < 0
 !
 ! Modificado:
-!   29 de janeiro de 2026
+!   17 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -183,7 +175,7 @@ SUBROUTINE verificar_e_colidir_direto (m, R, P, paralelo, raios)
       
       dist = (R(b,1) - R(a,1))**2 + (R(b,2) - R(a,2))**2 + (R(b,3) - R(a,3))**2
       IF (dist <= (raios(a) + raios(b))**2) THEN
-        IF (DOT_PRODUCT(R(b,:)-R(a,:), P(b,:)-P(a,:)) < 0) THEN
+        IF (DOT_PRODUCT(R(b,:) - R(a,:), P(b,:)/m(b)-P(a,:)/m(a)) < 0) THEN
           colidiram(indice) = .TRUE.
           CALL colidir (m(a), R(a,:), P(a,:), m(b), R(b,:), P(b,:))
         ENDIF

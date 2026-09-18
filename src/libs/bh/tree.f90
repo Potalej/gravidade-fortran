@@ -563,24 +563,25 @@ SUBROUTINE evaluate_forces_over_p (self, p, par_theta2, par_G, par_eps, forces)
     END DO
 END SUBROUTINE
 
-SUBROUTINE detect_collisions (self, p, collisions, colliders)
-    CLASS(OctreeType), INTENT(INOUT) :: self
+SUBROUTINE detect_collisions (self, p, collisions)
+    CLASS(OctreeType), INTENT(IN) :: self
     INTEGER, INTENT(IN) :: p
-    INTEGER, INTENT(INOUT) :: collisions(self % N - 1), colliders
+    INTEGER, INTENT(INOUT) :: collisions(:)
     
-    REAL(pf) :: pm, px, py, pz, dx, dy, dz, dist2, rsum
+    REAL(pf) :: px, py, pz, dx, dy, dz, dist2, rsum
+    REAL(pf) :: dpx, dpy, dpz
     INTEGER :: stack(self % number_of_nodes)
-    INTEGER :: top, node_idx, child_idx, q, i
+    INTEGER :: top, node_idx, child_idx, q, i, indice
 
     ! particle cache info
-    pm = self % real_m(p)
     px = self % x(p)
     py = self % y(p)
     pz = self % z(p)
 
     ! initialize
-    colliders = 0
-    collisions = 0
+    ! to avoid recalculations, this was disabled
+    ! colliders = 0
+    ! collisions = 0
     top = 1
     stack(top) = 1
 
@@ -593,15 +594,17 @@ SUBROUTINE detect_collisions (self, p, collisions, colliders)
         ! empty node
         IF (self % ns_mass(node_idx) == 0.0_pf) CYCLE
 
-        ! if not intersects
-        IF (.NOT. sphere_intersects_node(self, node_idx, px, py, pz, self%radii(p))) CYCLE
-
         ! leaf
         IF (self % ns_type(node_idx) == 1) THEN
             q = self % ns_particle(node_idx)
 
             IF (q == -1) CYCLE ! empty
             IF (q == p)  CYCLE ! same particle
+
+            IF (p > q) indice = (p-1)*(p-2)/2 + q
+            IF (p < q) indice = (q-1)*(q-2)/2 + p
+            IF (collisions(indice) .NE. 0) CYCLE
+            collisions(indice) = -1
 
             dx = self % x(q) - px
             dy = self % y(q) - py
@@ -611,9 +614,12 @@ SUBROUTINE detect_collisions (self, p, collisions, colliders)
             rsum = self%radii(p) + self%radii(q)
 
             IF (dist2 <= rsum*rsum) THEN
-                colliders = colliders + 1
-                collisions(colliders) = q
+                collisions(indice) = 1
             ENDIF
+
+        ! if not intersects
+        ELSE IF (.NOT. sphere_intersects_node(self, node_idx, px, py, pz, self%radii(p))) THEN
+            CYCLE
         
         ! not leaf
         ELSE
@@ -630,7 +636,7 @@ SUBROUTINE detect_collisions (self, p, collisions, colliders)
 
 END SUBROUTINE
 
-PURE FUNCTION sphere_intersects_node(self, node_idx, px, py, pz, r) RESULT(hit)
+PURE FUNCTION sphere_intersects_node (self, node_idx, px, py, pz, r) RESULT(hit)
     CLASS(OctreeType), INTENT(IN) :: self
     INTEGER, INTENT(IN) :: node_idx
     REAL(pf), INTENT(IN) :: px, py, pz, r
@@ -639,6 +645,7 @@ PURE FUNCTION sphere_intersects_node(self, node_idx, px, py, pz, r) RESULT(hit)
     REAL(pf) :: dx, dy, dz
     REAL(pf) :: cx, cy, cz, h
     REAL(pf) :: dist2
+    REAL(pf) :: r2
 
     cx = self % ns_cx(node_idx)
     cy = self % ns_cy(node_idx)
@@ -651,6 +658,8 @@ PURE FUNCTION sphere_intersects_node(self, node_idx, px, py, pz, r) RESULT(hit)
 
     dist2 = dx*dx + dy*dy + dz*dz
 
-    hit = (dist2 <= r*r)
+    r2 = r + self%ns_max_radius(node_idx)
+    r2 = r2 * r2
+    hit = (dist2 <= r2)
 END FUNCTION
 END MODULE
