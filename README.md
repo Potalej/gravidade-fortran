@@ -192,7 +192,7 @@ Os métodos de integração implementados são:
 
 É possível calcular as forças de duas formas:
 - Diretamente, sem parâmetros (custo $O(N^2)$);
-- Barnes-Hut, com parâmetro $\theta > 0$ (custo $O(N \log N)$ para $N$ grande).
+- Barnes-Hut, com parâmetro $\theta > 0$ (custo $O(N \log N)$ para $N$ grande). Nesse caso, pode-se escolher também utilizar multipolos através do parâmetro `tree_multipole`, que pode ser 1 (monopolo), 4 (quadrupolo) ou 8 (octupolo). O padrão é 1.
 
 Também há três aplicações para modificar soluções:
 

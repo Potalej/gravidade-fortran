@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   29 de maio de 2026
+!   20 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -219,7 +219,7 @@ END SUBROUTINE inicializar_massas
 !! Calculo das forcas conforme as massas
 !
 ! Modificado:
-!   26 de maio de 2026
+!   20 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -232,7 +232,7 @@ FUNCTION forcas (self, R)
 
   IF (self % tree) THEN
     forcas = self % forcas_tree_funcao(self % m, R, self%G, self%N, self%dim, &
-                    self%potsoft, self%theta2, self%octree)
+                    self%potsoft2, self%theta2, self%octree)
   ELSE
     IF (self % mi) THEN
       forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &

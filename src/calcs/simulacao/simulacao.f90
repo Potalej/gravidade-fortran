@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   13 de setembro de 2026
+!   20 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -78,6 +78,7 @@ MODULE simulacao
     ! Octree
     LOGICAL :: usar_octree
     CLASS(OctreeType), POINTER :: octree
+    INTEGER :: bh_multipole
 
     ! Diretorio onde ficara salvo
     CHARACTER(LEN=:), ALLOCATABLE :: dir
@@ -133,6 +134,8 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   !## Uso da octree ##!
   CALL json % get(infos, 'integracao.tree', self % usar_octree, encontrado)
   IF (.NOT. encontrado) self % usar_octree = .FALSE.
+  CALL json % get(infos, 'integracao.tree_multipole', self % bh_multipole, encontrado)
+  IF (.NOT. encontrado) self % bh_multipole = 1
 
   !## Variaveis e constantes do sistema ##!
   !> Constante de gravitacao universal
@@ -215,7 +218,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   !## Inicializacao da octree ##!
   IF (self % usar_octree .OR. TRIM(self % colisoes_modo) == 'octree') THEN
     ALLOCATE(self % octree)
-    CALL self % octree % pre_init(self % m, self % mi, self % raios, self % colidir)
+    CALL self % octree % pre_init(self % m, self % mi, self % raios, self % bh_multipole, self % colidir)
   ENDIF
 
   !## Sobre a integracao numerica ##!

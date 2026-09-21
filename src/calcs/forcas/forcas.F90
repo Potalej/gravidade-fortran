@@ -15,7 +15,7 @@
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   26 de maio de 2026
+!   20 de setembro de 2026
 !
 ! Autoria:
 !   oap
@@ -53,13 +53,13 @@ MODULE funcoes_forca
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
 
-    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft, theta2, octree)
+    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft2, theta2, octree)
         IMPORT :: pf, OctreeType
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
-        REAL(pf),                    INTENT(IN) :: G, potsoft, theta2
+        REAL(pf),                    INTENT(IN) :: G, potsoft2, theta2
         CLASS(OctreeType),        INTENT(INOUT) :: octree
         REAL(pf), DIMENSION(N, dim) :: forcas_tree_funcbase
     END FUNCTION forcas_tree_funcbase

@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-20] v1.6.0: Multipolos
+
+- Adicionado o uso da expansão multipolo no método de Barnes-Hut, que é usado através do parâmetro `tree_multipole` que pode ser 1 (monopolo), 4 (quadrupolo) e 8 (octupolo). Está sincronizado com a última atualização do repositório `hierarquicos`, de mesma data.
+
+---
+
 ## [2026-09-17] v1.5.3: Correções nas colisões
 
 - O critério < dq, dp > estava errado, faltava dividir pelas massas. No caso de massas iguais não faz diferença, mas para massas diferentes pode fazer.

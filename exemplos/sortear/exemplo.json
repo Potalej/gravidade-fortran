@@ -39,6 +39,7 @@
         "tf": 40,
         "checkpoints": 40,
         "tree": false,
+        "tree_multipole": 1,
         "theta": 0.0
     },
 
