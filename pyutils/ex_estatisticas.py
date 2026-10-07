@@ -99,11 +99,19 @@ dinamica = nml["dinamica_nml"]
 fig, axs = plt.subplots(1, 1)
 axs = [axs]
 
-axs[0].set_title("Raio de meia massa")
-axs[0].plot(eixo_t, dinamica["rmm"], c=cor)
-axs[0].set_ylabel(r"$\vec r_{hm}$")
+axs[0].set_title("Raios lagrangianos")
+axs[0].plot(eixo_t, dinamica["r10"], label="10%")
+axs[0].plot(eixo_t, dinamica["r25"], label="25%")
+axs[0].plot(eixo_t, dinamica["r50"], label="50%")
+axs[0].plot(eixo_t, dinamica["r70"], label="70%")
+axs[0].axhline(dinamica["r10"][0], c='black', linestyle='--')
+axs[0].axhline(dinamica["r25"][0], c='black', linestyle='--')
+axs[0].axhline(dinamica["r50"][0], c='black', linestyle='--')
+axs[0].axhline(dinamica["r70"][0], c='black', linestyle='--')
+axs[0].set_ylabel(r"$r$")
 axs[0].set_xlabel(r"$t$")
 axs[0].grid(True)
+axs[0].legend()
 
 plt.tight_layout()
 plt.savefig(f"{diretorio}img/dinamica.png")
