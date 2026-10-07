@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   20 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -76,9 +76,9 @@ MODULE simulacao
     CHARACTER(LEN=9) :: metodo_inicializacao_multipasso = "svcp10s35"
 
     ! Octree
-    LOGICAL :: usar_octree
+    INTEGER :: metodo_forcas
     CLASS(OctreeType), POINTER :: octree
-    INTEGER :: bh_multipole
+    INTEGER :: tree_multipole
 
     ! Diretorio onde ficara salvo
     CHARACTER(LEN=:), ALLOCATABLE :: dir
@@ -132,10 +132,10 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   CALL json_clone(infos, self % infos)
 
   !## Uso da octree ##!
-  CALL json % get(infos, 'integracao.tree', self % usar_octree, encontrado)
-  IF (.NOT. encontrado) self % usar_octree = .FALSE.
-  CALL json % get(infos, 'integracao.tree_multipole', self % bh_multipole, encontrado)
-  IF (.NOT. encontrado) self % bh_multipole = 1
+  CALL json % get(infos, 'integracao.metodo_forcas', self % metodo_forcas, encontrado)
+  IF (.NOT. encontrado) self % metodo_forcas = 0
+  CALL json % get(infos, 'integracao.tree_multipole', self % tree_multipole, encontrado)
+  IF (.NOT. encontrado) self % tree_multipole = 1
 
   !## Variaveis e constantes do sistema ##!
   !> Constante de gravitacao universal
@@ -150,7 +150,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   self % P0 = P0 ! momentos
   !> Salva se as massas sao iguais
   CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado .OR. self % usar_octree) self % mi = .FALSE.
+  IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
   IF (self % mi) THEN
     self % m_esc = self % M(1)
     self % m2 = self % m_esc * self % m_esc
@@ -216,9 +216,17 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
   ENDIF
 
   !## Inicializacao da octree ##!
-  IF (self % usar_octree .OR. TRIM(self % colisoes_modo) == 'octree') THEN
+  IF (self % metodo_forcas > 0 .OR. TRIM(self % colisoes_modo) == 'octree') THEN
     ALLOCATE(self % octree)
-    CALL self % octree % pre_init(self % m, self % mi, self % raios, self % bh_multipole, self % colidir)
+    IF (self % tree_multipole == 1) a = 0
+    IF (self % tree_multipole == 4) a = 1
+    IF (self % tree_multipole == 8) a = 2
+
+    IF (self % metodo_forcas == 1) a = a + 10
+    IF (self % metodo_forcas == 2) a = a + 20
+
+    CALL self % octree % pre_init(self % m, a, &
+        self % colidir, self % raios)
   ENDIF
 
   !## Sobre a integracao numerica ##!
@@ -271,7 +279,7 @@ END SUBROUTINE inicializar_data
 !! Inicializa o integrador e o socket
 !
 ! Modificado:
-!   26 de maio de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -301,7 +309,7 @@ SUBROUTINE inicializar_metodo (self, h)
   CALL self % integrador % iniciar(self%infos, self%h, self%M)
 
   ! Apontando a arvore se for o caso
-  IF (self % usar_octree) THEN
+  IF (self % metodo_forcas > 0) THEN
     self % integrador % octree => self % octree
   ENDIF
 
@@ -380,8 +388,8 @@ SUBROUTINE rodar (self, qntdPassos)
 
       !> Colide, se for o caso
       IF (self % colidir) THEN
-        IF (.NOT. self%usar_octree .AND. self%colisoes_modo=="octree") THEN
-          CALL self % octree % init(self%m, R1)
+        IF (self % metodo_forcas == 0 .AND. self%colisoes_modo=="octree") THEN
+          CALL self % octree % init(R1(:,1),R1(:,2),R1(:,3))
         ENDIF
         CALL verificar_e_colidir(self%m, R1, P1, self%paralelo, &
                                 self%raios, self%colisoes_modo, &

@@ -7,15 +7,15 @@
 !   lidar com as massas: caso com massas diferentes (MD) e com
 !   massas iguais (MI), que estao separadas em dois modulos.
 !   Alem disso, tambem eh possivel calcular as forcas
-!   diretamente ou utilizando uma arvore (octree) atraves do
-!   criterio de Barnes-Hut.
+!   diretamente ou utilizando uma arvore (octree) e obtendo
+!   as forcas atraves de Barnes-Hut ou Dehnen.
 ! 
 !   O que este modulo faz eh auxiliar a classe INTEGRACAO na
 !   inicializacao das funcoes de forca, trazendo para ca a
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   20 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -27,7 +27,8 @@ MODULE funcoes_forca
 !> Modulos de forca
   USE funcoes_forca_md
   USE funcoes_forca_mi
-  USE funcoes_forca_tree
+  USE funcoes_forca_bh
+  USE funcoes_forca_dehnen
 
   IMPLICIT NONE
   PUBLIC
@@ -71,13 +72,14 @@ CONTAINS
 !! Inicializador
 !
 ! Modificado:
-!   26 de maio de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
 ! 
 SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t)
-  LOGICAL, INTENT(IN) :: mi, pcpu, pgpu, tree
+  LOGICAL, INTENT(IN) :: mi, pcpu, pgpu
+  INTEGER :: tree
   PROCEDURE(forcas_funcbase), POINTER, INTENT(OUT)    :: f
   PROCEDURE(forcas_mi_funcbase), POINTER, INTENT(OUT) :: f_mi
   PROCEDURE(forcas_tree_funcbase), POINTER, INTENT(OUT) :: f_t
@@ -96,24 +98,34 @@ SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t)
 #endif
   ELSE
     IF (pcpu) THEN
-      IF (tree) THEN
-        f_t => forcas_par_tree
-      ELSE
+      ! metodo direto
+      IF (tree == 0) THEN
         IF (mi) THEN
           f_mi => forcas_mi_par
         ELSE
           f => forcas_par
         ENDIF
+      ! barnes-hut
+      ELSE IF (tree == 1) THEN
+        f_t => forcas_par_bh
+      ! dehnen
+      ELSE IF (tree == 2) THEN
+        f_t => forcas_par_dehnen
       ENDIF
     ELSE
-      IF (tree) THEN
-        f_t => forcas_seq_tree
-      ELSE
+      ! metodo direto
+      IF (tree == 0) THEN
         IF (mi) THEN
           f_mi => forcas_mi_seq
         ELSE
           f => forcas_seq
         ENDIF
+      ! barnes-hut
+      ELSE IF (tree == 1) THEN
+        f_t => forcas_seq_bh
+      ! dehnen
+      ELSE IF (tree == 2) THEN
+        f_t => forcas_seq_dehnen
       ENDIF
     ENDIF
   ENDIF

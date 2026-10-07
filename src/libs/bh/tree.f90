@@ -1,5 +1,5 @@
 ! ************************************************************
-!! Octree (Barnes-Hut)
+!! Octree (Collisions, Barnes-Hut and Dehnen)
 !
 !> Objectives
 !  This module generates an octree based in the positions of the
@@ -7,7 +7,7 @@
 !  approximation with a quadrupole expansion.
 !
 !> Modified
-!  2026.09.20
+!  2026.10.07
 !
 !> Created
 !  2026.06.15
@@ -16,83 +16,108 @@
 !  oap
 !
 MODULE octree_mod
-USE tipos
-IMPLICIT NONE
-PRIVATE
-PUBLIC OctreeType
+    IMPLICIT NONE
+    PRIVATE
+    PUBLIC OctreeType
 
-TYPE :: OctreeType
-    ! max depth of the tree
-    INTEGER :: max_depth = 32
-    ! amplificator of the size of the quadtree-root
-    REAL(pf) :: side_amplificator = 1.2_pf
+    INTEGER, PARAMETER :: pf  = SELECTED_REAL_KIND(15, 307)
 
-    ! multipole
-    INTEGER :: multipole
+    TYPE :: OctreeType
+        LOGICAL :: is_allocated = .FALSE.
+        INTEGER :: method
 
-    ! about the levels
-    INTEGER :: most_depth
-    INTEGER, ALLOCATABLE :: counter_for_each_level(:)
+        ! max depth of the tree
+        INTEGER :: max_depth = 25
+        ! amplificator of the size of the quadtree-root
+        REAL(pf) :: side_amplificator = 1.2_pf
+        ! multipole
+        INTEGER :: multipole
 
-    ! to save_txt
-    INTEGER :: save_txt
+        INTEGER :: most_depth
+        INTEGER, ALLOCATABLE :: counter_for_each_level(:)
 
-    ! masses, positions and number of bodies (N)
-    REAL(pf), ALLOCATABLE :: real_m(:), m(:), x(:), y(:), z(:), radii(:)
-    INTEGER :: N
+        ! to save_txt
+        INTEGER :: save_txt
 
-    ! if its allocated
-    LOGICAL :: is_allocated = .FALSE.
+        ! masses, positions and number of bodies (N)
+        REAL(pf), ALLOCATABLE :: m(:), x(:), y(:), z(:)
+        INTEGER :: N
 
-    ! if the simulation has collisions
-    LOGICAL :: collide
+        ! nodes
+        INTEGER :: number_of_nodes = 0
+        INTEGER :: max_number_of_nodes
+        REAL(pf), ALLOCATABLE :: ns_cx(:), ns_cy(:), ns_cz(:) ! centers
+        REAL(pf), ALLOCATABLE :: ns_halfside(:), ns_L2(:)
+        REAL(pf), ALLOCATABLE :: ns_mass(:), ns_qcm_x(:), ns_qcm_y(:), ns_qcm_z(:)
+        INTEGER, ALLOCATABLE :: ns_particle(:)
+        INTEGER, ALLOCATABLE :: ns_type(:)
+        INTEGER, ALLOCATABLE :: ns_child(:,:)
+        INTEGER, ALLOCATABLE :: ns_depth(:)
 
-    ! nodes
-    INTEGER :: number_of_nodes = 0
-    INTEGER :: max_number_of_nodes
-    REAL(pf), ALLOCATABLE :: ns_cx(:), ns_cy(:), ns_cz(:) ! centers
-    REAL(pf), ALLOCATABLE :: ns_halfside(:), ns_L2(:)
-    REAL(pf), ALLOCATABLE :: ns_mass(:), ns_qcm_x(:), ns_qcm_y(:), ns_qcm_z(:)
-    INTEGER, ALLOCATABLE :: ns_particle(:)
-    INTEGER, ALLOCATABLE :: ns_type(:)
-    INTEGER, ALLOCATABLE :: ns_child(:,:)
-    INTEGER, ALLOCATABLE :: ns_depth(:)
-    REAL(pf), ALLOCATABLE :: ns_max_radius(:)
+        REAL(pf), ALLOCATABLE :: ns_quad(:,:) ! quadrupole terms
+        REAL(pf), ALLOCATABLE :: ns_oct(:,:)  ! octupole terms
 
-    REAL(pf), ALLOCATABLE :: ns_quad(:,:) ! quadrupole terms
-    REAL(pf), ALLOCATABLE :: ns_oct(:,:)  ! octupole terms
+        ! to detect collisions
+        REAL(pf), ALLOCATABLE :: ns_max_radius(:)
+        REAL(pf), ALLOCATABLE :: radii(:)
+
+        ! for the Dehnen method
+        REAL(pf), ALLOCATABLE :: ns_rmax(:), ns_force(:,:), ns_hess(:,:), ns_third(:,:)
+    CONTAINS
+        PROCEDURE :: pre_init, init, clear
+        PROCEDURE :: allocate_nodes, add_node, allocate_subnode, add_to_subnode, add
+        
+        ! for collisions
+        PROCEDURE :: detect_collisions, sphere_intersects_node
+
+        ! for tree methods
+        PROCEDURE :: evaluate_multipole
+
+        ! for the Barnes-Hut method
+        PROCEDURE :: forces => bh_forces_over_p
+
+        ! for the Dehnen method
+        PROCEDURE :: dehnen_eval ! <- use this to eval the forces
+        PROCEDURE :: dehnen_forces ! this and others are internal
+        PROCEDURE :: evaluate_rmax
+        PROCEDURE :: mutual_interaction_walk
+        PROCEDURE :: evaluate_mutual_interaction_monopole
+        PROCEDURE :: evaluate_mutual_interaction_quadrupole
+    END TYPE
 CONTAINS
-    PROCEDURE :: pre_init, init, clear
-    PROCEDURE :: allocate_nodes, add_node, allocate_subnode, add_to_subnode, add
-    PROCEDURE :: forces => evaluate_forces_over_p
-    PROCEDURE :: detect_collisions
-    PROCEDURE :: evaluate_multipole
-END TYPE
 
-CONTAINS
-
-SUBROUTINE pre_init (self, m, em, radii, multipole, collide_par)
-! this subroutine pre initialize the tree by allocating all the self variables and clearing
-! if its necessary
+!*****************************************************************************************
+! DEFAULT ROUTINES
+! some routines that construct the octree, to use to detect collisions or to evalute the
+! forces using the Barnes-Hut method or the Dehnen method.
+!*****************************************************************************************
+SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
+! this subroutine starts the octree and prepare it to use for some objective.
+! the methods are:
+! 10: barnes-hut (monopole)
+! 11: barnes-hut (quadrupole)
+! 12: barnes-hut (octupole)
+! 20: dehnen (monopole)
+! 21: dehnen (quadrupole)
     CLASS(OctreeType), INTENT(INOUT) :: self
     REAL(pf), INTENT(IN) :: m(:) ! masses vector
-    REAL(pf), INTENT(IN) :: radii(:) ! radii vector
-    LOGICAL,  INTENT(IN) :: em   ! equal masses boolean
-    INTEGER,  INTENT(IN) :: multipole
+    INTEGER,  INTENT(IN), OPTIONAL :: method_par
     LOGICAL,  INTENT(IN), OPTIONAL :: collide_par
-    INTEGER :: N
+    REAL(pf), INTENT(IN), OPTIONAL :: radii(:) ! radii vector
 
-    ! collide parameter
-    self % collide = .FALSE.
-    IF (PRESENT(collide_par)) self % collide = collide_par
-    
-    ! if it isnt allocated, so is necessary to allocate the basic self variables
+    INTEGER :: method
+    LOGICAL :: collide
+
+    method = 0
+    IF (PRESENT(method_par)) method = method_par
+    self % method = method
+
+    collide = .FALSE.
+    IF (PRESENT(collide_par)) collide = collide_par
+
     IF (.NOT. self % is_allocated) THEN
         self % N = SIZE(m)
-        ALLOCATE(self % real_m(self % N))
         ALLOCATE(self % m(self % N))
-
-        IF (self % collide) ALLOCATE(self % radii(self % N))
 
         ! spatial variables
         ALLOCATE(self % x(self % N))
@@ -102,28 +127,54 @@ SUBROUTINE pre_init (self, m, em, radii, multipole, collide_par)
         ! about the depth
         ALLOCATE(self % counter_for_each_level(self % max_depth+1))
 
-        ! multipoles
-        self % multipole = multipole
-
         ! allocate the other vectors
-        self % max_number_of_nodes = 8 * self % N
+        self % max_number_of_nodes = 3 * self % N
         self % number_of_nodes = 0
         CALL self % allocate_nodes()
+        
+        ! allocating specific vectors
+        IF (method == 20 .OR. method == 21) THEN
+            ALLOCATE(self % ns_rmax(self % max_number_of_nodes))
+            ALLOCATE(self % ns_force(self % max_number_of_nodes, 3))
+        ENDIF
+        IF (method == 21) THEN ! Dehnen with quadrupoles
+            ALLOCATE(self % ns_hess(self % max_number_of_nodes, 6))
+            ALLOCATE(self % ns_third(self % max_number_of_nodes, 10))
+        ENDIF
+
+        IF (collide) THEN
+            ALLOCATE(self % ns_max_radius(self % max_number_of_nodes))
+        ENDIF
+
+        ! multipoles
+        SELECT CASE (method)
+            CASE (10, 20) ! monopoles
+                self % multipole = 1
+
+            CASE (11, 21) ! quadrupoles
+                self % multipole = 4
+                ALLOCATE(self % ns_quad(self % max_number_of_nodes, 6))
+
+            CASE (12)     ! octupole
+                self % multipole = 8
+                ALLOCATE(self % ns_quad(self % max_number_of_nodes, 6))
+                ALLOCATE(self % ns_oct(self % max_number_of_nodes, 14))
+        END SELECT
     ENDIF
 
     CALL self % clear()
 
     ! saving the masses
-    self % real_m = m
     self % m = m
-    IF (em) self % m = 1.0_pf
-    IF (self % collide) self % radii = radii
+    IF (collide) self % radii = radii
+    
+    self % is_allocated = .TRUE.
 END SUBROUTINE
 
 SUBROUTINE clear (self)
     CLASS(OctreeType), INTENT(INOUT) :: self
-    
-    ! starting or restarting
+
+    ! default vectors
     self % number_of_nodes = 0
     self % ns_cx = 0.0_pf
     self % ns_cy = 0.0_pf
@@ -134,44 +185,52 @@ SUBROUTINE clear (self)
     self % ns_qcm_x = 0.0_pf
     self % ns_qcm_y = 0.0_pf
     self % ns_qcm_z = 0.0_pf
-    self % ns_particle = -1 
-    self % ns_max_radius = 0.0_pf
+    self % ns_particle = -1
     self % ns_type = 0
     self % ns_depth = 0
-    self % ns_child = -1
-    IF (self % multipole > 1) THEN
-        self % ns_quad = 0.0_pf
+    self % most_depth = 0
+    self % counter_for_each_level = 0
+    
+    ! collision
+    IF (ALLOCATED(self % ns_max_radius)) self % ns_max_radius = 0.0_pf
+    IF (self % multipole >= 4) self % ns_quad = 0.0_pf
+    IF (self % multipole >= 8) self % ns_oct = 0.0_pf
+
+    ! Dehnen method
+    IF (self % method == 20 .OR. self % method == 21) THEN
+        self % ns_rmax = 0.0_pf
+        self % ns_force = 0.0_pf
     ENDIF
-    IF (self % multipole > 4) THEN
-        self % ns_oct = 0.0_pf
+    IF (self % method == 21) THEN
+        self % ns_hess = 0.0_pf
+        self % ns_third = 0.0_pf
     ENDIF
 END SUBROUTINE
 
-SUBROUTINE init (self, m, qs, save_txt)
+SUBROUTINE init (self, x, y, z, save_txt)
 ! this subroutine inits the tree by allocating the global vectors and adding each particle
 ! in a node. if its the case it saves the root information too.
     CLASS(OctreeType), INTENT(INOUT) :: self
-    REAL(pf), INTENT(IN) :: m(:), qs(:,:)
-    INTEGER, OPTIONAL :: save_txt
+    REAL(pf), INTENT(IN) :: x(:), y(:), z(:)
+    INTEGER,  INTENT(IN), OPTIONAL :: save_txt
+
     REAL(pf) :: infos_root(4)
-    INTEGER :: p, idx_root
+    INTEGER  :: idx_root, p
+
+    IF (.NOT. self % is_allocated) STOP "Not allocated! Run pre_init first!"
 
     ! clear
     CALL self % clear()
 
-    ! saving particles information
-    self % x = qs(:,1)
-    self % y = qs(:,2)
-    self % z = qs(:,3)
-
-    ! about the depth
-    self % most_depth = 0
-    self % counter_for_each_level = 0
+    ! saving information
+    self % x = x
+    self % y = y
+    self % z = z
 
     ! init the root
-    infos_root = node_size_center(self%x, self%y, self%z)
+    infos_root = node_size_center(x, y, z)
     CALL self % add_node(infos_root(1), infos_root(2), infos_root(3), &
-                        self%side_amplificator*infos_root(4), 0, idx_root)
+        self%side_amplificator*infos_root(4), 0, idx_root)
 
     ! if wants to save_txt
     self % save_txt = -1
@@ -179,16 +238,14 @@ SUBROUTINE init (self, m, qs, save_txt)
         self % save_txt = save_txt
         WRITE (self % save_txt, *) self%ns_cx(1), self%ns_cy(1), self%ns_cz(1), self%ns_halfside(1)
     ENDIF
-
+    
     ! add the children to root
     DO p = 1, self % N
         CALL self % add(idx_root, p)
     END DO
 
     ! if wants to use multipole
-    IF (self % multipole > 1) THEN
-        CALL self % evaluate_multipole()
-    ENDIF
+    IF (self % multipole > 1) CALL self % evaluate_multipole()
 END SUBROUTINE
 
 SUBROUTINE allocate_nodes (self)
@@ -202,114 +259,28 @@ SUBROUTINE allocate_nodes (self)
     INTEGER, ALLOCATABLE :: temp_int(:), temp_int_2(:,:)
     INTEGER :: old_size, new_size
 
-    ! if the tree already exists, so is the case of reallocation
-    IF (self % number_of_nodes > 0) THEN
-        old_size = self % max_number_of_nodes
-        self % max_number_of_nodes = 2 * old_size
-        new_size = self % max_number_of_nodes
-        
-        ! allocate the temp vectors
-        ALLOCATE(temp_real(old_size))
-        ALLOCATE(temp_int(old_size))
-        ALLOCATE(temp_int_2(8,old_size))
+    ! GENERAL VECTORS
+    ! node positions
+    ALLOCATE(self % ns_cx(self % max_number_of_nodes))
+    ALLOCATE(self % ns_cy(self % max_number_of_nodes))
+    ALLOCATE(self % ns_cz(self % max_number_of_nodes))
+    ! node size
+    ALLOCATE(self % ns_halfside(self % max_number_of_nodes))
+    ALLOCATE(self % ns_L2(self % max_number_of_nodes))
+    ! node mass and center of mass
+    ALLOCATE(self % ns_mass(self % max_number_of_nodes))
+    ALLOCATE(self % ns_qcm_x(self % max_number_of_nodes))
+    ALLOCATE(self % ns_qcm_y(self % max_number_of_nodes))
+    ALLOCATE(self % ns_qcm_z(self % max_number_of_nodes))
+    ! node particle index
+    ALLOCATE(self % ns_particle(self % max_number_of_nodes))
+    ! node type, 1 - leaf, 2 - twig
+    ALLOCATE(self % ns_type(self % max_number_of_nodes))
+    ! node depth
+    ALLOCATE(self % ns_depth(self % max_number_of_nodes))
+    ! node children
+    ALLOCATE(self % ns_child(self % max_number_of_nodes, 8))
 
-        ! now deallocate and reallocate
-        temp_real = self % ns_cx
-        DEALLOCATE(self % ns_cx)
-        ALLOCATE(self % ns_cx(new_size))
-        self % ns_cx(1:old_size) = temp_real
-
-        temp_real = self % ns_cy
-        DEALLOCATE(self % ns_cy)
-        ALLOCATE(self % ns_cy(new_size))
-        self % ns_cy(1:old_size) = temp_real
-
-        temp_real = self % ns_cz
-        DEALLOCATE(self % ns_cz)
-        ALLOCATE(self % ns_cz(new_size))
-        self % ns_cz(1:old_size) = temp_real
-
-        temp_real = self % ns_halfside
-        DEALLOCATE(self % ns_halfside)
-        ALLOCATE(self % ns_halfside(new_size))
-        self % ns_halfside(1:old_size) = temp_real
-
-        temp_real = self % ns_L2
-        DEALLOCATE(self % ns_L2)
-        ALLOCATE(self % ns_L2(new_size))
-        self % ns_L2(1:old_size) = temp_real
-
-        temp_real = self % ns_mass
-        DEALLOCATE(self % ns_mass)
-        ALLOCATE(self % ns_mass(new_size))
-        self % ns_mass(1:old_size) = temp_real
-
-        temp_real = self % ns_qcm_x
-        DEALLOCATE(self % ns_qcm_x)
-        ALLOCATE(self % ns_qcm_x(new_size))
-        self % ns_qcm_x(1:old_size) = temp_real
-
-        temp_real = self % ns_qcm_y
-        DEALLOCATE(self % ns_qcm_y)
-        ALLOCATE(self % ns_qcm_y(new_size))
-        self % ns_qcm_y(1:old_size) = temp_real
-
-        temp_real = self % ns_qcm_z
-        DEALLOCATE(self % ns_qcm_z)
-        ALLOCATE(self % ns_qcm_z(new_size))
-        self % ns_qcm_z(1:old_size) = temp_real
-
-        temp_int = self % ns_particle
-        DEALLOCATE(self % ns_particle)
-        ALLOCATE(self % ns_particle(new_size))
-        self % ns_particle(1:old_size) = temp_int
-
-        temp_int = self % ns_type
-        DEALLOCATE(self % ns_type)
-        ALLOCATE(self % ns_type(new_size))
-        self % ns_type(1:old_size) = temp_int
-        
-        temp_int_2 = self % ns_child
-        DEALLOCATE(self % ns_child)
-        ALLOCATE(self % ns_child(8,new_size))
-        self % ns_child(:,1:old_size) = temp_int_2
-
-        temp_real = self % ns_max_radius
-        DEALLOCATE(self % ns_max_radius)
-        ALLOCATE(self % ns_max_radius(new_size))
-        self % ns_max_radius(1:old_size) = temp_real
-
-        DEALLOCATE(temp_real, temp_int, temp_int_2)
-    ELSE
-        ALLOCATE(self % ns_cx(self % max_number_of_nodes))
-        ALLOCATE(self % ns_cy(self % max_number_of_nodes))
-        ALLOCATE(self % ns_cz(self % max_number_of_nodes))
-        ALLOCATE(self % ns_halfside(self % max_number_of_nodes))
-        ALLOCATE(self % ns_L2(self % max_number_of_nodes))
-        ALLOCATE(self % ns_mass(self % max_number_of_nodes))
-        ALLOCATE(self % ns_qcm_x(self % max_number_of_nodes))
-        ALLOCATE(self % ns_qcm_y(self % max_number_of_nodes))
-        ALLOCATE(self % ns_qcm_z(self % max_number_of_nodes))
-        ALLOCATE(self % ns_particle(self % max_number_of_nodes))
-        ALLOCATE(self % ns_type(self % max_number_of_nodes))
-        ALLOCATE(self % ns_depth(self % max_number_of_nodes))
-        ALLOCATE(self % ns_child(8, self % max_number_of_nodes))
-        ALLOCATE(self % ns_max_radius(self % max_number_of_nodes))
-
-        ! quadrupole
-        IF (self % multipole > 1) THEN
-            ALLOCATE(self % ns_quad(self % max_number_of_nodes, 6))
-            self % ns_quad = 0.0_pf
-        ENDIF
-
-        ! octupole
-        IF (self % multipole > 4) THEN
-            ALLOCATE(self % ns_oct(self % max_number_of_nodes, 14))
-            self % ns_oct = 0.0_pf
-        ENDIF
-    ENDIF
-
-    self % is_allocated = .TRUE.
 END SUBROUTINE
 
 FUNCTION node_size_center (x, y, z) RESULT (infos)
@@ -346,13 +317,13 @@ SUBROUTINE add_node (self, cx, cy, cz, side, depth, idx)
     idx = self % number_of_nodes
     
     IF (idx > self % max_number_of_nodes) THEN
-        CALL self % allocate_nodes()
-        PRINT *, '[DEBUG] REALLOCATING!'
+        PRINT *, "INSUFFICIENT NUMBER OF NODES: ", self % max_number_of_nodes
+        STOP 0
     END IF
 
     ! starts without children and being a leaf
-    self % ns_child(:, idx) = -1
-    self % ns_type(idx) = 1 ! is a leaf
+    self % ns_child(idx,:) = -1
+    self % ns_type(idx) = 1
     self % ns_depth(idx) = depth
     IF (depth > self % most_depth) self % most_depth = depth
     self % counter_for_each_level(depth+1) = self % counter_for_each_level(depth+1) + 1
@@ -367,7 +338,6 @@ SUBROUTINE add_node (self, cx, cy, cz, side, depth, idx)
     self % ns_qcm_y(idx) = 0.0_pf
     self % ns_qcm_z(idx) = 0.0_pf
     self % ns_particle(idx) = -1
-    self % ns_max_radius(idx) = 0.0_pf
 END SUBROUTINE
 
 SUBROUTINE allocate_subnode (self, node_idx, index)
@@ -399,7 +369,7 @@ SUBROUTINE allocate_subnode (self, node_idx, index)
     ! create subnode
     CALL self % add_node(cx_sub, cy_sub, cz_sub, h, d, subnode_idx)
     ! allocate it as child of node
-    self % ns_child(index, node_idx) = subnode_idx
+    self % ns_child(node_idx, index) = subnode_idx
 
     IF (self % save_txt .NE. -1) WRITE (self % save_txt, *) d, cx_sub, cy_sub, cz_sub
 END SUBROUTINE
@@ -413,7 +383,7 @@ SUBROUTINE add_to_subnode (self, node_idx, p)
     INTEGER, INTENT(IN) :: p
     INTEGER :: subnode
     INTEGER :: subnode_index
-    
+
     INTEGER :: ix, iy, iz
 
     ix = MERGE(1,0,self % x(p) >= self % ns_cx(node_idx))
@@ -423,14 +393,14 @@ SUBROUTINE add_to_subnode (self, node_idx, p)
     subnode_index = 1 + ix + 2*iy + 4*iz
     ! CALL self % index_subnode(node_idx, p, subnode_index)
 
-    subnode = self % ns_child(subnode_index, node_idx)
+    subnode = self % ns_child(node_idx,subnode_index)
 
     ! if the subnode isnt associated
     IF (subnode == -1) THEN
         CALL self % allocate_subnode(node_idx, subnode_index)
     ENDIF
 
-    subnode_index = self % ns_child(subnode_index, node_idx)
+    subnode_index = self % ns_child(node_idx,subnode_index)
 
     ! now add
     CALL self % add(subnode_index, p)
@@ -444,14 +414,13 @@ SUBROUTINE add (self, node_idx, p)
     INTEGER, INTENT(IN) :: node_idx
     INTEGER, INTENT(IN) :: p ! particle index
     INTEGER :: old_p
-    REAL(pf) :: pm, px, py, pz, pr, old_mass
+    REAL(pf) :: pm, px, py, pz, old_mass
     
     ! get particle information
-    pm = self % real_m(p)
+    pm = self % m(p)
     px = self % x(p)
     py = self % y(p)
     pz = self % z(p)
-    IF (self % collide) pr = self % radii(p)
 
     ! an empty node become a particle
     IF (self % ns_particle(node_idx) == -1 .AND. self % ns_type(node_idx) == 1) THEN
@@ -462,7 +431,6 @@ SUBROUTINE add (self, node_idx, p)
         self % ns_qcm_x(node_idx) = px
         self % ns_qcm_y(node_idx) = py
         self % ns_qcm_z(node_idx) = pz
-        IF (self % collide) self % ns_max_radius(node_idx) = pr
 
         RETURN
     ENDIF
@@ -485,11 +453,6 @@ SUBROUTINE add (self, node_idx, p)
         IF (self % ns_depth(node_idx) < self % max_depth) THEN
             CALL self % add_to_subnode(node_idx, old_p)
         ENDIF
-
-        ! update the max radius
-        IF (self % collide) THEN
-            IF (self % ns_max_radius(node_idx) < pr) self % ns_max_radius(node_idx) = pr
-        ENDIF
     ENDIF
 
     ! now add the new particle if its not at the deepest level subdividing it
@@ -498,179 +461,244 @@ SUBROUTINE add (self, node_idx, p)
     ENDIF
 END SUBROUTINE
 
+!*****************************************************************************************
+! COLLISIONS ROUTINES
+! we can use the octree to detect collisions. for this the routine detect_collisions
+! receives a particle index p and look for nodes or particles that intersects the sphere
+! node. the list of nodes is traversed using the depth first traversal (DFS) algorithm.
+!*****************************************************************************************
+SUBROUTINE detect_collisions (self, p, collisions)
+    CLASS(OctreeType), INTENT(IN) :: self
+    INTEGER, INTENT(IN) :: p
+    INTEGER, INTENT(INOUT) :: collisions(:)
+    
+    REAL(pf) :: px, py, pz, dx, dy, dz, dist2, rsum
+    REAL(pf) :: dpx, dpy, dpz
+    INTEGER :: stack(self % number_of_nodes)
+    INTEGER :: top, node_idx, child_idx, q, i, indice
+
+    ! particle cache info
+    px = self % x(p)
+    py = self % y(p)
+    pz = self % z(p)
+
+    ! initialize
+    ! to avoid recalculations, this was disabled
+    ! colliders = 0
+    ! collisions = 0
+    top = 1
+    stack(top) = 1
+
+    ! dfs iterative
+    DO WHILE (top > 0)
+
+        node_idx = stack(top)
+        top = top - 1
+
+        ! empty node
+        IF (self % ns_mass(node_idx) == 0.0_pf) CYCLE
+
+        ! leaf
+        IF (self % ns_type(node_idx) == 1) THEN
+            q = self % ns_particle(node_idx)
+
+            IF (q == -1) CYCLE ! empty
+            IF (q == p)  CYCLE ! same particle
+
+            IF (p > q) indice = (p-1)*(p-2)/2 + q
+            IF (p < q) indice = (q-1)*(q-2)/2 + p
+            IF (collisions(indice) .NE. 0) CYCLE
+            collisions(indice) = -1
+
+            dx = self % x(q) - px
+            dy = self % y(q) - py
+            dz = self % z(q) - pz
+
+            dist2 = dx*dx + dy*dy + dz*dz
+            rsum = self%radii(p) + self%radii(q)
+
+            IF (dist2 <= rsum*rsum) THEN
+                collisions(indice) = 1
+            ENDIF
+
+        ! if not intersects
+        ELSE IF (.NOT. sphere_intersects_node(self, node_idx, px, py, pz, self%radii(p))) THEN
+            CYCLE
+        
+        ! not leaf
+        ELSE
+            DO i = 1, 8
+                child_idx = self % ns_child(node_idx, i)
+
+                IF (child_idx .NE. -1) THEN
+                    top = top + 1
+                    stack(top) = child_idx
+                ENDIF
+            END DO
+        ENDIF
+    END DO
+END SUBROUTINE
+
+PURE FUNCTION sphere_intersects_node (self, node_idx, px, py, pz, r) RESULT(hit)
+    CLASS(OctreeType), INTENT(IN) :: self
+    INTEGER, INTENT(IN) :: node_idx
+    REAL(pf), INTENT(IN) :: px, py, pz, r
+    LOGICAL :: hit
+
+    REAL(pf) :: dx, dy, dz
+    REAL(pf) :: cx, cy, cz, h
+    REAL(pf) :: dist2
+    REAL(pf) :: r2
+
+    cx = self % ns_cx(node_idx)
+    cy = self % ns_cy(node_idx)
+    cz = self % ns_cz(node_idx)
+    h  = self % ns_halfside(node_idx)
+
+    dx = MAX(ABS(px - cx) - h, 0.0_pf)
+    dy = MAX(ABS(py - cy) - h, 0.0_pf)
+    dz = MAX(ABS(pz - cz) - h, 0.0_pf)
+
+    dist2 = dx*dx + dy*dy + dz*dz
+
+    r2 = r + self%ns_max_radius(node_idx)
+    r2 = r2 * r2
+    hit = (dist2 <= r2)
+END FUNCTION
+
+
+
+!*****************************************************************************************
+! MULTIPOLE ROUTINE
+! this subroutine evaluates the multipoles for the octree, and it can be up to quadrupoles
+! or octupoles.
+!*****************************************************************************************
 SUBROUTINE evaluate_multipole (self)
     CLASS(OctreeType), INTENT(INOUT) :: self
     INTEGER :: i, child_idx, p, node_idx
     REAL(pf) :: pm, px, py, pz
     REAL(pf) :: dxi, dyi, dzi
 
-    INTEGER :: level, counter, d, d_idx
+    INTEGER  :: d, d_idx
     REAL(pf) :: x_sd, y_sd, z_sd
-
-    INTEGER :: queue_current(self % number_of_nodes), queue_next(self % number_of_nodes)
-    INTEGER :: kqc, keqc, keqn, remaining
 
     ! multipole state vectors
     self % ns_quad = 0.0_pf
-    self % ns_oct  = 0.0_pf
+    IF (self % multipole > 4) self % ns_oct  = 0.0_pf
 
-    ! if the max depth was reached, we start at the deepest level
-    IF (self % most_depth == self % max_depth) THEN
-        level = self % most_depth
-
-    ! if no, we can start at the almost depth because the lower only will have leafs
-    ELSE
-        level = self % most_depth - 1
-    ENDIF
-    counter = 0
-    
-    keqc = self % number_of_nodes ! key end queue current
-    keqn = 0 ! key end queue next
-    kqc = 0  ! key queue current
-
-    ! start by the last node
-    queue_current = [(self % number_of_nodes - i + 1, i=1, self%number_of_nodes)]
-
-    DO WHILE (level >= 0)
-        
-        kqc = kqc + 1
-        node_idx = queue_current(kqc)
-
-        ! if isnt in the level, get the next
-        IF (self % ns_depth(node_idx) < level) THEN
-            keqn = keqn + 1
-            queue_next(keqn) = node_idx
+    DO node_idx = self % number_of_nodes, 1, -1
+        ! if its a leaf, it doesnt have contributions
+        IF (self % ns_type(node_idx) == 1) THEN
             CYCLE
-
-        ! if its in the level, evaluate
-        ELSE IF (self % ns_depth(node_idx) == level) THEN
-            counter = counter + 1
-            IF (counter == self % counter_for_each_level(level+1)) THEN
-                level = level - 1
-                counter = 0
-                remaining = keqc - kqc
-
-                IF (level >= 0) THEN
-                    IF (kqc < keqc) THEN
-                        queue_current(1:remaining) = queue_current(kqc+1:keqc)
-                        queue_current(remaining+1:remaining+keqn) = queue_next(1:keqn)
-                        keqc = remaining + keqn
-                    ELSE
-                        queue_current(1:keqn) = queue_next(1:keqn)
-                        keqc = keqn
-                    ENDIF
-                ENDIF
-
-                keqn = 0
-                kqc = 0
-            ENDIF
-
-            ! if its a leaf, it doesnt have contributions
-            IF (self % ns_type(node_idx) == 1) THEN
-                CYCLE
-            ENDIF
-
-            ! if its a twig but it is in the deepest level, it doesnt have contributions also
-            IF (self % ns_depth(node_idx) == self % max_depth) THEN
-                CYCLE
-            ENDIF
-
-            ! if its a twig, we need to avaliate the daughters
-            DO d = 1, 8
-                d_idx = self % ns_child(d, node_idx)
-                IF (d_idx == -1) CYCLE
-
-                pm = self % ns_mass(d_idx)
-                px = self % ns_qcm_x(d_idx)
-                py = self % ns_qcm_y(d_idx)
-                pz = self % ns_qcm_z(d_idx)
-
-                dxi = px - self % ns_qcm_x(node_idx)
-                dyi = py - self % ns_qcm_y(node_idx)
-                dzi = pz - self % ns_qcm_z(node_idx)
-
-                ! if its a twig, first add its contribution
-                IF (self % ns_type(d_idx) == 2) THEN
-                    self % ns_quad(node_idx,:) = self % ns_quad(node_idx,:) + self % ns_quad(d_idx,:)
-                    IF (self % multipole > 4) THEN
-                        self % ns_oct(node_idx,:) = self % ns_oct(node_idx,:) + self % ns_oct(d_idx,:)
-                    ENDIF
-                ENDIF
-
-                self % ns_quad(node_idx, 1) = self % ns_quad(node_idx, 1) + pm * dxi**2    ! mxi2
-                self % ns_quad(node_idx, 2) = self % ns_quad(node_idx, 2) + pm * dyi**2    ! myi2
-                self % ns_quad(node_idx, 3) = self % ns_quad(node_idx, 3) + pm * dzi**2    ! mzi2
-                self % ns_quad(node_idx, 4) = self % ns_quad(node_idx, 4) + pm * dxi * dyi ! mxyi
-                self % ns_quad(node_idx, 5) = self % ns_quad(node_idx, 5) + pm * dxi * dzi ! mxzi
-                self % ns_quad(node_idx, 6) = self % ns_quad(node_idx, 6) + pm * dyi * dzi ! myzi
-
-                IF (self % multipole > 4) THEN
-                    self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + pm * dxi * dxi**2
-                    self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + pm * dxi * dyi**2
-                    self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + pm * dxi * dzi**2
-
-                    self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + pm * dyi * dxi**2
-                    self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + pm * dyi * dyi**2
-                    self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + pm * dyi * dzi**2
-                    
-                    self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + pm * dzi * dxi**2
-                    self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + pm * dzi * dyi**2
-                    self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + pm * dzi * dzi**2
-                    
-                    self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + pm * dxi * dyi * dzi
-                ENDIF
-
-                IF (self % multipole > 4 .AND. self % ns_type(d_idx) == 2) THEN
-                    self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + &
-                        3.0_pf * dxi * self % ns_quad(d_idx, 1)
-                    self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + &
-                        2.0_pf * dyi * self % ns_quad(d_idx, 4) + dxi * self % ns_quad(d_idx, 2)
-                    self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + &
-                        2.0_pf * dzi * self % ns_quad(d_idx, 5) + dxi * self % ns_quad(d_idx, 3)
-
-                    self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + &
-                        2.0_pf * dxi * self % ns_quad(d_idx, 4) + dyi * self % ns_quad(d_idx, 1)
-                    self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + &
-                        3.0_pf * dyi * self % ns_quad(d_idx, 2)
-                    self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + &
-                        2.0_pf * dzi * self % ns_quad(d_idx, 6) + dyi * self % ns_quad(d_idx, 3)
-
-                    self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + &
-                        2.0_pf * dxi * self % ns_quad(d_idx, 5) + dzi * self % ns_quad(d_idx, 1)
-                    self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + &
-                        2.0_pf * dyi * self % ns_quad(d_idx, 6) + dzi * self % ns_quad(d_idx, 2)
-                    self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + &
-                        3.0_pf * dzi * self % ns_quad(d_idx, 3)
-
-                    self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + &
-                        dxi * self % ns_quad(d_idx, 6) + &
-                        dyi * self % ns_quad(d_idx, 5) + &
-                        dzi * self % ns_quad(d_idx, 4)
-                ENDIF
-            END DO
-
-            IF (self % multipole > 4) THEN
-                self % ns_oct(node_idx, 11) = SUM(self % ns_oct(node_idx, 1:10))
-                self % ns_oct(node_idx, 12) = SUM(self % ns_oct(node_idx, 1:3))
-                self % ns_oct(node_idx, 13) = SUM(self % ns_oct(node_idx, 4:6))
-                self % ns_oct(node_idx, 14) = SUM(self % ns_oct(node_idx, 7:9))
-            ENDIF
         ENDIF
 
+        ! if its a twig but it is in the deepest level, it doesnt have contributions also
+        IF (self % ns_depth(node_idx) == self % max_depth) THEN
+            CYCLE
+        ENDIF
+
+        ! if its a twig, we need to avaliate the daughters
+        DO d = 1, 8
+            d_idx = self % ns_child(node_idx, d)
+            IF (d_idx == -1) CYCLE
+
+            pm = self % ns_mass(d_idx)
+            px = self % ns_qcm_x(d_idx)
+            py = self % ns_qcm_y(d_idx)
+            pz = self % ns_qcm_z(d_idx)
+
+            dxi = px - self % ns_qcm_x(node_idx)
+            dyi = py - self % ns_qcm_y(node_idx)
+            dzi = pz - self % ns_qcm_z(node_idx)
+
+            ! if its a twig, first add its contribution
+            IF (self % ns_type(d_idx) == 2) THEN
+                self % ns_quad(node_idx,:) = self % ns_quad(node_idx,:) + self % ns_quad(d_idx,:)
+                IF (self % multipole > 4) THEN
+                    self % ns_oct(node_idx,:) = self % ns_oct(node_idx,:) + self % ns_oct(d_idx,:)
+                ENDIF
+            ENDIF
+
+            self % ns_quad(node_idx, 1) = self % ns_quad(node_idx, 1) + pm * dxi**2    ! mxi2
+            self % ns_quad(node_idx, 2) = self % ns_quad(node_idx, 2) + pm * dyi**2    ! myi2
+            self % ns_quad(node_idx, 3) = self % ns_quad(node_idx, 3) + pm * dzi**2    ! mzi2
+            self % ns_quad(node_idx, 4) = self % ns_quad(node_idx, 4) + pm * dxi * dyi ! mxyi
+            self % ns_quad(node_idx, 5) = self % ns_quad(node_idx, 5) + pm * dxi * dzi ! mxzi
+            self % ns_quad(node_idx, 6) = self % ns_quad(node_idx, 6) + pm * dyi * dzi ! myzi
+
+            IF (self % multipole > 4) THEN
+                self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + pm * dxi * dxi**2
+                self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + pm * dxi * dyi**2
+                self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + pm * dxi * dzi**2
+
+                self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + pm * dyi * dxi**2
+                self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + pm * dyi * dyi**2
+                self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + pm * dyi * dzi**2
+                
+                self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + pm * dzi * dxi**2
+                self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + pm * dzi * dyi**2
+                self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + pm * dzi * dzi**2
+                
+                self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + pm * dxi * dyi * dzi
+            ENDIF
+
+            IF (self % multipole > 4 .AND. self % ns_type(d_idx) == 2) THEN
+                self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + &
+                    3.0_pf * dxi * self % ns_quad(d_idx, 1)
+                self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + &
+                    2.0_pf * dyi * self % ns_quad(d_idx, 4) + dxi * self % ns_quad(d_idx, 2)
+                self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + &
+                    2.0_pf * dzi * self % ns_quad(d_idx, 5) + dxi * self % ns_quad(d_idx, 3)
+
+                self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + &
+                    2.0_pf * dxi * self % ns_quad(d_idx, 4) + dyi * self % ns_quad(d_idx, 1)
+                self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + &
+                    3.0_pf * dyi * self % ns_quad(d_idx, 2)
+                self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + &
+                    2.0_pf * dzi * self % ns_quad(d_idx, 6) + dyi * self % ns_quad(d_idx, 3)
+
+                self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + &
+                    2.0_pf * dxi * self % ns_quad(d_idx, 5) + dzi * self % ns_quad(d_idx, 1)
+                self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + &
+                    2.0_pf * dyi * self % ns_quad(d_idx, 6) + dzi * self % ns_quad(d_idx, 2)
+                self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + &
+                    3.0_pf * dzi * self % ns_quad(d_idx, 3)
+
+                self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + &
+                    dxi * self % ns_quad(d_idx, 6) + &
+                    dyi * self % ns_quad(d_idx, 5) + &
+                    dzi * self % ns_quad(d_idx, 4)
+            ENDIF
+        END DO
+
+        IF (self % multipole > 4) THEN
+            self % ns_oct(node_idx, 11) = SUM(self % ns_oct(node_idx, 1:10))
+            self % ns_oct(node_idx, 12) = SUM(self % ns_oct(node_idx, 1:3))
+            self % ns_oct(node_idx, 13) = SUM(self % ns_oct(node_idx, 4:6))
+            self % ns_oct(node_idx, 14) = SUM(self % ns_oct(node_idx, 7:9))
+        ENDIF
     END DO
 END SUBROUTINE
 
-SUBROUTINE evaluate_forces_over_p (self, p, par_theta2, par_G, par_eps2, forces)
+
+
+!*****************************************************************************************
+! BARNES-HUT ROUTINE
+! this subroutine evaluates the forces over a particle of index p using the Barnes-Hut
+! method, considering particle-cell interactions and therefore not preserving the Newton's
+! 3rd law.
 ! given a particle and the parameters, this evaluates the forces over the particle
 ! using the Barnes-Hut criterion and optionally a multipole expansion (quadrupole or octupole).
 ! it uses the depth first traversal (DFS) algorithm to evaluate the forces in the tree.
+!*****************************************************************************************
+FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
     CLASS(OctreeType), INTENT(INOUT) :: self
     INTEGER, INTENT(IN) :: p ! particle index
     REAL(pf), INTENT(IN), OPTIONAL :: par_theta2, par_G, par_eps2 ! parameters
     REAL(pf) :: eps2, theta2, G
 
     REAL(pf) :: pm, px, py, pz
-    REAL(pf), INTENT(OUT) :: forces(3)
+    REAL(pf) :: forces(3)
     REAL(pf) :: dx, dy, dz, dist2, L2, f
 
     INTEGER :: stack(self % number_of_nodes)
@@ -692,7 +720,7 @@ SUBROUTINE evaluate_forces_over_p (self, p, par_theta2, par_G, par_eps2, forces)
     G = 1.0_pf
 
     ! replace if present
-    IF (PRESENT(par_eps2))    eps2 = par_eps2
+    IF (PRESENT(par_eps2))   eps2 = par_eps2
     IF (PRESENT(par_theta2)) theta2 = par_theta2
     IF (PRESENT(par_G))      G = par_G
 
@@ -838,113 +866,424 @@ SUBROUTINE evaluate_forces_over_p (self, p, par_theta2, par_G, par_eps2, forces)
         ELSE
             ! push children in the vec
             DO i = 1, 8
-                child_idx = self % ns_child(i, node_idx)
-                IF (child_idx .NE. -1) THEN
+                child_idx = self % ns_child(node_idx, i)
+                 IF (child_idx .NE. -1) THEN
                     top = top + 1
                     stack(top) = child_idx
                 ENDIF
             END DO
         ENDIF
     END DO
+END FUNCTION
+
+
+!*****************************************************************************************
+! DEHNEN ROUTINES
+! the Dehnen algorithm consists in:
+! (1) we evaluate the rmax for each (twig) node as being the maximum distance of a body
+!     to the node com.
+! (2) then we do a dual-traversal on the tree to evaluate the interactions between nodes.
+!     this is done using a double DFS.
+! (3) to evaluate the forces over the particles, we go over the tree starting by the root
+!     and accumulating the forces on the childs. if the node is a leaf, so its a particle,
+!     and as long the list of node indexes is ordered (the parent is always before the
+!     child) all the forces on the particle was already evaluated, so we just apply it to
+!     the particle.
+!*****************************************************************************************
+SUBROUTINE evaluate_rmax (self)
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    
+    REAL(pf) :: r_child_max
+    INTEGER  :: node_idx, i, child_idx
+    REAL(pf) :: dx, dy, dz, dist
+
+    self % ns_rmax = 0.0_pf
+
+    ! upward
+    DO node_idx = self % number_of_nodes, 1, -1
+        ! if its a leaf with (one) particle, its zero
+        IF (self % ns_type(node_idx) == 1) THEN
+            CYCLE
+
+        ! if its an internal node, we combine the rmax of the childs
+        ELSE
+            r_child_max = 0.0_pf
+            DO i = 1, 8
+                child_idx = self % ns_child(node_idx,i)
+                IF (child_idx == -1) CYCLE
+                IF (self % ns_mass(child_idx) == 0.0_pf) CYCLE ! empty
+
+                ! distance between the coms
+                dx = self%ns_qcm_x(child_idx) - self%ns_qcm_x(node_idx)
+                dy = self%ns_qcm_y(child_idx) - self%ns_qcm_y(node_idx)
+                dz = self%ns_qcm_z(child_idx) - self%ns_qcm_z(node_idx)
+                dist = SQRT(dx*dx + dy*dy + dz*dz)
+
+                ! hmmmmm
+                r_child_max = MAX(r_child_max, dist + self % ns_rmax(child_idx))
+            END DO
+            self % ns_rmax(node_idx) = r_child_max
+        ENDIF
+    END DO
 END SUBROUTINE
 
-SUBROUTINE detect_collisions (self, p, collisions)
-    CLASS(OctreeType), INTENT(IN) :: self
-    INTEGER, INTENT(IN) :: p
-    INTEGER, INTENT(INOUT) :: collisions(:)
-    
-    REAL(pf) :: px, py, pz, dx, dy, dz, dist2, rsum
-    REAL(pf) :: dpx, dpy, dpz
-    INTEGER :: stack(self % number_of_nodes)
-    INTEGER :: top, node_idx, child_idx, q, i, indice
+SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
+! here we do a dual-traversal on the octree to determine which cells interact
+! and how are the interactions
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    REAL(pf), INTENT(IN) :: theta2, eps2, G
 
-    ! particle cache info
-    px = self % x(p)
-    py = self % y(p)
-    pz = self % z(p)
+    INTEGER, ALLOCATABLE :: stack_a(:), stack_b(:)
+    INTEGER :: top
+    INTEGER :: a, b
+    INTEGER :: i, j
+    INTEGER :: child_a, child_b
+    REAL(pf) :: dx, dy, dz, dist2, rsum2
 
-    ! initialize
-    ! to avoid recalculations, this was disabled
-    ! colliders = 0
-    ! collisions = 0
+    ! stacks of node pairs
+    ALLOCATE(stack_a(36 * self % number_of_nodes))
+    ALLOCATE(stack_b(36 * self % number_of_nodes))
+
+    ! both starts at the root
     top = 1
-    stack(top) = 1
+    stack_a(top) = 1
+    stack_b(top) = 1
 
-    ! dfs iterative
+    ! dual traversal
     DO WHILE (top > 0)
 
-        node_idx = stack(top)
+        a = stack_a(top)
+        b = stack_b(top)
         top = top - 1
 
-        ! empty node
-        IF (self % ns_mass(node_idx) == 0.0_pf) CYCLE
+        ! empty nodes doesnt interact
+        IF (self % ns_mass(a) == 0.0_pf) CYCLE
+        IF (self % ns_mass(b) == 0.0_pf) CYCLE
 
-        ! leaf
-        IF (self % ns_type(node_idx) == 1) THEN
-            q = self % ns_particle(node_idx)
+        ! self-interaction
+        IF (a == b) THEN
+            ! a particle doesnt interact with itself
+            IF (self % ns_type(a) == 1) CYCLE
 
-            IF (q == -1) CYCLE ! empty
-            IF (q == p)  CYCLE ! same particle
-
-            IF (p > q) indice = (p-1)*(p-2)/2 + q
-            IF (p < q) indice = (q-1)*(q-2)/2 + p
-            IF (collisions(indice) .NE. 0) CYCLE
-            collisions(indice) = -1
-
-            dx = self % x(q) - px
-            dy = self % y(q) - py
-            dz = self % z(q) - pz
-
-            dist2 = dx*dx + dy*dy + dz*dz
-            rsum = self%radii(p) + self%radii(q)
-
-            IF (dist2 <= rsum*rsum) THEN
-                collisions(indice) = 1
-            ENDIF
-
-        ! if not intersects
-        ELSE IF (.NOT. sphere_intersects_node(self, node_idx, px, py, pz, self%radii(p))) THEN
-            CYCLE
-        
-        ! not leaf
-        ELSE
+            ! for a cell we interact the pairs
             DO i = 1, 8
-                child_idx = self % ns_child(i, node_idx)
-
-                IF (child_idx .NE. -1) THEN
+                child_a = self % ns_child(a,i) 
+                IF (child_a == -1) CYCLE
+                DO j = i, 8
+                    child_b = self % ns_child(a,j)
+                    IF (child_b == -1) CYCLE
                     top = top + 1
-                    stack(top) = child_idx
-                ENDIF
+                    stack_a(top) = child_a
+                    stack_b(top) = child_b
+                END DO
+            END DO
+            CYCLE
+        ENDIF
+
+        ! Dehnen MAC criterion
+        dx = self % ns_qcm_x(a) - self % ns_qcm_x(b)
+        dy = self % ns_qcm_y(a) - self % ns_qcm_y(b)
+        dz = self % ns_qcm_z(a) - self % ns_qcm_z(b)
+        dist2 = dx*dx + dy*dy + dz*dz
+        rsum2 = (self % ns_rmax(a) + self % ns_rmax(b))**2
+
+        ! well-separated
+        IF (rsum2 <= theta2 * dist2) THEN
+            ! we evaluate the coefficients of the expansion A <- B and B <- A
+            IF (self % multipole == 1) THEN
+                CALL evaluate_mutual_interaction_monopole(self, a, b, G, eps2)
+            ELSE IF (self % multipole == 4) THEN
+                CALL evaluate_mutual_interaction_quadrupole(self, a, b, G, eps2)
+            ELSE
+                STOP "the multipole parameter isnt 1 neither 4"
+            ENDIF
+            CYCLE
+        ENDIF
+
+        ! not well-separated, we subdivide the bigger node
+        IF (self % ns_rmax(a) >= self % ns_rmax(b)) THEN
+            ! opens A
+            DO i = 1, 8
+                child_a = self % ns_child(a,i)
+                IF (child_a == -1) CYCLE
+                top = top + 1
+                stack_a(top) = child_a
+                stack_b(top) = b
+            END DO
+        ELSE
+            ! opens B
+            DO i = 1, 8
+                child_b = self % ns_child(b,i)
+                IF (child_b == -1) CYCLE
+                top = top + 1
+                stack_a(top) = a
+                stack_b(top) = child_b
             END DO
         ENDIF
     END DO
+    DEALLOCATE(stack_a, stack_b)
+END SUBROUTINE
+
+SUBROUTINE evaluate_mutual_interaction_monopole (self, a, b, G, eps2)
+! this evaluates the gravitational interaction between two nodes a and b using monopoles
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    INTEGER,  INTENT(IN) :: a, b
+    REAL(pf), INTENT(IN) :: G, eps2
+    REAL(pf) :: dx, dy, dz, dist2, rinv3, factor
+
+    ! vector point from A com to B com
+    dx = self % ns_qcm_x(b) - self % ns_qcm_x(a)
+    dy = self % ns_qcm_y(b) - self % ns_qcm_y(a)
+    dz = self % ns_qcm_z(b) - self % ns_qcm_z(a)
+    
+    dist2 = dx*dx + dy*dy + dz*dz
+    rinv3 = 1.0_pf / (dist2 + eps2)**1.5_pf
+    factor = G * rinv3
+
+    ! A <- B
+    self % ns_force(a,1) = self % ns_force(a,1) + factor * self % ns_mass(b) * dx
+    self % ns_force(a,2) = self % ns_force(a,2) + factor * self % ns_mass(b) * dy
+    self % ns_force(a,3) = self % ns_force(a,3) + factor * self % ns_mass(b) * dz
+
+    ! B <- A
+    self % ns_force(b,1) = self % ns_force(b,1) - factor * self % ns_mass(a) * dx
+    self % ns_force(b,2) = self % ns_force(b,2) - factor * self % ns_mass(a) * dy
+    self % ns_force(b,3) = self % ns_force(b,3) - factor * self % ns_mass(a) * dz
+END SUBROUTINE
+
+SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
+! this evaluates the gravitational interaction between two nodes a and b using quadrupoles
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    INTEGER, INTENT(IN) :: a, b
+    REAL(pf), INTENT(IN) :: G, eps2
+
+    INTEGER :: i
+    REAL(pf) :: Ma, Mb
+    REAL(pf) :: dx, dy, dz
+    REAL(pf) :: r2, rinv3, rinv5, rinv7
+    REAL(pf) :: D1(3), D2(6), D3(10)
+    REAL(pf) :: Qa(6), Qb(6)
+    REAL(pf) :: CQa(3), CQb(3)
+
+    Ma = self%ns_mass(a)
+    Mb = self%ns_mass(b)
+
+    ! R = ZA - ZB
+    dx = self%ns_qcm_x(a) - self%ns_qcm_x(b)
+    dy = self%ns_qcm_y(a) - self%ns_qcm_y(b)
+    dz = self%ns_qcm_z(a) - self%ns_qcm_z(b)
+
+    r2 = dx*dx + dy*dy + dz*dz + eps2
+
+    rinv3 = 1.0_pf / r2**1.5_pf
+    rinv5 = 1.0_pf / r2**2.5_pf
+    rinv7 = 1.0_pf / r2**3.5_pf
+
+    ! considering g(r) = G / sqrt(r^2 + eps^2), Dehnen defines
+    ! D^n = | (1/r d/dr)^n g(r) |_{r=|R|}
+
+    ! D_i^(1) = R_i D^1 (eq. 7b)
+    D1(1) = -G * dx * rinv3
+    D1(2) = -G * dy * rinv3
+    D1(3) = -G * dz * rinv3
+
+    ! D_ij^(2) = delta_ij D^1 + R_i R_j D^2 (eq. 7c)
+    D2(1) = G * (3.0_pf*dx*dx*rinv5 - rinv3) ! xx
+    D2(2) = G * (3.0_pf*dy*dy*rinv5 - rinv3) ! yy
+    D2(3) = G * (3.0_pf*dz*dz*rinv5 - rinv3) ! zz
+    D2(4) = G * 3.0_pf * dx*dy*rinv5 ! xy
+    D2(5) = G * 3.0_pf * dx*dz*rinv5 ! xz
+    D2(6) = G * 3.0_pf * dy*dz*rinv5 ! yz
+
+    ! D_ijk^(3) = (delta_ij R_k + delta_jk R_i + delta_ki R_j) D^2 + R_i R_j R_k D^3 (eq. 7d)
+    D3(1)  = G * (-15.0_pf*dx*dx*dx*rinv7 + 9.0_pf*dx*rinv5) ! xxx
+    D3(2)  = G * (-15.0_pf*dx*dx*dy*rinv7 + 3.0_pf*dy*rinv5) ! xxy
+    D3(3)  = G * (-15.0_pf*dx*dx*dz*rinv7 + 3.0_pf*dz*rinv5) ! xxz
+    D3(4)  = G * (-15.0_pf*dx*dy*dy*rinv7 + 3.0_pf*dx*rinv5) ! xyy
+    D3(5)  = G * (-15.0_pf*dx*dy*dz*rinv7)                   ! xyz
+    D3(6)  = G * (-15.0_pf*dx*dz*dz*rinv7 + 3.0_pf*dx*rinv5) ! xzz
+    D3(7)  = G * (-15.0_pf*dy*dy*dy*rinv7 + 9.0_pf*dy*rinv5) ! yyy
+    D3(8)  = G * (-15.0_pf*dy*dy*dz*rinv7 + 3.0_pf*dz*rinv5) ! yyz
+    D3(9)  = G * (-15.0_pf*dy*dz*dz*rinv7 + 3.0_pf*dy*rinv5) ! yzz
+    D3(10) = G * (-15.0_pf*dz*dz*dz*rinv7 + 9.0_pf*dz*rinv5) ! zzz
+
+    ! specific quadrupoles of the nodes
+    Qa(:) = self%ns_quad(a,:) / Ma
+    Qb(:) = self%ns_quad(b,:) / Mb
+
+    ! C_Q = Q_jk D_ijk^(3)
+    ! C_Q,x
+    CQa(1) = Qa(1)*D3(1) + 2.0_pf*Qa(4)*D3(2) + 2.0_pf*Qa(5)*D3(3) &
+           + Qa(2)*D3(4) + 2.0_pf*Qa(6)*D3(5) + Qa(3)*D3(6)
+
+    CQb(1) = Qb(1)*D3(1) + 2.0_pf*Qb(4)*D3(2) + 2.0_pf*Qb(5)*D3(3) &
+           + Qb(2)*D3(4) + 2.0_pf*Qb(6)*D3(5) + Qb(3)*D3(6)
+
+    ! C_Q,y
+    CQa(2) = Qa(1)*D3(2) + 2.0_pf*Qa(4)*D3(4) + 2.0_pf*Qa(5)*D3(5) &
+           + Qa(2)*D3(7) + 2.0_pf*Qa(6)*D3(8) + Qa(3)*D3(9)
+
+    CQb(2) = Qb(1)*D3(2) + 2.0_pf*Qb(4)*D3(4) + 2.0_pf*Qb(5)*D3(5) &
+           + Qb(2)*D3(7) + 2.0_pf*Qb(6)*D3(8) + Qb(3)*D3(9)
+
+    ! C_Q,z
+    CQa(3) = Qa(1)*D3(3) + 2.0_pf*Qa(4)*D3(5) + 2.0_pf*Qa(5)*D3(6) &
+           + Qa(2)*D3(8) + 2.0_pf*Qa(6)*D3(9) + Qa(3)*D3(10)
+
+    CQb(3) = Qb(1)*D3(3) + 2.0_pf*Qb(4)*D3(5) + 2.0_pf*Qb(5)*D3(6) &
+           + Qb(2)*D3(8) + 2.0_pf*Qb(6)*D3(9) + Qb(3)*D3(10)
+
+
+    ! coefficients of the local expansion in A
+    ! dg_A (x) = Mb [D1 + 1/2 Qb D3 + D2 . x + 1/2 x . D3 x]
+    self%ns_force(a,1) = self%ns_force(a,1) + Mb * (D1(1) + 0.5_pf*CQb(1))
+    self%ns_force(a,2) = self%ns_force(a,2) + Mb * (D1(2) + 0.5_pf*CQb(2))
+    self%ns_force(a,3) = self%ns_force(a,3) + Mb * (D1(3) + 0.5_pf*CQb(3))
+    
+    self%ns_hess(a,1:6) = self%ns_hess(a,1:6) + Mb * D2(:)
+    self%ns_third(a,1:10) = self%ns_third(a,1:10) + Mb * D3(:)
+
+    ! coefficients of the local expansion in B
+    ! using that D1(-R) = -D1(R), D2(-R) =  D2(R), D3(-R) = -D3(R)
+    self%ns_force(b,1) = self%ns_force(b,1) - Ma * (D1(1) + 0.5_pf*CQa(1))
+    self%ns_force(b,2) = self%ns_force(b,2) - Ma * (D1(2) + 0.5_pf*CQa(2))
+    self%ns_force(b,3) = self%ns_force(b,3) - Ma * (D1(3) + 0.5_pf*CQa(3))
+
+    self%ns_hess(b,1:6) = self%ns_hess(b,1:6) + Ma * D2(:)
+    self%ns_third(b,1:10) = self%ns_third(b,1:10) - Ma * D3(:)
 
 END SUBROUTINE
 
-PURE FUNCTION sphere_intersects_node (self, node_idx, px, py, pz, r) RESULT(hit)
-    CLASS(OctreeType), INTENT(IN) :: self
-    INTEGER, INTENT(IN) :: node_idx
-    REAL(pf), INTENT(IN) :: px, py, pz, r
-    LOGICAL :: hit
+SUBROUTINE dehnen_forces (self, forces)
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    REAL(pf), INTENT(OUT) :: forces(:,:) ! N x 3
+    
+    INTEGER :: node_idx, d, child_idx
+    INTEGER :: p_num, p
 
+    REAL(pf) :: f_child(3)
     REAL(pf) :: dx, dy, dz
-    REAL(pf) :: cx, cy, cz, h
-    REAL(pf) :: dist2
-    REAL(pf) :: r2
+    ! hessian terms
+    REAL(pf) :: hxx, hyy, hzz, hxy, hxz, hyz
+    ! third terms
+    REAL(pf) :: txxx, txxy, txxz
+    REAL(pf) :: txyy, txyz, txzz
+    REAL(pf) :: tyyy, tyyz, tyzz
+    REAL(pf) :: tzzz
 
-    cx = self % ns_cx(node_idx)
-    cy = self % ns_cy(node_idx)
-    cz = self % ns_cz(node_idx)
-    h  = self % ns_halfside(node_idx)
+    forces = 0.0_pf
 
-    dx = MAX(ABS(px - cx) - h, 0.0_pf)
-    dy = MAX(ABS(py - cy) - h, 0.0_pf)
-    dz = MAX(ABS(pz - cz) - h, 0.0_pf)
+    ! downward passage to propagate the forces from the root
+    DO node_idx = 1, self % number_of_nodes
+        ! a leaf dont propagate nothing
+        IF (self % ns_type(node_idx) == 1) CYCLE
+        
+        IF (self % multipole == 4) THEN
+            ! hessian matrix
+            hxx = self % ns_hess(node_idx, 1)
+            hyy = self % ns_hess(node_idx, 2)
+            hzz = self % ns_hess(node_idx, 3)
+            hxy = self % ns_hess(node_idx, 4)
+            hxz = self % ns_hess(node_idx, 5)
+            hyz = self % ns_hess(node_idx, 6)
+            ! third derivatives matrix
+            txxx = self%ns_third(node_idx,1)
+            txxy = self%ns_third(node_idx,2)
+            txxz = self%ns_third(node_idx,3)
+            txyy = self%ns_third(node_idx,4)
+            txyz = self%ns_third(node_idx,5)
+            txzz = self%ns_third(node_idx,6)
+            tyyy = self%ns_third(node_idx,7)
+            tyyz = self%ns_third(node_idx,8)
+            tyzz = self%ns_third(node_idx,9)
+            tzzz = self%ns_third(node_idx,10)
+        ENDIF
 
-    dist2 = dx*dx + dy*dy + dz*dz
+        ! if its a twig, propagate the forces to its children
+        DO d = 1, 8
+            child_idx = self % ns_child(node_idx, d)
+            IF (child_idx == -1) CYCLE
+            IF (self % ns_mass(child_idx) == 0.0_pf) CYCLE
 
-    r2 = r + self%ns_max_radius(node_idx)
-    r2 = r2 * r2
-    hit = (dist2 <= r2)
-END FUNCTION
-END MODULE
+            ! forces over the child
+            f_child = self % ns_force(child_idx, :)
+
+            ! the parent g field is added to the child field
+            ! monopole contribution
+            f_child = f_child + self % ns_force(node_idx,:)
+
+            IF (self % multipole == 4) THEN
+            ! distance between the child and the com of parent
+                dx = self%ns_qcm_x(child_idx) - self%ns_qcm_x(node_idx)
+                dy = self%ns_qcm_y(child_idx) - self%ns_qcm_y(node_idx)
+                dz = self%ns_qcm_z(child_idx) - self%ns_qcm_z(node_idx)
+
+            ! for the quadrupole, the contributions are given as
+            ! a_child = monopole + H d + 0.5 d . T d + O(d^3)
+                f_child(1) = f_child(1) &
+                    + hxx * dx + hxy * dy + hxz * dz & ! hessian
+                    + txxy*dx*dy + txxz*dx*dz + txyz*dy*dz &
+                    + 0.5_pf * (txxx*dx*dx + txyy*dy*dy + txzz*dz*dz)
+                
+                f_child(2) = f_child(2) &
+                    + hxy * dx + hyy * dy + hyz * dz & ! hessian
+                    + txyy*dx*dy + txyz*dx*dz + tyyz*dy*dz &
+                    + 0.5_pf * (txxy*dx*dx + tyyy*dy*dy + tyzz*dz*dz)
+
+                f_child(3) = f_child(3) &
+                    + hxz * dx + hyz * dy + hzz * dz & ! hessian
+                    + txyz*dx*dy + txzz*dx*dz + tyzz*dy*dz &
+                    + 0.5_pf * (txxz*dx*dx + tyyz*dy*dy + tzzz*dz*dz)
+                    
+            ! we also includes the contributions on the hessian and the third
+            ! H_child = H_parent + Td + O(d^2)
+                IF (self % ns_type(child_idx) /= 1) THEN
+                    self % ns_hess(child_idx,1) = self % ns_hess(child_idx,1) &
+                        + hxx + txxx*dx + txxy*dy + txxz*dz
+                    self % ns_hess(child_idx,2) = self % ns_hess(child_idx,2) &
+                        + hyy + txyy*dx + tyyy*dy + tyyz*dz
+                    self % ns_hess(child_idx,3) = self % ns_hess(child_idx,3) &
+                        + hzz + txzz*dx + tyzz*dy + tzzz*dz
+                    self % ns_hess(child_idx,4) = self % ns_hess(child_idx,4) &
+                        + hxy + txxy*dx + txyy*dy + txyz*dz
+                    self % ns_hess(child_idx,5) = self % ns_hess(child_idx,5) &
+                        + hxz + txxz*dx + txyz*dy + txzz*dz
+                    self % ns_hess(child_idx,6) = self % ns_hess(child_idx,6) &
+                        + hyz + txyz*dx + tyyz*dy + tyzz*dz
+                ENDIF
+
+            ! T_child = T_parent + O(d)
+                self % ns_third(child_idx,:) = self % ns_third(child_idx,:) &
+                    + self % ns_third(node_idx,:)
+            ENDIF
+
+            self % ns_force(child_idx,:) = f_child
+
+            ! if its a particle, update the forces
+            IF (self % ns_type(child_idx) == 1) THEN
+                p = self % ns_particle(child_idx)
+                IF (p == -1) CYCLE
+                forces(:,p) = self % m(p) * self % ns_force(child_idx,:)
+            ENDIF
+        END DO
+    END DO
+END SUBROUTINE
+
+SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces)
+! this subroutine do all the process to evaluate the Dehnen algorithm, assuming
+! that the tree is already constructed
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    REAL(pf), INTENT(IN)  :: theta2, potsoft2, G
+    REAL(pf), INTENT(OUT) :: forces(:,:)
+
+    ! evaluating the max radius
+    CALL self % evaluate_rmax()
+
+    ! now we do the mutual interaction walk (dual traversal)
+    CALL self % mutual_interaction_walk(theta2, potsoft2, G)
+
+    ! and finally eval the forces
+    CALL self % dehnen_forces(forces)
+END SUBROUTINE
+
+END MODULE 

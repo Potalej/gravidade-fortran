@@ -16,8 +16,8 @@
         "t0": 0,
         "tf": 10,
         "checkpoints": 200,
-        "tree": false,
-        "tree_multipole": 1,
+        "metodo_forcas": 0,
+        "tree_multipole": 4,
         "theta": 0.0
     },
     

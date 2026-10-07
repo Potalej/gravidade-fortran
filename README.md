@@ -190,9 +190,10 @@ Os métodos de integração implementados são:
     - Stormer-Verlet Composto de 8ª Ordem e 15 Estágios (svcp8s15);.
     - Stormer-Verlet Composto de 10ª Ordem e 35 Estágios (svcp10s35).
 
-É possível calcular as forças de duas formas:
+É possível calcular as forças de três formas:
 - Diretamente, sem parâmetros (custo $O(N^2)$);
 - Barnes-Hut, com parâmetro $\theta > 0$ (custo $O(N \log N)$ para $N$ grande). Nesse caso, pode-se escolher também utilizar multipolos através do parâmetro `tree_multipole`, que pode ser 1 (monopolo), 4 (quadrupolo) ou 8 (octupolo). O padrão é 1.
+- Dehnen, com parâmetro $\theta > 0$ (custo $O(N)$ para $N$ grande). Nesse caso, pode-se escolher também utilizar multipolos através do parâmetro `tree_multipole`, que pode ser 1 (monopolo) ou 4 (quadrupolo). O padrão é 1.
 
 Também há três aplicações para modificar soluções:
 

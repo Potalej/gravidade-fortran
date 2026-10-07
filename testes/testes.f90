@@ -113,9 +113,9 @@ SUBROUTINE TESTE_metodos (arquivo)
 
   DO i = 1, SIZE(integradores)
     WRITE (arquivo,*)
-    WRITE(arquivo, *) '------------------------------'
+    WRITE (arquivo,*) '------------------------------'
     WRITE (arquivo,*)
-    WRITE(arquivo, *) '[metodo: ', TRIM(integradores(i)), ']'
+    WRITE (arquivo,*) '[metodo: ', TRIM(integradores(i)), ']'
 
     ! Atualiza
     CALL atualizar_json_integracao(infos_md, "metodo", integradores(i))

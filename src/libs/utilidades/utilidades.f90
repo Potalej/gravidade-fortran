@@ -511,18 +511,23 @@ END FUNCTION momento_inercia_esc
 !   Calcula o raio de meia massa.
 !
 ! Modificado:
+!   01 de outubro de 2026
+!
+! Criado:
 !   30 de abril de 2025
 !
 ! Autoria:
 !   oap
 !
-FUNCTION raio_meia_massa (m, R)
+FUNCTION raio_meia_massa (m, R, percentil_par)
   IMPLICIT NONE
-  REAL(pf) :: m(:), R(:,:)
+  REAL(pf), INTENT(IN) :: m(:), R(:,:)
+  REAL(pf), INTENT(IN), OPTIONAL :: percentil_par
   REAL(pf) :: raio_meia_massa, M_met, M_soma, qcm(3)
   INTEGER :: i, j
   INTEGER, ALLOCATABLE :: idx_ord(:)
   REAL(pf), ALLOCATABLE :: raios(:)
+  REAL(pf) :: percentil
 
   ALLOCATE(idx_ord(SIZE(m)))
   ALLOCATE(raios(SIZE(m)))
@@ -537,8 +542,11 @@ FUNCTION raio_meia_massa (m, R)
   ! Ordena a lista em ordem crescente
   idx_ord = ordenar_lista_crescente(raios)
 
-  ! Agora vai pegando as massas ate chegar na metade
-  M_met = 0.5_pf * SUM(m)
+  percentil = 0.5_pf
+  IF (PRESENT(percentil_par)) percentil = percentil_par
+
+  ! Agora vai pegando as massas ate chegar na quantidade
+  M_met = percentil * SUM(m)
   M_soma = 0.0_pf
   DO i=1, SIZE(m)
     j = idx_ord(i)

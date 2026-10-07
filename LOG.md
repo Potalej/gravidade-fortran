@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-09-20] v1.7.0: Árvore e método de Dehnen
+
+- Finalmente a árvore foi sincronizada com o `hierarquicos`. Agora sim.
+- Implementado o algoritmo de Dehnen, que utiliza a árvore para calcular interações célula-célula e repassar para as partículas. É parecido com o Barnes-Hut mas envolve ideias do FMM, embora não o seja também. Conserva momento linear total, e conserva o angular total se usar só monopolo.
+
+---
+
 ## [2026-09-20] v1.6.0: Multipolos
 
 - Adicionado o uso da expansão multipolo no método de Barnes-Hut, que é usado através do parâmetro `tree_multipole` que pode ser 1 (monopolo), 4 (quadrupolo) e 8 (octupolo). Está sincronizado com a última atualização do repositório `hierarquicos`, de mesma data.

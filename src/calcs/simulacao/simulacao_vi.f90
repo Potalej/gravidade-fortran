@@ -5,7 +5,7 @@
 !   Simulacoes a partir diretamente de valores iniciais.
 !
 ! Modificado:
-!   13 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -25,14 +25,14 @@ CONTAINS
 !! Validacao dos parametros do arquivo de entrada de sorteio
 !
 ! Modificado:
-!   13 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
 !
 SUBROUTINE parametros (infos)
   TYPE(json_value), POINTER, INTENT(IN) :: infos
-  CHARACTER(LEN=40) :: pars(26)
+  CHARACTER(LEN=40) :: pars(27)
 
   ! gerais
   pars(1) = "modo"
@@ -51,24 +51,25 @@ SUBROUTINE parametros (infos)
   pars(12) = "integracao.t0"
   pars(13) = "integracao.tf"
   pars(14) = "integracao.checkpoints"
-  pars(15) = "integracao.tree"
-  pars(16) = "integracao.theta"
+  pars(15) = "integracao.metodo_forcas"
+  pars(16) = "integracao.tree_multipole"
+  pars(17) = "integracao.theta"
 
   ! colisoes
-  pars(17) = "colisoes.colidir"
-  pars(18) = "colisoes.metodo"
-  pars(19) = "colisoes.densidade"
-  pars(20) = "colisoes.permitir_choque_inicial"
+  pars(18) = "colisoes.colidir"
+  pars(19) = "colisoes.metodo"
+  pars(20) = "colisoes.densidade"
+  pars(21) = "colisoes.permitir_choque_inicial"
 
   ! correcao
-  pars(21) = "correcao.corrigir"
-  pars(22) = "correcao.margem_erro"
-  pars(23) = "correcao.max_num_tentativas"
+  pars(22) = "correcao.corrigir"
+  pars(23) = "correcao.margem_erro"
+  pars(24) = "correcao.max_num_tentativas"
 
   ! valores iniciais
-  pars(24) = "valores_iniciais.massas"
-  pars(25) = "valores_iniciais.posicoes"
-  pars(26) = "valores_iniciais.momentos"
+  pars(25) = "valores_iniciais.massas"
+  pars(26) = "valores_iniciais.posicoes"
+  pars(27) = "valores_iniciais.momentos"
 
   CALL validar_json(infos, pars)
 END SUBROUTINE

@@ -52,7 +52,8 @@
     "t0": 0,
     "tf": 10,
     "checkpoints": 2,
-    "tree": false,
+    "metodo_forcas": 0,
+    "tree_multipole": 1,
     "theta": 0.0E+0
   },
   "colisoes": {

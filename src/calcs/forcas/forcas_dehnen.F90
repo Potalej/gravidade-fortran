@@ -1,17 +1,17 @@
 ! ************************************************************
-!! Matriz de forcas (octree)
+!! Matriz de forcas (octree usando Dehnen)
 !
 ! Objetivos:
 !   Calculo das forcas entre os corpos utilizando uma octree e
-!   o criterio de Barnes e Hut a partir do parametro `theta`.
+!   o algoritmo de Dehnen.
 !
 ! Modificado:
-!   20 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
 ! 
-MODULE funcoes_forca_tree
+MODULE funcoes_forca_dehnen
 
   USE tipos
   USE octree_mod
@@ -22,7 +22,7 @@ MODULE funcoes_forca_tree
 CONTAINS
 
 ! Sequencial com massas diferentes
-FUNCTION forcas_seq_tree (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+FUNCTION forcas_seq_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
@@ -30,42 +30,38 @@ FUNCTION forcas_seq_tree (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forc
   REAL(pf),                    INTENT(IN) :: G, potsoft2, theta2
   REAL(pf), DIMENSION(dim)    :: Fab
   REAL(pf), DIMENSION(N, dim) :: forcas
+  REAL(pf), DIMENSION(dim, N) :: forcas_dehnen
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
 
-  forcas(:,:) = 0.0_pf
+  CALL octree % init(R(:,1),R(:,2),R(:,3))
+  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen)
+  
+  forcas(:,1) = forcas_dehnen(1,:)
+  forcas(:,2) = forcas_dehnen(2,:)
+  forcas(:,3) = forcas_dehnen(3,:)
 
-  CALL octree % init(m, R)
+END FUNCTION
 
-  DO a = 1, N
-    CALL octree % forces(a, theta2, G, potsoft2, forcas(a,:))
-  END DO
-
-END FUNCTION forcas_seq_tree
-
-! Paralelo com massas diferentes
-FUNCTION forcas_par_tree (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+! Paralelo
+! Por enquanto faz a mesma coisa, nao sei como paralelizar ainda
+FUNCTION forcas_par_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft2, theta2
   REAL(pf), DIMENSION(N, dim) :: forcas
+  REAL(pf), DIMENSION(dim, N) :: forcas_dehnen
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
 
-  forcas(:,:) = 0.0_pf
+  CALL octree % init(R(:,1),R(:,2),R(:,3))
+  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen)
+  
+  forcas(:,1) = forcas_dehnen(1,:)
+  forcas(:,2) = forcas_dehnen(2,:)
+  forcas(:,3) = forcas_dehnen(3,:)
+END FUNCTION
 
-  CALL octree % init(m, R)
-
-  !$OMP PARALLEL DO DEFAULT(NONE) &
-  !$OMP SHARED(forcas, octree, theta2, G, potsoft2, N) &
-  !$OMP PRIVATE(a) SCHEDULE(DYNAMIC)
-  DO a = 1, N
-    CALL octree % forces(a, theta2, G, potsoft2, forcas(a,:))
-  END DO
-  !$OMP END PARALLEL DO
-
-END FUNCTION forcas_par_tree
-
-END MODULE funcoes_forca_tree
+END MODULE funcoes_forca_dehnen

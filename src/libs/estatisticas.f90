@@ -34,12 +34,12 @@ SUBROUTINE estatisticas_trajetoria (arquivo_in, arquivo_out)
   REAL(pf), ALLOCATABLE :: Jx(:), Jy(:), Jz(:)
   REAL(pf), ALLOCATABLE :: Px(:), Py(:), Pz(:)
   REAL(pf), ALLOCATABLE :: Qcmx(:), Qcmy(:), Qcmz(:)
-  REAL(pf), ALLOCATABLE :: rmm(:) ! raio de meia massa
+  REAL(pf), ALLOCATABLE :: r10(:), r25(:), r50(:), r70(:) ! raios lagrangianos
 
   ! namelists
   NAMELIST /energia_nml/ E, E_err_rel, E_final, E_medio
   NAMELIST /integrais_nml/ Jx, Jy, Jz, Px, Py, Pz, Qcmx, Qcmy, Qcmz
-  NAMELIST /dinamica_nml/ rmm
+  NAMELIST /dinamica_nml/ r10, r25, r50, r70
 
   ! le o arquivo com a trajetoria
   CALL ler_data(arquivo_in, dt, G, eps, massas, Rs, Ps)
@@ -53,7 +53,7 @@ SUBROUTINE estatisticas_trajetoria (arquivo_in, arquivo_out)
   ALLOCATE(Jx(qntd), Jy(qntd), Jz(qntd))
   ALLOCATE(Px(qntd), Py(qntd), Pz(qntd))
   ALLOCATE(Qcmx(qntd), Qcmy(qntd), Qcmz(qntd))
-  ALLOCATE(rmm(qntd))
+  ALLOCATE(r10(qntd), r25(qntd), r50(qntd), r70(qntd))
 
   !> calculo das estatisticas iniciais
   E(1) = energia_total_par(G, massas, Rs(1,:,:), Ps(1,:,:), eps)
@@ -64,7 +64,11 @@ SUBROUTINE estatisticas_trajetoria (arquivo_in, arquivo_out)
   Pz(1) = SUM(Ps(1,:,3))
   Qcm = centro_massas(massas, Rs(1,:,:))
   Qcmx(1) = Qcm(1); Qcmy(1) = Qcm(2); Qcmz(1) = Qcm(3)
-  rmm(1) = raio_meia_massa(massas, Rs(1,:,:))
+  
+  r10(1) = raio_meia_massa(massas, Rs(1,:,:), 0.1_pf)
+  r25(1) = raio_meia_massa(massas, Rs(1,:,:), 0.25_pf)
+  r50(1) = raio_meia_massa(massas, Rs(1,:,:))
+  r70(1) = raio_meia_massa(massas, Rs(1,:,:), 0.70_pf)
 
   ! erro relativo
   DO i = 1, qntd - 1
@@ -89,8 +93,12 @@ SUBROUTINE estatisticas_trajetoria (arquivo_in, arquivo_out)
     Qcmy(i+1) = Qcm(2)
     Qcmz(i+1) = Qcm(3)
 
-    ! raio de meia massa
-    rmm(i+1) = raio_meia_massa(massas, Rs(i+1,:,:))
+    ! raios lagrangianos
+    r10(i+1) = raio_meia_massa(massas, Rs(i+1,:,:), 0.1_pf)
+    r25(i+1) = raio_meia_massa(massas, Rs(i+1,:,:), 0.25_pf)
+    r50(i+1) = raio_meia_massa(massas, Rs(i+1,:,:))
+    r70(i+1) = raio_meia_massa(massas, Rs(i+1,:,:), 0.70_pf)
+    
   END DO
 
   E_final = E(qntd)

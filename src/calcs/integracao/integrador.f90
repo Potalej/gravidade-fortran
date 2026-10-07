@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   20 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -50,7 +50,7 @@ MODULE integrador
     LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
 
     ! Se vai usar arvore
-    LOGICAL :: tree = .FALSE.
+    INTEGER :: metodo_forcas = 0
     REAL(pf) :: theta2
     CLASS(OctreeType), POINTER :: octree
 
@@ -98,7 +98,7 @@ END SUBROUTINE
 !   metodo.
 !
 ! Modificado:
-!   29 de maio de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -117,8 +117,8 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
   self % N = SIZE(massas)
 
   !> Uso (ou nao) das arvores
-  CALL json % get(infos, 'integracao.tree', self % tree, encontrado)
-  IF (.NOT. encontrado) self % tree = .FALSE.
+  CALL json % get(infos, 'integracao.metodo_forcas', self % metodo_forcas, encontrado)
+  IF (.NOT. encontrado) self % metodo_forcas = 0
   self % theta2 = json_get_float(infos, 'integracao.theta')
   self % theta2 = self % theta2 * self % theta2
 
@@ -139,7 +139,7 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
 
   !> Determinando as funcoes de forca a se utilizar
   !> Modulo: funcoes_forca
-  CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, self%tree, &
+  CALL inicializar_forcas(self%mi, self%paralelo, self%gpu, self % metodo_forcas, &
 	  				  self%forcas_funcao, self%forcas_mi_funcao, &
               self%forcas_tree_funcao)
 
@@ -165,7 +165,7 @@ SUBROUTINE inicializar_massas (self, infos, massas)
 
   !> Massas iguais
   CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado .OR. self % tree) self % mi = .FALSE.
+  IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
 
   !> Alocando vetor de massas
   IF (ALLOCATED(self % m)) DEALLOCATE(self % m)
@@ -219,7 +219,7 @@ END SUBROUTINE inicializar_massas
 !! Calculo das forcas conforme as massas
 !
 ! Modificado:
-!   20 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -230,7 +230,7 @@ FUNCTION forcas (self, R)
   REAL(pf), DIMENSION(self % N, self % dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(self % N, self % dim) :: forcas
 
-  IF (self % tree) THEN
+  IF (self % metodo_forcas > 0) THEN
     forcas = self % forcas_tree_funcao(self % m, R, self%G, self%N, self%dim, &
                     self%potsoft2, self%theta2, self%octree)
   ELSE

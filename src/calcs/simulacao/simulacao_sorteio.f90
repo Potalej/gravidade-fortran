@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   13 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -27,7 +27,7 @@ CONTAINS
 !! Validacao dos parametros do arquivo de entrada de sorteio
 !
 ! Modificado:
-!   13 de setembro de 2026
+!   07 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -35,7 +35,7 @@ CONTAINS
 SUBROUTINE parametros (infos, integracao)
   TYPE(json_value), POINTER, INTENT(IN) :: infos
   LOGICAL, INTENT(IN) :: integracao
-  CHARACTER(LEN=40)   :: pars(39)
+  CHARACTER(LEN=40)   :: pars(40)
 
   pars(:) = ""
 
@@ -78,19 +78,20 @@ SUBROUTINE parametros (infos, integracao)
     pars(28) = "integracao.t0"
     pars(29) = "integracao.tf"
     pars(30) = "integracao.checkpoints"
-    pars(31) = "integracao.tree"
-    pars(32) = "integracao.theta"
+    pars(31) = "integracao.metodo_forcas"
+    pars(32) = "integracao.tree_multipole"
+    pars(33) = "integracao.theta"
 
     ! colisoes
-    pars(33) = "colisoes.colidir"
-    pars(34) = "colisoes.metodo"
-    pars(35) = "colisoes.densidade"
-    pars(36) = "colisoes.permitir_choque_inicial"
+    pars(34) = "colisoes.colidir"
+    pars(35) = "colisoes.metodo"
+    pars(36) = "colisoes.densidade"
+    pars(37) = "colisoes.permitir_choque_inicial"
 
     ! correcao
-    pars(37) = "correcao.corrigir"
-    pars(38) = "correcao.margem_erro"
-    pars(39) = "correcao.max_num_tentativas"
+    pars(38) = "correcao.corrigir"
+    pars(39) = "correcao.margem_erro"
+    pars(40) = "correcao.max_num_tentativas"
   ENDIF
 
   CALL validar_json(infos, pars)

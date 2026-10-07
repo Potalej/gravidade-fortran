@@ -5,7 +5,7 @@
     "N": 50,
     "paralelo": false,
     "gpu": false,
-    "massas_iguais": false,
+    "massas_iguais": true,
     "exibir": false,
 
     "sorteio": {
@@ -34,17 +34,17 @@
     "integracao": {
         "metodo": "verlet",
         "timestep": 0.005,
-        "amortecedor": 0.0,
+        "amortecedor": 0.05,
         "t0": 0,
         "tf": 40,
         "checkpoints": 40,
-        "tree": false,
+        "metodo_forcas": 0,
         "tree_multipole": 1,
         "theta": 0.0
     },
 
     "colisoes": {
-        "colidir": true,
+        "colidir": false,
         "metodo": "direto",
         "densidade": 4.774648292756859,
         "permitir_choque_inicial": true
