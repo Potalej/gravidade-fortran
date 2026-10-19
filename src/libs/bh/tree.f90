@@ -7,7 +7,7 @@
 !  approximation with a quadrupole expansion.
 !
 !> Modified
-!  2026.10.07
+!  2026.10.19
 !
 !> Created
 !  2026.06.15
@@ -63,6 +63,7 @@ MODULE octree_mod
 
         ! for the Dehnen method
         REAL(pf), ALLOCATABLE :: ns_rmax(:), ns_force(:,:), ns_hess(:,:), ns_third(:,:)
+        INTEGER :: ind_oct(3,3,3) ! indexes of the octupoles terms
     CONTAINS
         PROCEDURE :: pre_init, init, clear
         PROCEDURE :: allocate_nodes, add_node, allocate_subnode, add_to_subnode, add
@@ -133,13 +134,25 @@ SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
         CALL self % allocate_nodes()
         
         ! allocating specific vectors
-        IF (method == 20 .OR. method == 21) THEN
+        IF (method == 20 .OR. method == 21 .OR. method == 22) THEN
             ALLOCATE(self % ns_rmax(self % max_number_of_nodes))
-            ALLOCATE(self % ns_force(self % max_number_of_nodes, 3))
+            ALLOCATE(self % ns_force(3, self % max_number_of_nodes))
+
+            ! indexes of the octupole moments, to use in the angular
+            ! momentum conserving method (Marcello's method)
+            self % ind_oct(1,1,:) = [1, 4, 7]
+            self % ind_oct(1,2,:) = [4, 2, 10]
+            self % ind_oct(1,3,:) = [7, 10, 3]
+            self % ind_oct(2,1,:) = [4, 2, 10]
+            self % ind_oct(2,2,:) = [2, 5, 8]
+            self % ind_oct(2,3,:) = [10, 8, 6]
+            self % ind_oct(3,1,:) = [7, 10, 3]
+            self % ind_oct(3,2,:) = [10, 8, 6]
+            self % ind_oct(3,3,:) = [3, 6, 9]
         ENDIF
-        IF (method == 21) THEN ! Dehnen with quadrupoles
-            ALLOCATE(self % ns_hess(self % max_number_of_nodes, 6))
-            ALLOCATE(self % ns_third(self % max_number_of_nodes, 10))
+        IF (method == 21 .OR. method == 22) THEN ! Dehnen with quadrupoles
+            ALLOCATE(self % ns_hess(6, self % max_number_of_nodes))
+            ALLOCATE(self % ns_third(10, self % max_number_of_nodes))
         ENDIF
 
         IF (collide) THEN
@@ -153,12 +166,12 @@ SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
 
             CASE (11, 21) ! quadrupoles
                 self % multipole = 4
-                ALLOCATE(self % ns_quad(self % max_number_of_nodes, 6))
+                ALLOCATE(self % ns_quad(6, self % max_number_of_nodes))
 
-            CASE (12)     ! octupole
+            CASE (12, 22)     ! octupole
                 self % multipole = 8
-                ALLOCATE(self % ns_quad(self % max_number_of_nodes, 6))
-                ALLOCATE(self % ns_oct(self % max_number_of_nodes, 14))
+                ALLOCATE(self % ns_quad(6, self % max_number_of_nodes))
+                ALLOCATE(self % ns_oct(14, self % max_number_of_nodes))
         END SELECT
     ENDIF
 
@@ -197,11 +210,11 @@ SUBROUTINE clear (self)
     IF (self % multipole >= 8) self % ns_oct = 0.0_pf
 
     ! Dehnen method
-    IF (self % method == 20 .OR. self % method == 21) THEN
+    IF (self % method == 20 .OR. self % method == 21 .OR. self % method == 22) THEN
         self % ns_rmax = 0.0_pf
         self % ns_force = 0.0_pf
     ENDIF
-    IF (self % method == 21) THEN
+    IF (self % method == 21 .OR. self % method == 22) THEN
         self % ns_hess = 0.0_pf
         self % ns_third = 0.0_pf
     ENDIF
@@ -279,7 +292,7 @@ SUBROUTINE allocate_nodes (self)
     ! node depth
     ALLOCATE(self % ns_depth(self % max_number_of_nodes))
     ! node children
-    ALLOCATE(self % ns_child(self % max_number_of_nodes, 8))
+    ALLOCATE(self % ns_child(8, self % max_number_of_nodes))
 
 END SUBROUTINE
 
@@ -322,7 +335,7 @@ SUBROUTINE add_node (self, cx, cy, cz, side, depth, idx)
     END IF
 
     ! starts without children and being a leaf
-    self % ns_child(idx,:) = -1
+    self % ns_child(:,idx) = -1
     self % ns_type(idx) = 1
     self % ns_depth(idx) = depth
     IF (depth > self % most_depth) self % most_depth = depth
@@ -369,7 +382,7 @@ SUBROUTINE allocate_subnode (self, node_idx, index)
     ! create subnode
     CALL self % add_node(cx_sub, cy_sub, cz_sub, h, d, subnode_idx)
     ! allocate it as child of node
-    self % ns_child(node_idx, index) = subnode_idx
+    self % ns_child(index, node_idx) = subnode_idx
 
     IF (self % save_txt .NE. -1) WRITE (self % save_txt, *) d, cx_sub, cy_sub, cz_sub
 END SUBROUTINE
@@ -393,14 +406,14 @@ SUBROUTINE add_to_subnode (self, node_idx, p)
     subnode_index = 1 + ix + 2*iy + 4*iz
     ! CALL self % index_subnode(node_idx, p, subnode_index)
 
-    subnode = self % ns_child(node_idx,subnode_index)
+    subnode = self % ns_child(subnode_index, node_idx)
 
     ! if the subnode isnt associated
     IF (subnode == -1) THEN
         CALL self % allocate_subnode(node_idx, subnode_index)
     ENDIF
 
-    subnode_index = self % ns_child(node_idx,subnode_index)
+    subnode_index = self % ns_child(subnode_index, node_idx)
 
     ! now add
     CALL self % add(subnode_index, p)
@@ -528,7 +541,7 @@ SUBROUTINE detect_collisions (self, p, collisions)
         ! not leaf
         ELSE
             DO i = 1, 8
-                child_idx = self % ns_child(node_idx, i)
+                child_idx = self % ns_child(i, node_idx)
 
                 IF (child_idx .NE. -1) THEN
                     top = top + 1
@@ -599,7 +612,7 @@ SUBROUTINE evaluate_multipole (self)
 
         ! if its a twig, we need to avaliate the daughters
         DO d = 1, 8
-            d_idx = self % ns_child(node_idx, d)
+            d_idx = self % ns_child(d, node_idx)
             IF (d_idx == -1) CYCLE
 
             pm = self % ns_mass(d_idx)
@@ -613,69 +626,69 @@ SUBROUTINE evaluate_multipole (self)
 
             ! if its a twig, first add its contribution
             IF (self % ns_type(d_idx) == 2) THEN
-                self % ns_quad(node_idx,:) = self % ns_quad(node_idx,:) + self % ns_quad(d_idx,:)
+                self % ns_quad(:, node_idx) = self % ns_quad(:,node_idx) + self % ns_quad(:,d_idx)
                 IF (self % multipole > 4) THEN
-                    self % ns_oct(node_idx,:) = self % ns_oct(node_idx,:) + self % ns_oct(d_idx,:)
+                    self % ns_oct(:, node_idx) = self % ns_oct(:,node_idx) + self % ns_oct(:,d_idx)
                 ENDIF
             ENDIF
 
-            self % ns_quad(node_idx, 1) = self % ns_quad(node_idx, 1) + pm * dxi**2    ! mxi2
-            self % ns_quad(node_idx, 2) = self % ns_quad(node_idx, 2) + pm * dyi**2    ! myi2
-            self % ns_quad(node_idx, 3) = self % ns_quad(node_idx, 3) + pm * dzi**2    ! mzi2
-            self % ns_quad(node_idx, 4) = self % ns_quad(node_idx, 4) + pm * dxi * dyi ! mxyi
-            self % ns_quad(node_idx, 5) = self % ns_quad(node_idx, 5) + pm * dxi * dzi ! mxzi
-            self % ns_quad(node_idx, 6) = self % ns_quad(node_idx, 6) + pm * dyi * dzi ! myzi
+            self % ns_quad(1,node_idx) = self % ns_quad(1,node_idx) + pm * dxi**2    ! mxi2
+            self % ns_quad(2,node_idx) = self % ns_quad(2,node_idx) + pm * dyi**2    ! myi2
+            self % ns_quad(3,node_idx) = self % ns_quad(3,node_idx) + pm * dzi**2    ! mzi2
+            self % ns_quad(4,node_idx) = self % ns_quad(4,node_idx) + pm * dxi * dyi ! mxyi
+            self % ns_quad(5,node_idx) = self % ns_quad(5,node_idx) + pm * dxi * dzi ! mxzi
+            self % ns_quad(6,node_idx) = self % ns_quad(6,node_idx) + pm * dyi * dzi ! myzi
 
             IF (self % multipole > 4) THEN
-                self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + pm * dxi * dxi**2
-                self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + pm * dxi * dyi**2
-                self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + pm * dxi * dzi**2
+                self % ns_oct(1,node_idx) = self % ns_oct(1,node_idx) + pm * dxi * dxi**2
+                self % ns_oct(2,node_idx) = self % ns_oct(2,node_idx) + pm * dxi * dyi**2
+                self % ns_oct(3,node_idx) = self % ns_oct(3,node_idx) + pm * dxi * dzi**2
 
-                self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + pm * dyi * dxi**2
-                self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + pm * dyi * dyi**2
-                self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + pm * dyi * dzi**2
+                self % ns_oct(4,node_idx) = self % ns_oct(4,node_idx) + pm * dyi * dxi**2
+                self % ns_oct(5,node_idx) = self % ns_oct(5,node_idx) + pm * dyi * dyi**2
+                self % ns_oct(6,node_idx) = self % ns_oct(6,node_idx) + pm * dyi * dzi**2
                 
-                self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + pm * dzi * dxi**2
-                self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + pm * dzi * dyi**2
-                self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + pm * dzi * dzi**2
+                self % ns_oct(7,node_idx) = self % ns_oct(7,node_idx) + pm * dzi * dxi**2
+                self % ns_oct(8,node_idx) = self % ns_oct(8,node_idx) + pm * dzi * dyi**2
+                self % ns_oct(9,node_idx) = self % ns_oct(9,node_idx) + pm * dzi * dzi**2
                 
-                self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + pm * dxi * dyi * dzi
+                self % ns_oct(10,node_idx) = self % ns_oct(10,node_idx) + pm * dxi * dyi * dzi
             ENDIF
 
             IF (self % multipole > 4 .AND. self % ns_type(d_idx) == 2) THEN
-                self % ns_oct(node_idx, 1) = self % ns_oct(node_idx, 1) + &
-                    3.0_pf * dxi * self % ns_quad(d_idx, 1)
-                self % ns_oct(node_idx, 2) = self % ns_oct(node_idx, 2) + &
-                    2.0_pf * dyi * self % ns_quad(d_idx, 4) + dxi * self % ns_quad(d_idx, 2)
-                self % ns_oct(node_idx, 3) = self % ns_oct(node_idx, 3) + &
-                    2.0_pf * dzi * self % ns_quad(d_idx, 5) + dxi * self % ns_quad(d_idx, 3)
+                self % ns_oct(1, node_idx) = self % ns_oct(1, node_idx) + &
+                    3.0_pf * dxi * self % ns_quad(1, d_idx)
+                self % ns_oct(2, node_idx) = self % ns_oct(2, node_idx) + &
+                    2.0_pf * dyi * self % ns_quad(4, d_idx) + dxi * self % ns_quad(2, d_idx)
+                self % ns_oct(3, node_idx) = self % ns_oct(3, node_idx) + &
+                    2.0_pf * dzi * self % ns_quad(5, d_idx) + dxi * self % ns_quad(3, d_idx)
 
-                self % ns_oct(node_idx, 4) = self % ns_oct(node_idx, 4) + &
-                    2.0_pf * dxi * self % ns_quad(d_idx, 4) + dyi * self % ns_quad(d_idx, 1)
-                self % ns_oct(node_idx, 5) = self % ns_oct(node_idx, 5) + &
-                    3.0_pf * dyi * self % ns_quad(d_idx, 2)
-                self % ns_oct(node_idx, 6) = self % ns_oct(node_idx, 6) + &
-                    2.0_pf * dzi * self % ns_quad(d_idx, 6) + dyi * self % ns_quad(d_idx, 3)
+                self % ns_oct(4, node_idx) = self % ns_oct(4, node_idx) + &
+                    2.0_pf * dxi * self % ns_quad(4, d_idx) + dyi * self % ns_quad(1, d_idx)
+                self % ns_oct(5, node_idx) = self % ns_oct(5, node_idx) + &
+                    3.0_pf * dyi * self % ns_quad(2, d_idx)
+                self % ns_oct(6, node_idx) = self % ns_oct(6, node_idx) + &
+                    2.0_pf * dzi * self % ns_quad(6, d_idx) + dyi * self % ns_quad(3, d_idx)
 
-                self % ns_oct(node_idx, 7) = self % ns_oct(node_idx, 7) + &
-                    2.0_pf * dxi * self % ns_quad(d_idx, 5) + dzi * self % ns_quad(d_idx, 1)
-                self % ns_oct(node_idx, 8) = self % ns_oct(node_idx, 8) + &
-                    2.0_pf * dyi * self % ns_quad(d_idx, 6) + dzi * self % ns_quad(d_idx, 2)
-                self % ns_oct(node_idx, 9) = self % ns_oct(node_idx, 9) + &
-                    3.0_pf * dzi * self % ns_quad(d_idx, 3)
+                self % ns_oct(7, node_idx) = self % ns_oct(7, node_idx) + &
+                    2.0_pf * dxi * self % ns_quad(5, d_idx) + dzi * self % ns_quad(1, d_idx)
+                self % ns_oct(8, node_idx) = self % ns_oct(8, node_idx) + &
+                    2.0_pf * dyi * self % ns_quad(6, d_idx) + dzi * self % ns_quad(2, d_idx)
+                self % ns_oct(9, node_idx) = self % ns_oct(9, node_idx) + &
+                    3.0_pf * dzi * self % ns_quad(3, d_idx)
 
-                self % ns_oct(node_idx, 10) = self % ns_oct(node_idx, 10) + &
-                    dxi * self % ns_quad(d_idx, 6) + &
-                    dyi * self % ns_quad(d_idx, 5) + &
-                    dzi * self % ns_quad(d_idx, 4)
+                self % ns_oct(10, node_idx) = self % ns_oct(10, node_idx) + &
+                    dxi * self % ns_quad(6, d_idx) + &
+                    dyi * self % ns_quad(5, d_idx) + &
+                    dzi * self % ns_quad(4, d_idx)
             ENDIF
         END DO
 
         IF (self % multipole > 4) THEN
-            self % ns_oct(node_idx, 11) = SUM(self % ns_oct(node_idx, 1:10))
-            self % ns_oct(node_idx, 12) = SUM(self % ns_oct(node_idx, 1:3))
-            self % ns_oct(node_idx, 13) = SUM(self % ns_oct(node_idx, 4:6))
-            self % ns_oct(node_idx, 14) = SUM(self % ns_oct(node_idx, 7:9))
+            self % ns_oct(11, node_idx) = SUM(self % ns_oct(1:10, node_idx))
+            self % ns_oct(12, node_idx) = SUM(self % ns_oct(1:3, node_idx))
+            self % ns_oct(13, node_idx) = SUM(self % ns_oct(4:6, node_idx))
+            self % ns_oct(14, node_idx) = SUM(self % ns_oct(7:9, node_idx))
         ENDIF
     END DO
 END SUBROUTINE
@@ -780,12 +793,12 @@ FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
                 My = dy * invR3 * self % ns_mass(node_idx)
                 Mz = dz * invR3 * self % ns_mass(node_idx)
                 
-                mxi2 = self % ns_quad(node_idx, 1)
-                myi2 = self % ns_quad(node_idx, 2)
-                mzi2 = self % ns_quad(node_idx, 3)
-                mxyi = self % ns_quad(node_idx, 4)
-                mxzi = self % ns_quad(node_idx, 5)
-                myzi = self % ns_quad(node_idx, 6)
+                mxi2 = self % ns_quad(1, node_idx)
+                myi2 = self % ns_quad(2, node_idx)
+                mzi2 = self % ns_quad(3, node_idx)
+                mxyi = self % ns_quad(4, node_idx)
+                mxzi = self % ns_quad(5, node_idx)
+                myzi = self % ns_quad(6, node_idx)
 
                 dx2  = 15.0_pf * dx * dx * invR2 - 3.0_pf
                 dy2  = 15.0_pf * dy * dy * invR2 - 3.0_pf
@@ -808,13 +821,13 @@ FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
                 
                 ! octupole
                 ELSE
-                    Ox = - 1.5_pf * invR5 * self%ns_oct(node_idx, 12)
-                    Oy = - 1.5_pf * invR5 * self%ns_oct(node_idx, 13)
-                    Oz = - 1.5_pf * invR5 * self%ns_oct(node_idx, 14)
+                    Ox = - 1.5_pf * invR5 * self%ns_oct(12, node_idx)
+                    Oy = - 1.5_pf * invR5 * self%ns_oct(13, node_idx)
+                    Oz = - 1.5_pf * invR5 * self%ns_oct(14, node_idx)
 
-                    Oc = 7.5_pf * invR7 * (dx * self % ns_oct(node_idx, 12) + &
-                                        dy * self % ns_oct(node_idx, 13) + &
-                                        dz * self % ns_oct(node_idx, 14))
+                    Oc = 7.5_pf * invR7 * (dx * self % ns_oct(12, node_idx) + &
+                                        dy * self % ns_oct(13, node_idx) + &
+                                        dz * self % ns_oct(14, node_idx))
                     Ox = Ox + dx * Oc
                     Oy = Oy + dy * Oc
                     Oz = Oz + dz * Oc
@@ -822,36 +835,36 @@ FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
                     dx2 = dx*dx
                     dy2 = dy*dy
                     dz2 = dz*dz
-                    Ox = Ox + 7.5_pf * invR7 * (dx2 * self % ns_oct(node_idx, 1) + &
-                                                dy2 * self % ns_oct(node_idx, 2) + &
-                                                dz2 * self % ns_oct(node_idx, 3) + &
-                                                2.0_pf * dx*dy * self % ns_oct(node_idx, 4) + &
-                                                2.0_pf * dx*dz * self % ns_oct(node_idx, 7) + &
-                                                2.0_pf * dy*dz * self % ns_oct(node_idx, 10))
-                    Oy = Oy + 7.5_pf * invR7 * (dx2 * self % ns_oct(node_idx, 4) + &
-                                                dy2 * self % ns_oct(node_idx, 5) + &
-                                                dz2 * self % ns_oct(node_idx, 6) + &
-                                                2.0_pf * dx*dy * self % ns_oct(node_idx, 2) + &
-                                                2.0_pf * dx*dz * self % ns_oct(node_idx, 10) + &
-                                                2.0_pf * dy*dz * self % ns_oct(node_idx, 8))
-                    Oz = Oz + 7.5_pf * invR7 * (dx2 * self % ns_oct(node_idx, 7) + &
-                                                dy2 * self % ns_oct(node_idx, 8) + &
-                                                dz2 * self % ns_oct(node_idx, 9) + &
-                                                2.0_pf * dx*dy * self % ns_oct(node_idx, 10) + &
-                                                2.0_pf * dx*dz * self % ns_oct(node_idx, 3) + &
-                                                2.0_pf * dy*dz * self % ns_oct(node_idx, 6))
+                    Ox = Ox + 7.5_pf * invR7 * (dx2 * self % ns_oct(1, node_idx) + &
+                                                dy2 * self % ns_oct(2, node_idx) + &
+                                                dz2 * self % ns_oct(3, node_idx) + &
+                                                2.0_pf * dx*dy * self % ns_oct(4, node_idx) + &
+                                                2.0_pf * dx*dz * self % ns_oct(7, node_idx) + &
+                                                2.0_pf * dy*dz * self % ns_oct(10, node_idx))
+                    Oy = Oy + 7.5_pf * invR7 * (dx2 * self % ns_oct(4, node_idx) + &
+                                                dy2 * self % ns_oct(5, node_idx) + &
+                                                dz2 * self % ns_oct(6, node_idx) + &
+                                                2.0_pf * dx*dy * self % ns_oct(2, node_idx) + &
+                                                2.0_pf * dx*dz * self % ns_oct(10, node_idx) + &
+                                                2.0_pf * dy*dz * self % ns_oct(8, node_idx))
+                    Oz = Oz + 7.5_pf * invR7 * (dx2 * self % ns_oct(7, node_idx) + &
+                                                dy2 * self % ns_oct(8, node_idx) + &
+                                                dz2 * self % ns_oct(9, node_idx) + &
+                                                2.0_pf * dx*dy * self % ns_oct(10, node_idx) + &
+                                                2.0_pf * dx*dz * self % ns_oct(3, node_idx) + &
+                                                2.0_pf * dy*dz * self % ns_oct(6, node_idx))
 
                     Oc = -17.5_pf * invR9 * ( &
-                        dx2 * dx * self % ns_oct(node_idx,1) + &
-                        dy2 * dy * self % ns_oct(node_idx,5) + &
-                        dz2 * dz * self % ns_oct(node_idx,9) + &
-                        3.0_pf * dx2 * dy * self % ns_oct(node_idx,4) + &
-                        3.0_pf * dx2 * dz * self % ns_oct(node_idx,7) + &
-                        3.0_pf * dy2 * dx * self % ns_oct(node_idx,2) + &
-                        3.0_pf * dy2 * dz * self % ns_oct(node_idx,8) + &
-                        3.0_pf * dz2 * dx * self % ns_oct(node_idx,3) + &
-                        3.0_pf * dz2 * dy * self % ns_oct(node_idx,6) + &
-                        6.0_pf * dx * dy * dz * self % ns_oct(node_idx,10))
+                        dx2 * dx * self % ns_oct(1, node_idx) + &
+                        dy2 * dy * self % ns_oct(5, node_idx) + &
+                        dz2 * dz * self % ns_oct(9, node_idx) + &
+                        3.0_pf * dx2 * dy * self % ns_oct(4, node_idx) + &
+                        3.0_pf * dx2 * dz * self % ns_oct(7, node_idx) + &
+                        3.0_pf * dy2 * dx * self % ns_oct(2, node_idx) + &
+                        3.0_pf * dy2 * dz * self % ns_oct(8, node_idx) + &
+                        3.0_pf * dz2 * dx * self % ns_oct(3, node_idx) + &
+                        3.0_pf * dz2 * dy * self % ns_oct(6, node_idx) + &
+                        6.0_pf * dx * dy * dz * self % ns_oct(10, node_idx))
 
                     Ox = Ox + dx * Oc
                     Oy = Oy + dy * Oc
@@ -866,7 +879,7 @@ FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
         ELSE
             ! push children in the vec
             DO i = 1, 8
-                child_idx = self % ns_child(node_idx, i)
+                child_idx = self % ns_child(I, node_idx)
                  IF (child_idx .NE. -1) THEN
                     top = top + 1
                     stack(top) = child_idx
@@ -909,7 +922,7 @@ SUBROUTINE evaluate_rmax (self)
         ELSE
             r_child_max = 0.0_pf
             DO i = 1, 8
-                child_idx = self % ns_child(node_idx,i)
+                child_idx = self % ns_child(i, node_idx)
                 IF (child_idx == -1) CYCLE
                 IF (self % ns_mass(child_idx) == 0.0_pf) CYCLE ! empty
 
@@ -967,10 +980,10 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
 
             ! for a cell we interact the pairs
             DO i = 1, 8
-                child_a = self % ns_child(a,i) 
+                child_a = self % ns_child(i,a) 
                 IF (child_a == -1) CYCLE
                 DO j = i, 8
-                    child_b = self % ns_child(a,j)
+                    child_b = self % ns_child(j,a)
                     IF (child_b == -1) CYCLE
                     top = top + 1
                     stack_a(top) = child_a
@@ -992,10 +1005,10 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
             ! we evaluate the coefficients of the expansion A <- B and B <- A
             IF (self % multipole == 1) THEN
                 CALL evaluate_mutual_interaction_monopole(self, a, b, G, eps2)
-            ELSE IF (self % multipole == 4) THEN
+            ELSE IF (self % multipole == 4 .OR. self % multipole == 8) THEN
                 CALL evaluate_mutual_interaction_quadrupole(self, a, b, G, eps2)
             ELSE
-                STOP "the multipole parameter isnt 1 neither 4"
+                STOP "the multipole parameter needs to be 1, 4 or 8"
             ENDIF
             CYCLE
         ENDIF
@@ -1004,7 +1017,7 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
         IF (self % ns_rmax(a) >= self % ns_rmax(b)) THEN
             ! opens A
             DO i = 1, 8
-                child_a = self % ns_child(a,i)
+                child_a = self % ns_child(i,a)
                 IF (child_a == -1) CYCLE
                 top = top + 1
                 stack_a(top) = child_a
@@ -1013,7 +1026,7 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
         ELSE
             ! opens B
             DO i = 1, 8
-                child_b = self % ns_child(b,i)
+                child_b = self % ns_child(i,b)
                 IF (child_b == -1) CYCLE
                 top = top + 1
                 stack_a(top) = a
@@ -1041,14 +1054,14 @@ SUBROUTINE evaluate_mutual_interaction_monopole (self, a, b, G, eps2)
     factor = G * rinv3
 
     ! A <- B
-    self % ns_force(a,1) = self % ns_force(a,1) + factor * self % ns_mass(b) * dx
-    self % ns_force(a,2) = self % ns_force(a,2) + factor * self % ns_mass(b) * dy
-    self % ns_force(a,3) = self % ns_force(a,3) + factor * self % ns_mass(b) * dz
+    self % ns_force(1,a) = self % ns_force(1,a) + factor * self % ns_mass(b) * dx
+    self % ns_force(2,a) = self % ns_force(2,a) + factor * self % ns_mass(b) * dy
+    self % ns_force(3,a) = self % ns_force(3,a) + factor * self % ns_mass(b) * dz
 
     ! B <- A
-    self % ns_force(b,1) = self % ns_force(b,1) - factor * self % ns_mass(a) * dx
-    self % ns_force(b,2) = self % ns_force(b,2) - factor * self % ns_mass(a) * dy
-    self % ns_force(b,3) = self % ns_force(b,3) - factor * self % ns_mass(a) * dz
+    self % ns_force(1,b) = self % ns_force(1,b) - factor * self % ns_mass(a) * dx
+    self % ns_force(2,b) = self % ns_force(2,b) - factor * self % ns_mass(a) * dy
+    self % ns_force(3,b) = self % ns_force(3,b) - factor * self % ns_mass(a) * dz
 END SUBROUTINE
 
 SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
@@ -1064,6 +1077,10 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
     REAL(pf) :: D1(3), D2(6), D3(10)
     REAL(pf) :: Qa(6), Qb(6)
     REAL(pf) :: CQa(3), CQb(3)
+
+    REAL(pf) :: R(3), ci(3), CRR(3), Cjkl
+    INTEGER  :: j, k, l
+    REAL(pf) :: Fc(3)
 
     Ma = self%ns_mass(a)
     Mb = self%ns_mass(b)
@@ -1108,8 +1125,8 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
     D3(10) = G * (-15.0_pf*dz*dz*dz*rinv7 + 9.0_pf*dz*rinv5) ! zzz
 
     ! specific quadrupoles of the nodes
-    Qa(:) = self%ns_quad(a,:) / Ma
-    Qb(:) = self%ns_quad(b,:) / Mb
+    Qa(:) = self%ns_quad(:,a) / Ma
+    Qb(:) = self%ns_quad(:,b) / Mb
 
     ! C_Q = Q_jk D_ijk^(3)
     ! C_Q,x
@@ -1136,22 +1153,45 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
 
     ! coefficients of the local expansion in A
     ! dg_A (x) = Mb [D1 + 1/2 Qb D3 + D2 . x + 1/2 x . D3 x]
-    self%ns_force(a,1) = self%ns_force(a,1) + Mb * (D1(1) + 0.5_pf*CQb(1))
-    self%ns_force(a,2) = self%ns_force(a,2) + Mb * (D1(2) + 0.5_pf*CQb(2))
-    self%ns_force(a,3) = self%ns_force(a,3) + Mb * (D1(3) + 0.5_pf*CQb(3))
+    self%ns_force(1,a) = self%ns_force(1,a) + Mb * (D1(1) + 0.5_pf*CQb(1))
+    self%ns_force(2,a) = self%ns_force(2,a) + Mb * (D1(2) + 0.5_pf*CQb(2))
+    self%ns_force(3,a) = self%ns_force(3,a) + Mb * (D1(3) + 0.5_pf*CQb(3))
     
-    self%ns_hess(a,1:6) = self%ns_hess(a,1:6) + Mb * D2(:)
-    self%ns_third(a,1:10) = self%ns_third(a,1:10) + Mb * D3(:)
+    self%ns_hess(1:6,a) = self%ns_hess(1:6,a) + Mb * D2(:)
+    self%ns_third(1:10,a) = self%ns_third(1:10,a) + Mb * D3(:)
 
     ! coefficients of the local expansion in B
     ! using that D1(-R) = -D1(R), D2(-R) =  D2(R), D3(-R) = -D3(R)
-    self%ns_force(b,1) = self%ns_force(b,1) - Ma * (D1(1) + 0.5_pf*CQa(1))
-    self%ns_force(b,2) = self%ns_force(b,2) - Ma * (D1(2) + 0.5_pf*CQa(2))
-    self%ns_force(b,3) = self%ns_force(b,3) - Ma * (D1(3) + 0.5_pf*CQa(3))
+    self%ns_force(1,b) = self%ns_force(1,b) - Ma * (D1(1) + 0.5_pf*CQa(1))
+    self%ns_force(2,b) = self%ns_force(2,b) - Ma * (D1(2) + 0.5_pf*CQa(2))
+    self%ns_force(3,b) = self%ns_force(3,b) - Ma * (D1(3) + 0.5_pf*CQa(3))
 
-    self%ns_hess(b,1:6) = self%ns_hess(b,1:6) + Ma * D2(:)
-    self%ns_third(b,1:10) = self%ns_third(b,1:10) - Ma * D3(:)
+    self%ns_hess(1:6,b) = self%ns_hess(1:6,b) + Ma * D2(:)
+    self%ns_third(1:10,b) = self%ns_third(1:10,b) - Ma * D3(:)
 
+    ! implementation of the Marcello's version, using the octupoles terms to
+    ! vanish the torque (conserving angular momentum)
+    IF (self % multipole >= 8) THEN
+        R = [dx, dy, dz]
+        ci = 0.0_pf
+        CRR = 0.0_pf
+        DO j = 1, 3
+            DO k = 1, 3
+                DO l = 1, 3
+                    Cjkl = Mb * self % ns_oct(self % ind_oct(j,k,l), a) &
+                        - Ma * self%ns_oct(self % ind_oct(j,k,l), b)
+                    IF (k == l) ci(j) = ci(j) + Cjkl
+                    CRR(j) = CRR(j) + Cjkl * R(k) * R(l)
+                END DO
+            END DO
+        END DO
+
+        ! F = 1/2 [ D2 c + D3 CRR ],  D2 = 3G/r^5,  D3 = -15G/r^7
+        Fc = 0.5_pf * ( 3.0_pf*G*rinv5 * ci - 15.0_pf*G*rinv7 * CRR )
+
+        self % ns_force(:,a) = self%ns_force(:,a) + Fc / Ma
+        self % ns_force(:,b) = self%ns_force(:,b) - Fc / Mb
+    ENDIF
 END SUBROUTINE
 
 SUBROUTINE dehnen_forces (self, forces)
@@ -1178,41 +1218,41 @@ SUBROUTINE dehnen_forces (self, forces)
         ! a leaf dont propagate nothing
         IF (self % ns_type(node_idx) == 1) CYCLE
         
-        IF (self % multipole == 4) THEN
+        IF (self % multipole >= 4) THEN
             ! hessian matrix
-            hxx = self % ns_hess(node_idx, 1)
-            hyy = self % ns_hess(node_idx, 2)
-            hzz = self % ns_hess(node_idx, 3)
-            hxy = self % ns_hess(node_idx, 4)
-            hxz = self % ns_hess(node_idx, 5)
-            hyz = self % ns_hess(node_idx, 6)
+            hxx = self % ns_hess(1, node_idx)
+            hyy = self % ns_hess(2, node_idx)
+            hzz = self % ns_hess(3, node_idx)
+            hxy = self % ns_hess(4, node_idx)
+            hxz = self % ns_hess(5, node_idx)
+            hyz = self % ns_hess(6, node_idx)
             ! third derivatives matrix
-            txxx = self%ns_third(node_idx,1)
-            txxy = self%ns_third(node_idx,2)
-            txxz = self%ns_third(node_idx,3)
-            txyy = self%ns_third(node_idx,4)
-            txyz = self%ns_third(node_idx,5)
-            txzz = self%ns_third(node_idx,6)
-            tyyy = self%ns_third(node_idx,7)
-            tyyz = self%ns_third(node_idx,8)
-            tyzz = self%ns_third(node_idx,9)
-            tzzz = self%ns_third(node_idx,10)
+            txxx = self%ns_third(1, node_idx)
+            txxy = self%ns_third(2, node_idx)
+            txxz = self%ns_third(3, node_idx)
+            txyy = self%ns_third(4, node_idx)
+            txyz = self%ns_third(5, node_idx)
+            txzz = self%ns_third(6, node_idx)
+            tyyy = self%ns_third(7, node_idx)
+            tyyz = self%ns_third(8, node_idx)
+            tyzz = self%ns_third(9, node_idx)
+            tzzz = self%ns_third(10, node_idx)
         ENDIF
 
         ! if its a twig, propagate the forces to its children
         DO d = 1, 8
-            child_idx = self % ns_child(node_idx, d)
+            child_idx = self % ns_child(d, node_idx)
             IF (child_idx == -1) CYCLE
             IF (self % ns_mass(child_idx) == 0.0_pf) CYCLE
 
             ! forces over the child
-            f_child = self % ns_force(child_idx, :)
+            f_child = self % ns_force(:, child_idx)
 
             ! the parent g field is added to the child field
             ! monopole contribution
-            f_child = f_child + self % ns_force(node_idx,:)
+            f_child = f_child + self % ns_force(:, node_idx)
 
-            IF (self % multipole == 4) THEN
+            IF (self % multipole >= 4) THEN
             ! distance between the child and the com of parent
                 dx = self%ns_qcm_x(child_idx) - self%ns_qcm_x(node_idx)
                 dy = self%ns_qcm_y(child_idx) - self%ns_qcm_y(node_idx)
@@ -1238,32 +1278,32 @@ SUBROUTINE dehnen_forces (self, forces)
             ! we also includes the contributions on the hessian and the third
             ! H_child = H_parent + Td + O(d^2)
                 IF (self % ns_type(child_idx) /= 1) THEN
-                    self % ns_hess(child_idx,1) = self % ns_hess(child_idx,1) &
+                    self % ns_hess(1, child_idx) = self % ns_hess(1, child_idx) &
                         + hxx + txxx*dx + txxy*dy + txxz*dz
-                    self % ns_hess(child_idx,2) = self % ns_hess(child_idx,2) &
+                    self % ns_hess(2, child_idx) = self % ns_hess(2, child_idx) &
                         + hyy + txyy*dx + tyyy*dy + tyyz*dz
-                    self % ns_hess(child_idx,3) = self % ns_hess(child_idx,3) &
+                    self % ns_hess(3, child_idx) = self % ns_hess(3, child_idx) &
                         + hzz + txzz*dx + tyzz*dy + tzzz*dz
-                    self % ns_hess(child_idx,4) = self % ns_hess(child_idx,4) &
+                    self % ns_hess(4, child_idx) = self % ns_hess(4, child_idx) &
                         + hxy + txxy*dx + txyy*dy + txyz*dz
-                    self % ns_hess(child_idx,5) = self % ns_hess(child_idx,5) &
+                    self % ns_hess(5, child_idx) = self % ns_hess(5, child_idx) &
                         + hxz + txxz*dx + txyz*dy + txzz*dz
-                    self % ns_hess(child_idx,6) = self % ns_hess(child_idx,6) &
+                    self % ns_hess(6, child_idx) = self % ns_hess(6, child_idx) &
                         + hyz + txyz*dx + tyyz*dy + tyzz*dz
                 ENDIF
 
             ! T_child = T_parent + O(d)
-                self % ns_third(child_idx,:) = self % ns_third(child_idx,:) &
-                    + self % ns_third(node_idx,:)
+                self % ns_third(:, child_idx) = self % ns_third(:, child_idx) &
+                    + self % ns_third(:, node_idx)
             ENDIF
 
-            self % ns_force(child_idx,:) = f_child
+            self % ns_force(:, child_idx) = f_child
 
             ! if its a particle, update the forces
             IF (self % ns_type(child_idx) == 1) THEN
                 p = self % ns_particle(child_idx)
                 IF (p == -1) CYCLE
-                forces(:,p) = self % m(p) * self % ns_force(child_idx,:)
+                forces(:,p) = self % m(p) * self % ns_force(:, child_idx)
             ENDIF
         END DO
     END DO
@@ -1275,6 +1315,12 @@ SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces)
     CLASS(OctreeType), INTENT(INOUT) :: self
     REAL(pf), INTENT(IN)  :: theta2, potsoft2, G
     REAL(pf), INTENT(OUT) :: forces(:,:)
+
+    IF (self % multipole >= 4) THEN
+        self % ns_hess = 0.0_pf
+        self % ns_third = 0.0_pf
+    ENDIF
+    self % ns_force = 0.0_pf
 
     ! evaluating the max radius
     CALL self % evaluate_rmax()

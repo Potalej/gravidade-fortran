@@ -43,7 +43,7 @@ SUBROUTINE definir_metodo (integrador, metodo, p_status)
   IF (PRESENT(p_status)) status = p_status
 
   ! Definicao dinamica do metodo
-  IF (status) WRITE (*,'(a)') 'METODO: ', metodo
+  IF (status) WRITE (*,'(a)') '  > Metodo: '//TRIM(metodo)
   
   SELECT CASE (TRIM(metodo))
 @INTEGRADORES_SELECT@

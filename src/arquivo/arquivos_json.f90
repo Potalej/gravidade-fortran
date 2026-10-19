@@ -70,7 +70,7 @@ SUBROUTINE ler_json (arquivo, dados, p_exibir)
     exibir = .TRUE.
     IF (PRESENT(p_exibir)) exibir = p_exibir
 
-    IF (exibir) WRITE (*,'(A)') 'PRESET: '//arquivo
+    IF (exibir) WRITE (*,'(A)') 'PRESET: '//TRIM(arquivo)
     CALL json % parse(file=arquivo, p=dados)
 END SUBROUTINE ler_json
 

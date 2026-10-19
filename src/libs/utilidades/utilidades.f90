@@ -13,7 +13,7 @@
 ! 
 ! Modificado:
 !   02 de fevereiro de 2024 (criado)
-!   13 de setembro de 2026 (modificado)
+!   19 de outubro de 2026 (modificado)
 ! 
 ! Autoria:
 !   oap
@@ -278,8 +278,11 @@ END FUNCTION momento_angular_total
 !   Calcula a energia cinetica de um conjunto de corpos dadas
 !   as suas massas e momentos linares.
 !
-! Modificado:
+! Criado:
 !   03 de fevereiro de 2024
+!
+! Modificado:
+!   19 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -289,9 +292,14 @@ FUNCTION energia_cinetica_vec (m, P) RESULT(ec)
   REAL(pf) :: m(:), P(:,:), ec
   INTEGER  :: i
   ec=0.0_pf
+  !$OMP PARALLEL DO DEFAULT(NONE) &
+  !$OMP SHARED(m, P) &
+  !$OMP PRIVATE(i) &
+  !$OMP SCHEDULE(DYNAMIC) REDUCTION(+:ec)
   DO i=1, SIZE(m)
     ec = ec + DOT_PRODUCT(P(i,:), P(i,:))/m(i)
   END DO
+  !$OMP END PARALLEL DO
   ec = 0.5_pf * ec
 END FUNCTION energia_cinetica_vec
 
@@ -313,8 +321,11 @@ END FUNCTION energia_cinetica_esc
 !   A formula utilizada eh a seguinte:
 !   V = - G sum (i < j) m_i m_j / r_ij
 !
-! Modificado:
+! Criado:
 !   21 de julho de 2025
+!
+! Modificado:
+!   19 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -339,6 +350,10 @@ FUNCTION energia_potencial_vec (G,m,R,eps,dists) RESULT(ep)
       END DO
     END DO
   ELSE
+    !$OMP PARALLEL DO DEFAULT(NONE) &
+    !$OMP SHARED(m, R, G, eps) &
+    !$OMP PRIVATE(i, j, distancia, distancia_inv) &
+    !$OMP SCHEDULE(DYNAMIC) REDUCTION(+:ep)
     DO i=2, SIZE(m)
       DO j=1,i-1
         ! distancia = NORM2(R(i,:)-R(j,:))
@@ -347,6 +362,7 @@ FUNCTION energia_potencial_vec (G,m,R,eps,dists) RESULT(ep)
         ep = ep + m(i)*m(j)*distancia_inv
       END DO
     END DO
+    !$OMP END PARALLEL DO
   ENDIF
   ep = -G*ep
 END FUNCTION energia_potencial_vec
@@ -596,8 +612,11 @@ END FUNCTION tempo_relaxacao_rh
 ! ************************************************************
 !! Calculo do termo <F,q> para o virial amortecido
 !
-! Modificado:
+! Criado:
 !   25 de julho de 2025
+!
+! Modificado:
+!   19 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -610,6 +629,11 @@ FUNCTION virial_potencial_amortecido (G, m, R, eps, ep_var) RESULT(f_prod_q)
   
   f_prod_q = 0.0_pf
   ep = 0.0_pf
+
+  !$OMP PARALLEL DO DEFAULT(NONE) &
+  !$OMP SHARED(m, R, G, eps) &
+  !$OMP PRIVATE(a, b, Fab, dist2, denominador) &
+  !$OMP SCHEDULE(DYNAMIC) REDUCTION(+:ep, f_prod_q)
   DO a = 2, SIZE(m)
     DO b = 1, a - 1
       Fab = R(b,:) - R(a,:)
@@ -627,6 +651,7 @@ FUNCTION virial_potencial_amortecido (G, m, R, eps, ep_var) RESULT(f_prod_q)
       f_prod_q = f_prod_q - DOT_PRODUCT(R(b,:), Fab)
     END DO
   END DO
+  !$OMP END PARALLEL DO
 
   IF (PRESENT(ep_var)) ep_var = ep
 

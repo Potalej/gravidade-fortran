@@ -203,7 +203,8 @@ SUBROUTINE criar_data (self, qntd_corpos, dimensao)
   INTEGER, INTENT(IN)           :: qntd_corpos, dimensao
   INTEGER(kind=4)               :: id_arq_data, id_arq_info, id_arq_bkp
 
-  IF (self % status) WRITE (*, '(a)') 'CRIAR ARQUIVO PARA SALVAR PLOT:'
+  IF (self % status) WRITE (*,*) ""
+  IF (self % status) WRITE (*, '(a)') 'PASTA DE SAIDA:'
 
   ! cria formatacao
   CALL self % criar_formatos(qntd_corpos, dimensao)

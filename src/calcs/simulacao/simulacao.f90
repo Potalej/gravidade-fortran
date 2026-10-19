@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   19 de outubro de 2026
 !
 ! Autoria:
 !   oap
@@ -363,7 +363,8 @@ SUBROUTINE rodar (self, qntdPassos)
   REAL(pf) :: E
   LOGICAL :: corrigiu
 
-  IF (self % status) WRITE (*, '(a)') '  > iniciando simulacao...'
+  IF (self % status) WRITE (*, '(a)') 'SIMULACAO:'
+  IF (self % status) WRITE (*, '(a)') '  > iniciando...'
   R1 = self % R0
   P1 = self % P0
 
@@ -443,6 +444,7 @@ SUBROUTINE rodar (self, qntdPassos)
   IF (self % exibir) CALL self % conexao % encerrar_conexao()
 
   IF (self % status) WRITE (*, '(a)') '  > simulacao encerrada!'
+  IF (self % status) WRITE (*, '(a)') '  > saida salva no diretorio: '//self%Arq%dir_arq
   IF (self % status) WRITE (*,*)
 
   CALL self % arq % fechar()

@@ -1,5 +1,14 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-10-19] v1.7.1: Método de Dehnen-Marcello e melhorias
+
+- Implementada a correção de Marcello, que utiliza octupolos no método de Dehnen para anular o torque e conservar momento angular total.
+- Alguns vetores da árvore também foram alterados de modo a explorar a ordenação padrão do Fortran.
+- Melhorias nos prints de saída da simulação.
+- Algumas funções do módulo de utilidades foram paralelizadas.
+
+---
+
 ## [2026-09-20] v1.7.0: Árvore e método de Dehnen
 
 - Finalmente a árvore foi sincronizada com o `hierarquicos`. Agora sim.
