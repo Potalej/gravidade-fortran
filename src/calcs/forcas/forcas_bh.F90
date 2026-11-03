@@ -6,7 +6,7 @@
 !   o criterio de Barnes e Hut a partir do parametro `theta`.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   03 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -49,7 +49,6 @@ FUNCTION forcas_par_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft2, theta2
   REAL(pf), DIMENSION(N, dim) :: forcas
-  REAL(pf), DIMENSION(dim, N) :: forcas_dehnen
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
 

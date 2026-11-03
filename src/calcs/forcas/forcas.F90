@@ -8,14 +8,15 @@
 !   massas iguais (MI), que estao separadas em dois modulos.
 !   Alem disso, tambem eh possivel calcular as forcas
 !   diretamente ou utilizando uma arvore (octree) e obtendo
-!   as forcas atraves de Barnes-Hut ou Dehnen.
+!   as forcas atraves de Barnes-Hut, Barnes-Hut otimizado ou
+!   Dehnen / Dehnen-Marcello.
 ! 
 !   O que este modulo faz eh auxiliar a classe INTEGRACAO na
 !   inicializacao das funcoes de forca, trazendo para ca a
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   03 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -29,6 +30,7 @@ MODULE funcoes_forca
   USE funcoes_forca_mi
   USE funcoes_forca_bh
   USE funcoes_forca_dehnen
+  USE funcoes_forca_bh_groups
 
   IMPLICIT NONE
   PUBLIC
@@ -72,7 +74,7 @@ CONTAINS
 !! Inicializador
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   03 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -111,6 +113,9 @@ SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t)
       ! dehnen
       ELSE IF (tree == 2) THEN
         f_t => forcas_par_dehnen
+      ! optimized barnes-hut
+      ELSE IF (tree == 3) THEN
+        f_t => forcas_par_bh_groups
       ENDIF
     ELSE
       ! metodo direto
@@ -126,6 +131,9 @@ SUBROUTINE inicializar_forcas (mi, pcpu, pgpu, tree, f, f_mi, f_t)
       ! dehnen
       ELSE IF (tree == 2) THEN
         f_t => forcas_seq_dehnen
+      ! optimized barnes-hut
+      ELSE IF (tree == 3) THEN
+        f_t => forcas_seq_bh_groups
       ENDIF
     ENDIF
   ENDIF

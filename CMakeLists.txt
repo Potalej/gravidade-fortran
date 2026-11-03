@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.7.1
+project("gravidade" VERSION 1.7.2
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -351,6 +351,7 @@ add_library(integracao
   "./src/calcs/forcas/forcas_mi.F90"
   "./src/calcs/forcas/forcas_bh.F90"
   "./src/calcs/forcas/forcas_dehnen.F90"
+  "./src/calcs/forcas/forcas_bh_groups.F90"
   
   "./src/calcs/integracao/integrador.f90" 
   ${CMAKE_CURRENT_BINARY_DIR}/src/calcs/integracao/integradores.f90

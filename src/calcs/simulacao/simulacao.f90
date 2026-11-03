@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   19 de outubro de 2026
+!   03 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -224,6 +224,7 @@ SUBROUTINE iniciar (self, infos, m, R0, P0, h, out_dir, out_ext, p_status)
 
     IF (self % metodo_forcas == 1) a = a + 10
     IF (self % metodo_forcas == 2) a = a + 20
+    IF (self % metodo_forcas == 3) a = a + 30
 
     CALL self % octree % pre_init(self % m, a, &
         self % colidir, self % raios)

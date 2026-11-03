@@ -1,13 +1,76 @@
-! ************************************************************
-!! Octree (Collisions, Barnes-Hut and Dehnen)
+! ***********************************************************************
+!! Octree (Collisions, Barnes-Hut, Dehnen and optmized BH)
 !
 !> Objectives
-!  This module generates an octree based in the positions of the
-!  particles and evaluates the forces using the Barnes-Hut 
-!  approximation with a quadrupole expansion.
+!  This module generates an octree based in the positions of the particles. 
+!  The octree can be used to detect collisions and to evaluate the 
+!  gravitational interaction between the particles using one of three
+!  methods:
+!  (1) the classical Barnes-Hut approach (Barnes & Hut, 1986);
+!  (2) the Dehnen very-fast algorithm (Dehnen, 2000) and the Marcello's
+!      version, conserving total angular momentum (Marcello, 2017);
+!  (3) an optimized BH method, using shared interaction lists (Barnes, 1990).
+!
+!> Initializing the octree
+!  The octree needs to be pre initiated
+!
+!       CALL tree % pre_init(m, method, &
+!                             collide (OPT), radii (OPT), &
+!                             group_size (OPT))
+!
+!  The first is the mass, the second needs to be one of the available
+!  methods (see below). The collide and radii parameters are optional and
+!  are relative to the collision detection. The group_size is the parameter
+!  relative to the method (3).
+!
+!  To init the tree, just run
+!
+!       CALL tree % init(x, y, z)
+!
+!> Using the methods
+!  To use (1), pre init the octree using method = 10, 11 or 12, being,
+!  respectively, the BH method with monopole, quadrupole and octupole.
+!  To evaluate the forces, call the "forces" function for each particle:
+!
+!       DO p = 1, N
+!           fs(:,p) = tree % forces(p, theta2, G, eps2)
+!       END DO
+!
+!  This can be done in parallel (over this DO loop), and the output
+!  of the "forces" function is an array of dimension 3.
+!
+!  To use (2), pre init the octree using method = 20, 21 or 22, being,
+!  respectively, the Dehnen's method with monopole, with quadrupole
+!  and using the Marcello (2017) correction to conserve angular
+!  momentum. To evaluate the forces, call the "dehnen_eval" routine:
+!
+!       CALL tree % dehnen_eval(theta2, eps2, G, fs)
+!
+!  At the moment, this is not parallelizable, as long it does a dual
+!  traversal and the parallelization of this is not imeddiate.
+!
+!  To use (3), pre-init the tree using method = 30, 31 or 32, being,
+!  respectively, the BH method with monopole, quadrupole and octupole.
+!  You also can specify the 'group_size' argument; the default is 64.
+!  To evaluate the forces, call the "forces_group" routine:
+!
+!       CALL tree % forces_groups(theta2, G, eps2, fs, nt)
+!
+!  where 'nt' is the number of threads, so this method is invasive in
+!  this sense.
+!
+!> References
+!  * BARNES, Josh; HUT, Piet. A hierarchical O(N log N) force-calculation
+!    algorithm. Nature, v. 324, n. 6096, p. 446–449, dez. 1986.
+!  * DEHNEN, Walter. A Very Fast and Momentum-conserving Tree Code. The 
+!    Astrophysical Journal, v. 536, n. 1, p. L39-L42, 10 jun. 2000.
+!  * MARCELLO, Dominic C. A Very Fast and Angular Momentum Conserving 
+!    Tree Code. The Astronomical Journal, v. 154, n. 3, p. 92, 11 ago. 2017.
+!  * BARNES, Joshua E. A modified tree code: Don’t laugh; It runs. Journal 
+!    of Computational Physics, v. 87, n. 1, p. 161–170, 1 mar. 1990. 
 !
 !> Modified
-!  2026.10.19
+!  2026.11.03
 !
 !> Created
 !  2026.06.15
@@ -30,6 +93,10 @@ MODULE octree_mod
         INTEGER :: max_depth = 25
         ! amplificator of the size of the quadtree-root
         REAL(pf) :: side_amplificator = 1.2_pf
+
+        ! timers
+        REAL(pf) :: time_basic, time_multipole, time_group, time_construct
+
         ! multipole
         INTEGER :: multipole
 
@@ -64,10 +131,18 @@ MODULE octree_mod
         ! for the Dehnen method
         REAL(pf), ALLOCATABLE :: ns_rmax(:), ns_force(:,:), ns_hess(:,:), ns_third(:,:)
         INTEGER :: ind_oct(3,3,3) ! indexes of the octupoles terms
+
+        ! for the grouped Barnes-Hut method
+        INTEGER :: group_size = 64
+        INTEGER :: ngroups = 0
+        INTEGER, ALLOCATABLE :: ns_count(:), ns_first(:), ns_last(:)
+        INTEGER, ALLOCATABLE :: order(:), groups(:)
+        REAL(pf), ALLOCATABLE :: gx(:), gy(:), gz(:), gm(:)
     CONTAINS
         PROCEDURE :: pre_init, init, clear
         PROCEDURE :: allocate_nodes, add_node, allocate_subnode, add_to_subnode, add
-        
+        PROCEDURE :: incorporate_particles
+
         ! for collisions
         PROCEDURE :: detect_collisions, sphere_intersects_node
 
@@ -84,6 +159,9 @@ MODULE octree_mod
         PROCEDURE :: mutual_interaction_walk
         PROCEDURE :: evaluate_mutual_interaction_monopole
         PROCEDURE :: evaluate_mutual_interaction_quadrupole
+
+        ! for the optmized (grouped) Barnes-Hut
+        PROCEDURE :: prepare_groups, forces_groups
     END TYPE
 CONTAINS
 
@@ -92,7 +170,7 @@ CONTAINS
 ! some routines that construct the octree, to use to detect collisions or to evalute the
 ! forces using the Barnes-Hut method or the Dehnen method.
 !*****************************************************************************************
-SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
+SUBROUTINE pre_init (self, m, method_par, collide_par, radii, group_size)
 ! this subroutine starts the octree and prepare it to use for some objective.
 ! the methods are:
 ! 10: barnes-hut (monopole)
@@ -100,11 +178,15 @@ SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
 ! 12: barnes-hut (octupole)
 ! 20: dehnen (monopole)
 ! 21: dehnen (quadrupole)
+! 30: grouped barnes-hut (monopole)
+! 31: grouped barnes-hut (quadrupole)
+! 32: grouped barnes-hut (octupole)
     CLASS(OctreeType), INTENT(INOUT) :: self
     REAL(pf), INTENT(IN) :: m(:) ! masses vector
     INTEGER,  INTENT(IN), OPTIONAL :: method_par
     LOGICAL,  INTENT(IN), OPTIONAL :: collide_par
     REAL(pf), INTENT(IN), OPTIONAL :: radii(:) ! radii vector
+    INTEGER,  INTENT(IN), OPTIONAL :: group_size
 
     INTEGER :: method
     LOGICAL :: collide
@@ -161,18 +243,24 @@ SUBROUTINE pre_init (self, m, method_par, collide_par, radii)
 
         ! multipoles
         SELECT CASE (method)
-            CASE (10, 20) ! monopoles
+            CASE (10, 20, 30) ! monopoles
                 self % multipole = 1
 
-            CASE (11, 21) ! quadrupoles
+            CASE (11, 21, 31) ! quadrupoles
                 self % multipole = 4
                 ALLOCATE(self % ns_quad(6, self % max_number_of_nodes))
 
-            CASE (12, 22)     ! octupole
+            CASE (12, 22, 32) ! octupole
                 self % multipole = 8
                 ALLOCATE(self % ns_quad(6, self % max_number_of_nodes))
                 ALLOCATE(self % ns_oct(14, self % max_number_of_nodes))
         END SELECT
+
+        ! optimized Barnes-Hut
+        IF (method == 30 .OR. method == 31 .OR. method == 32) THEN
+            self % group_size = 64
+            IF (PRESENT(group_size)) self % group_size = group_size
+        ENDIF
     ENDIF
 
     CALL self % clear()
@@ -230,35 +318,63 @@ SUBROUTINE init (self, x, y, z, save_txt)
     REAL(pf) :: infos_root(4)
     INTEGER  :: idx_root, p
 
+    REAL(pf) :: t0, t1
+
     IF (.NOT. self % is_allocated) STOP "Not allocated! Run pre_init first!"
 
-    ! clear
-    CALL self % clear()
+    CALL CPU_TIME(t0) ! timer
+    ! initializing the general structure of the tree
+        ! clear
+        CALL self % clear()
 
-    ! saving information
-    self % x = x
-    self % y = y
-    self % z = z
+        ! saving information
+        self % x = x
+        self % y = y
+        self % z = z
 
-    ! init the root
-    infos_root = node_size_center(x, y, z)
-    CALL self % add_node(infos_root(1), infos_root(2), infos_root(3), &
-        self%side_amplificator*infos_root(4), 0, idx_root)
+        ! init the root
+        infos_root = node_size_center(x, y, z)
+        CALL self % add_node(infos_root(1), infos_root(2), infos_root(3), &
+            self%side_amplificator*infos_root(4), 0, idx_root)
 
-    ! if wants to save_txt
-    self % save_txt = -1
-    IF (PRESENT(save_txt)) THEN
-        self % save_txt = save_txt
-        WRITE (self % save_txt, *) self%ns_cx(1), self%ns_cy(1), self%ns_cz(1), self%ns_halfside(1)
-    ENDIF
-    
-    ! add the children to root
-    DO p = 1, self % N
-        CALL self % add(idx_root, p)
-    END DO
+        ! if wants to save_txt
+        self % save_txt = -1
+        IF (PRESENT(save_txt)) THEN
+            self % save_txt = save_txt
+            WRITE (self % save_txt, *) self%ns_cx(1), self%ns_cy(1), self%ns_cz(1), self%ns_halfside(1)
+        ENDIF
+        
+        ! add the children to root
+        DO p = 1, self % N
+            CALL self % add(idx_root, p)
+        END DO
+
+        ! add the physical information of the particles if use monopole.
+        ! if use quadrupole or octupole, this is made in the evaluate_multipole
+        IF (self % multipole == 1) CALL self % incorporate_particles()
+    CALL CPU_TIME(t1)
+    self % time_basic = t1 - t0
 
     ! if wants to use multipole
-    IF (self % multipole > 1) CALL self % evaluate_multipole()
+    self % time_multipole = 0.0_pf
+    IF (self % multipole > 1) THEN
+        CALL CPU_TIME(t0)
+            CALL self % evaluate_multipole()
+        CALL CPU_TIME(t1)
+        self % time_multipole = t1 - t0
+    ENDIF
+
+    ! if using the optmized Barnes-Hut method, mount the groups
+    self % time_group = 0.0_pf
+    IF (self % method == 30 .OR. self % method == 31 .OR. self % method == 32) THEN
+        CALL CPU_TIME(t0)
+            CALL self % prepare_groups()
+        CALL CPU_TIME(t1)
+        self % time_group = t1 - t0
+    ENDIF
+
+    ! general timer
+    self % time_construct = self % time_basic + self % time_multipole + self % time_group
 END SUBROUTINE
 
 SUBROUTINE allocate_nodes (self)
@@ -429,31 +545,11 @@ SUBROUTINE add (self, node_idx, p)
     INTEGER :: old_p
     REAL(pf) :: pm, px, py, pz, old_mass
     
-    ! get particle information
-    pm = self % m(p)
-    px = self % x(p)
-    py = self % y(p)
-    pz = self % z(p)
-
     ! an empty node become a particle
     IF (self % ns_particle(node_idx) == -1 .AND. self % ns_type(node_idx) == 1) THEN
         self % ns_particle(node_idx) = p
-
-        ! add directly the mass and center of mass
-        self % ns_mass(node_idx) = pm
-        self % ns_qcm_x(node_idx) = px
-        self % ns_qcm_y(node_idx) = py
-        self % ns_qcm_z(node_idx) = pz
-
         RETURN
     ENDIF
-
-    ! update the mass and center of mass if the node isnt empty
-    old_mass = self % ns_mass(node_idx)
-    self % ns_mass(node_idx) = self % ns_mass(node_idx) + pm
-    self % ns_qcm_x(node_idx) = (self % ns_qcm_x(node_idx) * old_mass + px * pm) / self % ns_mass(node_idx)
-    self % ns_qcm_y(node_idx) = (self % ns_qcm_y(node_idx) * old_mass + py * pm) / self % ns_mass(node_idx)
-    self % ns_qcm_z(node_idx) = (self % ns_qcm_z(node_idx) * old_mass + pz * pm) / self % ns_mass(node_idx)
 
     ! if isnt empty, it become a twig
     IF (self % ns_type(node_idx) == 1) THEN
@@ -473,6 +569,56 @@ SUBROUTINE add (self, node_idx, p)
         CALL self % add_to_subnode(node_idx, p)
     ENDIF
 END SUBROUTINE
+
+SUBROUTINE incorporate_particles (self)
+! incorporate the physical information of the particles to the nodes. this is called 
+! only if using monopole. in multipole>=4 cases, the evaluate_multipoles subroutine 
+! do this work.
+! @calledby init
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    INTEGER :: node_idx, p, child_idx, child
+
+    DO node_idx = self % number_of_nodes, 1, -1
+        ! if its a leaf
+        IF (self % ns_type(node_idx) == 1) THEN
+            p = self % ns_particle(node_idx)
+            IF (p == -1) CYCLE
+            
+            self % ns_mass(node_idx) = self % m(p)
+            self % ns_qcm_x(node_idx) = self % x(p)
+            self % ns_qcm_y(node_idx) = self % y(p)
+            self % ns_qcm_z(node_idx) = self % z(p)
+        
+        ! if its a twig
+        ELSE
+            self % ns_mass(node_idx) = 0.0_pf
+            self % ns_qcm_x(node_idx) = 0.0_pf
+            self % ns_qcm_y(node_idx) = 0.0_pf
+            self % ns_qcm_z(node_idx) = 0.0_pf
+
+            DO child = 1, 8
+                child_idx = self % ns_child(child, node_idx)
+                IF (child_idx == -1) CYCLE
+
+                self % ns_mass(node_idx) = self % ns_mass(node_idx) + &
+                    self % ns_mass(child_idx)
+
+                self % ns_qcm_x(node_idx) = self % ns_qcm_x(node_idx) + &
+                    self % ns_mass(child_idx) * self % ns_qcm_x(child_idx)
+                self % ns_qcm_y(node_idx) = self % ns_qcm_y(node_idx) + &
+                    self % ns_mass(child_idx) * self % ns_qcm_y(child_idx)
+                self % ns_qcm_z(node_idx) = self % ns_qcm_z(node_idx) + &
+                    self % ns_mass(child_idx) * self % ns_qcm_z(child_idx)
+            END DO
+
+            self % ns_qcm_x(node_idx) = self % ns_qcm_x(node_idx) / self % ns_mass(node_idx)
+            self % ns_qcm_y(node_idx) = self % ns_qcm_y(node_idx) / self % ns_mass(node_idx)
+            self % ns_qcm_z(node_idx) = self % ns_qcm_z(node_idx) / self % ns_mass(node_idx)
+        ENDIF
+    END DO
+END SUBROUTINE
+
+
 
 !*****************************************************************************************
 ! COLLISIONS ROUTINES
@@ -602,6 +748,14 @@ SUBROUTINE evaluate_multipole (self)
     DO node_idx = self % number_of_nodes, 1, -1
         ! if its a leaf, it doesnt have contributions
         IF (self % ns_type(node_idx) == 1) THEN
+            p = self % ns_particle(node_idx)
+            IF (p == -1) CYCLE
+            
+            ! add the physical information of the particle
+            self % ns_mass(node_idx) = self % m(p)
+            self % ns_qcm_x(node_idx) = self % x(p)
+            self % ns_qcm_y(node_idx) = self % y(p)
+            self % ns_qcm_z(node_idx) = self % z(p)
             CYCLE
         ENDIF
 
@@ -609,6 +763,31 @@ SUBROUTINE evaluate_multipole (self)
         IF (self % ns_depth(node_idx) == self % max_depth) THEN
             CYCLE
         ENDIF
+
+        ! adding the physical information (mass and com)
+        self % ns_mass(node_idx) = 0.0_pf
+        self % ns_qcm_x(node_idx) = 0.0_pf
+        self % ns_qcm_y(node_idx) = 0.0_pf
+        self % ns_qcm_z(node_idx) = 0.0_pf
+
+        DO d = 1, 8
+            d_idx = self % ns_child(d, node_idx)
+            IF (d_idx == -1) CYCLE
+
+            self % ns_mass(node_idx) = self % ns_mass(node_idx) + &
+                self % ns_mass(d_idx)
+
+            self % ns_qcm_x(node_idx) = self % ns_qcm_x(node_idx) + &
+                self % ns_mass(d_idx) * self % ns_qcm_x(d_idx)
+            self % ns_qcm_y(node_idx) = self % ns_qcm_y(node_idx) + &
+                self % ns_mass(d_idx) * self % ns_qcm_y(d_idx)
+            self % ns_qcm_z(node_idx) = self % ns_qcm_z(node_idx) + &
+                self % ns_mass(d_idx) * self % ns_qcm_z(d_idx)
+        END DO
+
+        self % ns_qcm_x(node_idx) = self % ns_qcm_x(node_idx) / self % ns_mass(node_idx)
+        self % ns_qcm_y(node_idx) = self % ns_qcm_y(node_idx) / self % ns_mass(node_idx)
+        self % ns_qcm_z(node_idx) = self % ns_qcm_z(node_idx) / self % ns_mass(node_idx)
 
         ! if its a twig, we need to avaliate the daughters
         DO d = 1, 8
@@ -888,6 +1067,7 @@ FUNCTION bh_forces_over_p (self, p, par_theta2, par_G, par_eps2) RESULT (forces)
         ENDIF
     END DO
 END FUNCTION
+
 
 
 !*****************************************************************************************
@@ -1330,6 +1510,402 @@ SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces)
 
     ! and finally eval the forces
     CALL self % dehnen_forces(forces)
+END SUBROUTINE
+
+
+
+!*****************************************************************************************
+! OPTMIZED BARNES-HUT ROUTINES
+! The subroutines below are relative to the optimization suggested by Barnes (1990),
+! using shared interaction lists. The results are expected to be a little different of
+! the original implementation of Barnes and Hut (1986), maybe a little better.
+!*****************************************************************************************
+SUBROUTINE prepare_groups (self)
+! this subroutine prepares the groups to evaluate the forces.
+! 1. count particle per node
+! 2. constructs an interval [first,last] of a vector 'order' for each node
+! 3. copy the bodies in the tree order
+! 4. choose the groups
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    
+    INTEGER :: node_idx, child_idx, i, k, p, top
+    INTEGER :: stack(8 * (self % max_depth + 2))
+
+    IF (.NOT. ALLOCATED(self % ns_count)) THEN
+        ALLOCATE(self % ns_count(self % max_number_of_nodes))
+        ALLOCATE(self % ns_first(self % max_number_of_nodes))
+        ALLOCATE(self % ns_last(self % max_number_of_nodes))
+        ALLOCATE(self % groups(self % max_number_of_nodes))
+        ALLOCATE(self % order(self % N))
+        ALLOCATE(self % gx(self % N), self % gy(self % N))
+        ALLOCATE(self % gz(self % N), self % gm(self % N))
+    ENDIF
+
+    ! 1. count, from the children to the parent (childs have bigger index than parents)
+    DO node_idx = self % number_of_nodes, 1, -1
+        IF (self % ns_type(node_idx) == 1) THEN
+            self % ns_count(node_idx) = MERGE(1, 0, self % ns_particle(node_idx) .NE. -1)
+        ELSE
+            k = 0
+            DO i = 1, 8
+                child_idx = self % ns_child(i, node_idx)
+                IF (child_idx .NE. -1) k = k + self % ns_count(child_idx)
+            END DO
+            self % ns_count(node_idx) = k
+        ENDIF
+    END DO
+
+    ! the root must have N bodies
+    IF (self % ns_count(1) .NE. self % N) THEN
+        STOP "[prepare_grous] body lost"
+    ENDIF
+
+    ! 2. intervals, from parent to children
+    self % ns_first(1) = 1
+    DO node_idx = 1, self % number_of_nodes
+        k = self % ns_first(node_idx)
+        IF (self % ns_type(node_idx) == 1) THEN
+            IF (self % ns_count(node_idx) == 1) self % order(k) = self % ns_particle(node_idx)
+        ELSE
+            DO i = 1, 8
+                child_idx = self % ns_child(i, node_idx)
+                IF (child_idx == -1) CYCLE
+                self % ns_first(child_idx) = k
+                k = k + self % ns_count(child_idx)
+            END DO
+        ENDIF
+        self % ns_last(node_idx) = self % ns_first(node_idx) + self % ns_count(node_idx) - 1
+    END DO
+
+    ! 3. bodies in the tree order (contiguous arrays)
+    DO i = 1, self % N
+        p = self % order(i)
+        self % gm(i) = self % m(p)
+        self % gx(i) = self % x(p)
+        self % gy(i) = self % y(p)
+        self % gz(i) = self % z(p)
+    END DO
+
+    ! 4. groups: DFS, stop in node with a number of particles <= group_size
+    self % ngroups = 0
+    top = 1
+    stack(top) = 1
+    DO WHILE (top > 0)
+        node_idx = stack(top)
+        top = top - 1
+        IF (self % ns_count(node_idx) == 0) CYCLE
+
+        IF (self % ns_count(node_idx) <= self % group_size .OR. self % ns_type(node_idx) == 1) THEN
+            self % ngroups = self % ngroups + 1
+            self % groups(self % ngroups) = node_idx
+        ELSE
+            DO i = 1, 8
+                child_idx = self % ns_child(i, node_idx)
+                IF (child_idx == -1) CYCLE
+                top = top + 1
+                stack(top) = child_idx
+            END DO
+        ENDIF
+    END DO
+END SUBROUTINE
+
+SUBROUTINE forces_groups (self, theta2, G, eps2, forces)
+! evaluate the forces with the BH method using interaction lists.
+! its necessary to call self % prepare_groups() before
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    REAL(pf), INTENT(IN)  :: theta2, G, eps2
+    REAL(pf), INTENT(OUT) :: forces(:,:) ! (3,N) original order
+
+    IF (.NOT. ALLOCATED(self % ns_count) .OR. self % ngroups == 0) THEN
+        CALL self % prepare_groups()
+    ENDIF
+    
+    ! the lists of each threads stay in local variables of group_worker
+    !$OMP PARALLEL DEFAULT(SHARED)
+    CALL group_worker(self, theta2, G, eps2, forces)
+    !$OMP END PARALLEL
+END SUBROUTINE
+
+SUBROUTINE group_worker (self, theta2, G, eps2, forces)
+! called inside a parallel region. the lists (locals) are privates of each
+! thread and the !$OMP DO distribute the groups
+    CLASS(OctreeType), INTENT(IN) :: self
+    REAL(pf), INTENT(IN)  :: theta2, G, eps2
+    REAL(pf), INTENT(INOUT) :: forces(:,:) ! (3,N) original order
+
+    ! direct fonts
+    REAL(pf), ALLOCATABLE :: sx(:), sy(:), sz(:), sm(:)
+    ! cells (mass, com(3), quad(6), octu(14))
+    REAL(pf), ALLOCATABLE :: cd(:,:)
+
+    INTEGER  :: group_index, group_number, group_first, group_last
+    REAL(pf) :: group_min(3), group_max(3)
+
+    INTEGER :: top, stack(8 * (self % max_depth + 2))
+    INTEGER :: node_idx, child_idx, i, j, k
+    INTEGER :: a, b, ns, nc
+    REAL(pf) :: cc(3), dist2, dd
+    
+    REAL(pf) :: xi, yi, zi, ax, ay, az, f
+    REAL(pf) :: dx, dy, dz, invr, invr2, invr3, invr5, invr7, invr9
+    REAL(pf) :: qx, qy, qz, dqd, trq, s
+    REAL(pf) :: ox, oy, oz, oc
+
+    ! allocating the direct fonts
+    ALLOCATE(sx(2048), sy(2048), sz(2048), sm(2048))
+
+    SELECT CASE (self % multipole)
+        CASE (1)
+            ! mass and com(3) = 4
+            ALLOCATE(cd(4, 512))
+        CASE (4)
+            ! mass, com(3) and quad(6) = 10
+            ALLOCATE(cd(10, 512))
+        CASE (8)
+            ! mass, com(3), quad(6) and octu(14) = 24
+            ALLOCATE(cd(24, 512))
+    END SELECT
+    cd = 0.0_pf
+
+    !$OMP DO SCHEDULE(DYNAMIC, 1)
+    DO group_index = 1, self % ngroups
+        group_number = self % groups(group_index)
+        group_first  = self % ns_first(group_number)
+        group_last   = self % ns_last(group_number)
+
+        ! box that contains all the particles of the group
+        group_min(1) = MINVAL(self % gx(group_first:group_last))
+        group_min(2) = MINVAL(self % gy(group_first:group_last))
+        group_min(3) = MINVAL(self % gz(group_first:group_last))
+        group_max(1) = MAXVAL(self % gx(group_first:group_last))
+        group_max(2) = MAXVAL(self % gy(group_first:group_last))
+        group_max(3) = MAXVAL(self % gz(group_first:group_last))
+
+        ! traversing the tree for all the group, making the lists
+        ns = 0
+        nc = 0
+        top = 1
+        stack(top) = 1
+        DO WHILE (top > 0)
+            node_idx = stack(top)
+            top = top - 1
+
+            IF (node_idx == group_number) CYCLE ! is the group itself
+            IF (self % ns_mass(node_idx) == 0.0_pf) CYCLE ! empty node
+
+            ! ancestor of the group: open ever (it should not be accepted by the MAC)
+            IF (self % ns_first(node_idx) <= group_first .AND. self % ns_last(node_idx) >= group_last) THEN
+                DO i = 1, 8
+                    child_idx = self % ns_child(i, node_idx)
+                    IF (child_idx == -1) CYCLE
+                    top = top + 1
+                    stack(top) = child_idx
+                END DO
+                CYCLE
+            ENDIF
+
+            ! leaf: direct sum (exact and less expensive than a cell)
+            IF (self % ns_type(node_idx) == 1) THEN
+                a = self % ns_first(node_idx)
+                b = self % ns_last(node_idx)
+                DO WHILE (ns + (b - a + 1) > SIZE(sx))
+                    CALL grow_real_vec(sx); CALL grow_real_vec(sy)
+                    CALL grow_real_vec(sz); CALL grow_real_vec(sm)
+                END DO
+                sm(ns+1:ns+b-a+1) = self % gm(a:b)
+                sx(ns+1:ns+b-a+1) = self % gx(a:b)
+                sy(ns+1:ns+b-a+1) = self % gy(a:b)
+                sz(ns+1:ns+b-a+1) = self % gz(a:b)
+                ns = ns + (b - a + 1)
+                CYCLE
+            ENDIF
+
+            ! MAC: distance^2 from node com to the group of the group
+            cc = [self % ns_qcm_x(node_idx), self % ns_qcm_y(node_idx), self % ns_qcm_z(node_idx)]
+            dist2 = 0.0_pf
+            DO i = 1, 3
+                dd = MAX(group_min(i) - cc(i), 0.0_pf, cc(i) - group_max(i))
+                dist2 = dist2 + dd * dd
+            END DO
+
+            IF (self % ns_L2(node_idx) <= theta2 * dist2 &
+                .OR. self % ns_depth(node_idx) >= self % max_depth) THEN
+                ! accepted cell
+                nc = nc + 1
+                IF (nc > SIZE(cd, 2)) CALL grow_real_mat(cd)
+                ! saving the cell information
+                cd(1, nc) = self % ns_mass(node_idx)
+                cd(2:4, nc) = cc
+                IF (self % multipole >= 4) cd(5:10, nc) = self % ns_quad(:, node_idx)
+                IF (self % multipole >= 8) cd(11:24, nc) = self % ns_oct(:, node_idx)
+            ELSE
+                DO i = 1, 8
+                    child_idx = self % ns_child(i, node_idx)
+                    IF (child_idx == -1) CYCLE
+                    top = top + 1
+                    stack(top) = child_idx
+                END DO
+            ENDIF
+        END DO
+
+        ! each particle of the group go through the lists (contiguous loops)
+        DO i = group_first, group_last
+            xi = self % gx(i); yi = self % gy(i); zi = self % gz(i)
+            ax = 0.0_pf; ay = 0.0_pf; az = 0.0_pf
+
+            ! in the group itself (skip the particle itself)
+            DO j = group_first, group_last
+                IF (j == i) CYCLE
+                dx = self % gx(j) - xi
+                dy = self % gy(j) - yi
+                dz = self % gz(j) - zi
+                dist2 = dx*dx + dy*dy + dz*dz + eps2
+                invr = 1.0_pf / SQRT(dist2)
+                invr3 = invr * invr * invr
+                f = self % gm(j) * invr3
+                ax = ax + f * dx
+                ay = ay + f * dy
+                az = az + f * dz
+            END DO
+
+            ! leafs of the other regions
+            !$OMP SIMD REDUCTION(+:ax,ay,az) PRIVATE(dx,dy,dz,dist2,invr,invr3,f)
+            DO j = 1, ns
+                dx = sx(j) - xi
+                dy = sy(j) - yi
+                dz = sz(j) - zi
+                dist2 = dx*dx + dy*dy + dz*dz + eps2
+                invr = 1.0_pf / SQRT(dist2)
+                invr3 = invr * invr * invr
+                f = sm(j) * invr3
+                ax = ax + f * dx
+                ay = ay + f * dy
+                az = az + f * dz
+            END DO
+
+            ! accepts cells, with d = cm - pos
+            IF (self % multipole == 1) THEN
+                !$OMP SIMD REDUCTION(+:ax,ay,az) PRIVATE(dx,dy,dz,dist2,invr,invr3,f)
+                DO j = 1, nc
+                    dx = cd(2,j) - xi
+                    dy = cd(3,j) - yi
+                    dz = cd(4,j) - zi
+                    dist2 = dx*dx + dy*dy + dz*dz + eps2
+                    invr = 1.0_pf / SQRT(dist2)
+                    invr3 = invr * invr * invr
+                    f = cd(1,j) * invr3
+                    ax = ax + f * dx
+                    ay = ay + f * dy
+                    az = az + f * dz
+                END DO
+            ELSE IF (self % multipole == 4) THEN
+                !$OMP SIMD REDUCTION(+:ax,ay,az) &
+                !$OMP& PRIVATE(dx,dy,dz,dist2,invr,invr3,invr5,invr7,qx,qy,qz,dqd,trq,s)
+                DO j = 1, nc
+                    dx = cd(2,j) - xi
+                    dy = cd(3,j) - yi
+                    dz = cd(4,j) - zi
+                    dist2 = dx*dx + dy*dy + dz*dz + eps2
+                    invr = 1.0_pf / SQRT(dist2)
+                    invr3 = invr * invr * invr
+                    invr5 = invr3 * invr * invr
+                    invr7 = invr5 * invr * invr
+
+                    qx = cd(5,j)*dx + cd(8,j)*dy + cd(9,j)*dz
+                    qy = cd(8,j)*dx + cd(6,j)*dy + cd(10,j)*dz
+                    qz = cd(9,j)*dx + cd(10,j)*dy + cd(7,j)*dz
+                    dqd = dx*qx + dy*qy + dz*qz
+                    trq = cd(5,j) + cd(6,j) + cd(7,j)
+
+                    s = cd(1,j)*invr3 - 1.5_pf*trq*invr5 + 7.5_pf*dqd*invr7
+                    ax = ax + s*dx - 3.0_pf*qx*invr5
+                    ay = ay + s*dy - 3.0_pf*qy*invr5
+                    az = az + s*dz - 3.0_pf*qz*invr5
+                END DO  
+            ELSE IF (self % multipole == 8) THEN
+                !$OMP SIMD REDUCTION(+:ax,ay,az) &
+                !$OMP& PRIVATE(dx,dy,dz,dist2,invr,invr3,invr5,invr7,invr9,qx,qy,qz,dqd,trq,ox,oy,oz,oc)
+                DO j = 1, nc
+                    dx = cd(2,j) - xi
+                    dy = cd(3,j) - yi
+                    dz = cd(4,j) - zi
+                    dist2 = dx*dx + dy*dy + dz*dz + eps2
+                    invr = 1.0_pf / SQRT(dist2)
+                    invr3 = invr * invr * invr
+                    invr5 = invr3 * invr * invr
+                    invr7 = invr5 * invr * invr
+                    invr9 = invr7 * invr * invr
+
+                    qx = cd(5,j)*dx + cd(8,j)*dy + cd(9,j)*dz
+                    qy = cd(8,j)*dx + cd(6,j)*dy + cd(10,j)*dz
+                    qz = cd(9,j)*dx + cd(10,j)*dy + cd(7,j)*dz
+                    dqd = dx*qx + dy*qy + dz*qz
+                    trq = cd(5,j) + cd(6,j) + cd(7,j)
+                    
+                    ! monopole + quadrupole
+                    s = cd(1,j)*invr3 - 1.5_pf*trq*invr5 + 7.5_pf*dqd*invr7
+                    ax = ax + s*dx - 3.0_pf*qx*invr5
+                    ay = ay + s*dy - 3.0_pf*qy*invr5
+                    az = az + s*dz - 3.0_pf*qz*invr5
+
+                    ! octupole
+                    oc = 7.5_pf * invr7 * (dx*cd(22,j) + dy*cd(23,j) + dz*cd(24,j))
+                    ox = -1.5_pf*invr5*cd(22,j) + dx*oc
+                    oy = -1.5_pf*invr5*cd(23,j) + dy*oc
+                    oz = -1.5_pf*invr5*cd(24,j) + dz*oc
+
+                    ox = ox +  7.5_pf*invr7*(dx*dx*cd(11,j) + dy*dy*cd(12,j) + dz*dz*cd(13,j))
+                    ox = ox + 15.0_pf*invr7*(dx*dy*cd(14,j) + dx*dz*cd(17,j) + dy*dz*cd(20,j))
+
+                    oy = oy +  7.5_pf*invr7*(dx*dx*cd(14,j) + dy*dy*cd(15,j) + dz*dz*cd(16,j))
+                    oy = oy + 15.0_pf*invr7*(dx*dy*cd(12,j) + dx*dz*cd(20,j) + dy*dz*cd(18,j))
+
+                    oz = oz +  7.5_pf*invr7*(dx*dx*cd(17,j) + dy*dy*cd(18,j) + dz*dz*cd(19,j))
+                    oz = oz + 15.0_pf*invr7*(dx*dy*cd(20,j) + dx*dz*cd(13,j) + dy*dz*cd(16,j))
+
+                    oc = dx*dx*dx*cd(11,j) + dy*dy*dy*cd(15,j) + dz*dz*dz*cd(19,j)
+                    oc = oc + 3.0_pf * (dx*dx*dy*cd(14,j) + dx*dx*dz*cd(17,j) + dx*dy*dy*cd(12,j))
+                    oc = oc + 3.0_pf * (dy*dy*dz*cd(18,j) + dx*dz*dz*cd(13,j) + dy*dz*dz*cd(16,j))
+                    oc = oc + 6.0_pf * dx * dy * dz * cd(20,j)
+                    oc = -17.5_pf * invr9 * oc
+                    
+                    ox = ox + dx * oc
+                    oy = oy + dy * oc
+                    oz = oz + dz * oc
+
+                    ax = ax + ox
+                    ay = ay + oy
+                    az = az + oz
+                END DO
+            ENDIF
+            ! original order
+            k = self % order(i)
+            forces(1,k) = G * self % gm(i) * ax
+            forces(2,k) = G * self % gm(i) * ay
+            forces(3,k) = G * self % gm(i) * az
+        END DO
+    END DO
+    !$OMP END DO
+
+    DEALLOCATE(sx, sy, sz, sm, cd)
+END SUBROUTINE
+
+SUBROUTINE grow_real_vec (a)
+! just grow a real vector
+    REAL(pf), ALLOCATABLE, INTENT(INOUT) :: a(:)
+    REAL(pf), ALLOCATABLE :: b(:)
+    ALLOCATE(b(2 * SIZE(a)))
+    b(1:SIZE(a)) = a
+    CALL MOVE_ALLOC(b, a)
+END SUBROUTINE
+
+SUBROUTINE grow_real_mat (a)
+! just grow a real matrix
+    REAL(pf), ALLOCATABLE, INTENT(INOUT) :: a(:,:)
+    REAL(pf), ALLOCATABLE :: b(:,:)
+    ALLOCATE(b(SIZE(a,1), 2 * SIZE(a,2)))
+    b(:, 1:SIZE(a,2)) = a
+    CALL MOVE_ALLOC(b, a)
 END SUBROUTINE
 
 END MODULE 

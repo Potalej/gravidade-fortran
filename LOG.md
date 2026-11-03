@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-03] v1.7.2: Método de Barnes-Hut otimizado
+
+- Implementada a versão de grupos do método de Barnes e Hut (Barnes, 1990).
+
+---
+
 ## [2026-10-19] v1.7.1: Método de Dehnen-Marcello e melhorias
 
 - Implementada a correção de Marcello, que utiliza octupolos no método de Dehnen para anular o torque e conservar momento angular total.
