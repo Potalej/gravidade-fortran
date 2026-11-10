@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-09] v1.7.3: Correção nos métodos multipasso lineares
+
+- Os métodos multipasso lineares não estavam funcionando com árvores e com a opção `massas_iguais:true`. Agora o método auxiliar utiliza `massas_iguais:false` se a árvore for utilizada pelo principal, e também usa as forças diretas em vez da árvore.
+
+---
+
 ## [2026-11-03] v1.7.2: Método de Barnes-Hut otimizado
 
 - Implementada a versão de grupos do método de Barnes e Hut (Barnes, 1990).

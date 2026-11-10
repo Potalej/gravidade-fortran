@@ -6,7 +6,7 @@
 !
 ! Modificado:
 !   29 de janeiro de 2026 (criado)
-!   29 de janeiro de 2026 (modificado)
+!   09 de novembro de 2026 (modificado)
 !
 ! Autoria:
 !   oap
@@ -31,14 +31,15 @@ MODULE ab3
 
 CONTAINS
 
-SUBROUTINE iniciar_ab3 (self, infos, timestep, massas)
+SUBROUTINE iniciar_ab3 (self, infos, timestep, massas, auxiliar)
   IMPLICIT NONE
   class(integracao_ab3), INTENT(INOUT) :: self
   TYPE(json_value), POINTER, INTENT(IN) :: infos
   REAL(pf), INTENT(IN), ALLOCATABLE :: massas(:)
+  LOGICAL,  INTENT(IN), OPTIONAL :: auxiliar
   REAL(pf), INTENT(IN)              :: timestep
   
-  CALL iniciar_base(self, infos, timestep, massas)
+  CALL iniciar_base(self, infos, timestep, massas, .FALSE.)
   self % multipasso = 3
 
   ALLOCATE(self % ps_ant(self%multipasso, self % N, self % dim))

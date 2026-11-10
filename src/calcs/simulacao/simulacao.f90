@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   03 de novembro de 2026
+!   09 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -332,7 +332,7 @@ SUBROUTINE inicializar_metodo (self, h)
 
     ! Define um metodo auxiliar so para poder dar a quantidade de passos necessaria
     CALL definir_metodo(self%integrador_auxiliar, self%metodo_inicializacao_multipasso, .FALSE.)
-    CALL self % integrador_auxiliar % iniciar(self%infos, -self%h, self%M)
+    CALL self % integrador_auxiliar % iniciar(self%infos, -self%h, self%M, .TRUE.)
     CALL self % integrador_auxiliar % atualizar_constantes()
 
     ! Para inicializar o metodo no instante correto, serao dados passos para tras

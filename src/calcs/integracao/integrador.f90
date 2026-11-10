@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   09 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -103,13 +103,14 @@ END SUBROUTINE
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE iniciar_base (self, infos, timestep, massas)
+SUBROUTINE iniciar_base (self, infos, timestep, massas, auxiliar)
   IMPLICIT NONE
   class(integracao), INTENT(INOUT) 			:: self
   TYPE(json_value), POINTER, INTENT(IN) :: infos
-  REAL(pf), INTENT(IN), allocatable :: massas(:)
+  REAL(pf), INTENT(IN), ALLOCATABLE :: massas(:)
+  LOGICAL,  INTENT(IN), OPTIONAL :: auxiliar
   REAL(pf), INTENT(IN) :: timestep
-  LOGICAL :: encontrado
+  LOGICAL :: encontrado, aux
 
   CALL self % limpar()
 
@@ -119,11 +120,17 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas)
   !> Uso (ou nao) das arvores
   CALL json % get(infos, 'integracao.metodo_forcas', self % metodo_forcas, encontrado)
   IF (.NOT. encontrado) self % metodo_forcas = 0
+
+  !> Se eh um metodo auxiliar
+  aux = .FALSE.
+  IF (PRESENT(auxiliar)) aux = auxiliar
+  IF (aux) self % metodo_forcas = 0
+
   self % theta2 = json_get_float(infos, 'integracao.theta')
   self % theta2 = self % theta2 * self % theta2
 
   !> Inicializando as variaveis ligadas as massas dos corpos
-  CALL self % inicializar_massas(infos, massas)
+  CALL self % inicializar_massas(infos, massas, aux)
 
   !> Constantes
   self % G = json_get_float(infos, 'G') ! Const. de Gravitacao
@@ -156,16 +163,21 @@ END SUBROUTINE iniciar_base
 ! Autoria:
 !   oap
 ! 
-SUBROUTINE inicializar_massas (self, infos, massas)
+SUBROUTINE inicializar_massas (self, infos, massas, auxiliar)
   CLASS(integracao), INTENT(INOUT) :: self
   TYPE(json_value), POINTER, INTENT(IN) :: infos
   REAL(pf), ALLOCATABLE :: massas(:)
+  LOGICAL, INTENT(IN) :: auxiliar
   INTEGER :: a, i
   LOGICAL :: encontrado
 
   !> Massas iguais
-  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-  IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
+  IF (auxiliar) THEN
+    self % mi = .FALSE.
+  ELSE
+    CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+    IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
+  ENDIF
 
   !> Alocando vetor de massas
   IF (ALLOCATED(self % m)) DEALLOCATE(self % m)
