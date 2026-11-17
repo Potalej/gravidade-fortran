@@ -7,7 +7,7 @@
 !   distribuicoes de probabilidade.
 ! 
 ! Modificado:
-!   17 de dezembro de 2025
+!   17 de novembro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -95,7 +95,7 @@ END SUBROUTINE condiciona_esfera
 !   da subrotina padrao do Fortran.
 !
 ! Modificado:
-!   03 de agosto de 2025
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -113,7 +113,6 @@ SUBROUTINE uniforme (vetor, N, distmin, vmin, vmax, regiao)
   raio = 0.5_pf*(vmax - vmin)
   centro(:) = 0.5_pf*(vmin + vmax)
   ajuste(:) = vmin
-  CALL RANDOM_SEED()
   DO i=1, N
     contador = 0 ! limite de 100 testes
     DO
@@ -149,7 +148,7 @@ END SUBROUTINE uniforme
 !   primeira componente.
 !
 ! Modificado:
-!   03 de agosto de 2025
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -163,8 +162,6 @@ SUBROUTINE normal (vetor, N, distmin, regiao, raio, centro)
   REAL(pf) :: u1, u2, r, theta, max_dist
   REAL(pf) :: PI = 3.14159265358979_pf
   INTEGER  :: a, contador
-
-  CALL RANDOM_SEED()
 
   max_dist = 0.0_pf
 
@@ -211,7 +208,7 @@ END SUBROUTINE normal
 !   Gera valores iniciais com distribuicao cauchy.
 !
 ! Modificado:
-!   03 de agosto de 2025
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -225,8 +222,6 @@ SUBROUTINE cauchy (vetor, N, distmin, regiao, raio, centro)
   REAL(pf), DIMENSION(3)   :: u
   REAL(pf) :: PI = 3.14159265358979_pf
   INTEGER :: a, contador
-
-  CALL RANDOM_SEED()
 
   DO a=1, N
     contador = 0

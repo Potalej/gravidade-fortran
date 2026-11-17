@@ -5,7 +5,7 @@
 !   Funcoes para o condicionamento de valores iniciais.
 ! 
 ! Modificado:
-!   17 de dezembro de 2025
+!   17 de novembro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -16,6 +16,7 @@ MODULE condicoes_iniciais
   USE utilidades
   USE condicionamento ! Metodos gerais de restricao
   USE sorteio_mod
+  USE initial_values_mod
   IMPLICIT NONE
 
   PUBLIC gerar_condicionar, gerar, condicionar
@@ -55,7 +56,7 @@ END SUBROUTINE gerar_condicionar
 !   condicionamento.
 !
 ! Modificado:
-!   05 de janeiro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -65,6 +66,7 @@ SUBROUTINE gerar (sorteio_infos, massas, posicoes, momentos)
   REAL(pf), INTENT(INOUT), ALLOCATABLE  :: massas(:), posicoes(:,:), momentos(:,:)
   INTEGER                               :: N
   REAL(pf)                              :: G, eps, ed
+  REAL(pf), ALLOCATABLE :: qs(:,:), ps(:,:)
 
   N   = sorteio_infos % N
   G   = sorteio_infos % G
@@ -77,7 +79,23 @@ SUBROUTINE gerar (sorteio_infos, massas, posicoes, momentos)
   ALLOCATE(momentos(N,3))
 
   ! Sorteio
-  CALL gerar_valores(N, sorteio_infos, massas, posicoes, momentos)
+  IF (sorteio_infos % perfil == "nenhum") THEN
+    CALL gerar_valores(N, sorteio_infos, massas, posicoes, momentos)
+  ELSE
+    ALLOCATE(qs(3,N),ps(3,N))
+    CALL generate_initial_values(N, massas, qs, ps, &
+      sorteio_infos % posicoes % intervalo(1), &
+      sorteio_infos % momentos % intervalo(1), &
+      sorteio_infos % massas % normalizado, &
+      .FALSE., & ! 2d
+      sorteio_infos % perfil, &
+      sorteio_infos % parametros, &
+      sorteio_infos % seed)
+    posicoes(:,1) = qs(1,:); posicoes(:,2) = qs(2,:); posicoes(:,3) = qs(3,:)
+    momentos(:,1) = ps(1,:); momentos(:,2) = ps(2,:); momentos(:,3) = ps(3,:)
+
+    DEALLOCATE(qs, ps)
+  ENDIF
 
 END SUBROUTINE
 

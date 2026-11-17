@@ -5,7 +5,7 @@
 !   Simulacoes a partir do sorteio de valores iniciais.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -104,7 +104,7 @@ END SUBROUTINE
 !   Converte json_value em objetos sorteio e sorteio_vetores.
 !
 ! Modificado:
-!   29 de maio de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -128,6 +128,22 @@ SUBROUTINE configuracoes_sorteio (dados, configs)
   configs % ed = json_get_float(sorteio_json, "integrais.energia_total")
   configs % jd = json_get_float(sorteio_json, "integrais.angular_total")
   configs % pd = json_get_float(sorteio_json, "integrais.linear_total")
+
+  ! Perfil de densidade
+  CALL json % get(sorteio_json, "seed", configs % seed, encontrado)
+  IF (.NOT. encontrado) configs % seed = -1
+  CALL json % get(sorteio_json, "perfil", configs % perfil, encontrado)
+  IF (.NOT. encontrado) THEN
+    configs % perfil = "nenhum"
+    ALLOCATE(configs % parametros(1))
+    configs % parametros = 0
+  ELSE
+    CALL json % get(sorteio_json, "parametros", configs % parametros, encontrado)
+    IF (.NOT. encontrado) THEN
+      ALLOCATE(configs % parametros(1))
+      configs % parametros = 0
+    ENDIF
+  ENDIF
 
   ! Configuracoes das massas 
   configs % massas % distribuicao = json_get_string(sorteio_json, "massas.distribuicao")

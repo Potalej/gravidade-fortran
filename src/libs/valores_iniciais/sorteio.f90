@@ -5,7 +5,7 @@
 !   Funcoes para a geracao de valores iniciais
 ! 
 ! Modificado:
-!   17 de dezembro de 2025
+!   17 de novembro de 2026
 ! 
 ! Autoria:
 !   oap
@@ -35,6 +35,9 @@ MODULE sorteio_mod
 
     ! Modo de sorteio
     CHARACTER(LEN=:), ALLOCATABLE :: modo
+    CHARACTER(LEN=:), ALLOCATABLE :: perfil
+    INTEGER :: seed
+    REAL(pf), ALLOCATABLE :: parametros(:)
 
     ! Integrais primeiras desejadas
     REAL(pf) :: ed ! Energia desejada
@@ -56,7 +59,7 @@ CONTAINS
 !   Gera valores iniciais aleatorios.
 !
 ! Modificado:
-!   16 de dezembro de 2025
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -66,6 +69,15 @@ SUBROUTINE gerar_valores (N, sorteio_infos, massas, posicoes, momentos)
   INTEGER, INTENT(IN)         :: N
   REAL(pf), INTENT(INOUT)     :: posicoes(:,:), momentos(:,:), massas(:)
   REAL(pf), ALLOCATABLE       :: intervalo(:)
+  INTEGER :: seed_size
+  INTEGER, ALLOCATABLE :: seed_vec(:)
+
+  IF (sorteio_infos % seed .NE. -1) THEN
+    CALL RANDOM_SEED(size=seed_size)
+    ALLOCATE(seed_vec(seed_size))
+    seed_vec = sorteio_infos % seed
+    CALL RANDOM_SEED(put=seed_vec)
+  ENDIF
 
   ! Gera massas
   WRITE (*,'(A)', ADVANCE='no') '    * gerando massas'
@@ -137,7 +149,7 @@ END FUNCTION gerar_vetores3d
 !   Gera vetor de massas conforme um intervalo informado.
 !
 ! Modificado:
-!   17 de dezembro de 2025
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -170,7 +182,6 @@ FUNCTION gerar_massas (N, sorteio_infos) RESULT(massas)
     WRITE (*,'(A)') ' ('//TRIM(distribuicao)//')'
 
     IF (distribuicao == "uniforme") THEN
-      CALL RANDOM_SEED()
       CALL RANDOM_NUMBER(massas)
       
       ! Agora condiciona no intervalo

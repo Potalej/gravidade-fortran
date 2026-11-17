@@ -8,7 +8,7 @@
 # ============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project("gravidade" VERSION 1.7.3
+project("gravidade" VERSION 1.8.0
         DESCRIPTION "Simulacoes de gravidade em Fortran!"
         LANGUAGES Fortran)
 enable_language(Fortran)
@@ -188,6 +188,11 @@ add_library(valores_iniciais
   "./src/libs/valores_iniciais/condicionamento.f90"
   "./src/libs/valores_iniciais/condicoes_iniciais.f90"
   "./src/libs/valores_iniciais/sorteio.f90"
+
+  "./src/libs/valores_iniciais/perfis/plummer.f90"
+  "./src/libs/valores_iniciais/perfis/hernquist.f90"
+  "./src/libs/valores_iniciais/perfis/homogeneous.f90"
+  "./src/libs/valores_iniciais/perfis/perfis.f90"
 )
 target_link_libraries(valores_iniciais PRIVATE
   ${OpenBLAS_LIB} # utilizada no corretor

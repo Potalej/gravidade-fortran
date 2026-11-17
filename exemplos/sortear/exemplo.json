@@ -1,14 +1,17 @@
 {
-    "modo": "sorteio_aarseth_modificado",
+    "modo": "sorteio",
     
     "G": 1.0,
-    "N": 50,
+    "N": 100,
     "paralelo": false,
     "gpu": false,
     "massas_iguais": true,
     "exibir": false,
 
     "sorteio": {
+        "perfil": "plummer",
+        "parametros": [1.0, 0.589],
+        "seed": 123,
         "integrais": {
             "energia_total": -0.25,
             "angular_total": [0.0, 0.0, 0.0],

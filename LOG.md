@@ -1,5 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-17] v1.8.0: Perfis de densidade
+
+- Incorporados os perfis de densidade desenvolvidos no repositório `hierarquicos`. Agora é possível gerar valores iniciais com Plummer, Hernquist ou Homogeneous (ou `nenhum`, usar o antigo).
+- Também é possível definir a `seed` para gerar. Se passar `-1` não é usada nenhuma (pré-definida).
+- O condicionamento não está ligado com o perfil de densidade, sendo possível sortear valores com um perfil e depois condicioná-los ainda assim. Para não condicionar, é só passar `modo: sorteio`.
+
+---
+
 ## [2026-11-09] v1.7.3: Correção nos métodos multipasso lineares
 
 - Os métodos multipasso lineares não estavam funcionando com árvores e com a opção `massas_iguais:true`. Agora o método auxiliar utiliza `massas_iguais:false` se a árvore for utilizada pelo principal, e também usa as forças diretas em vez da árvore.
