@@ -1,6 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
-## [2026-11-17] v1.8.0: Perfis de densidade
+## [2026-11-18] v1.7.5: Dehnen paralelo
+
+- A parte que mais demora no método de Dehnen é o `mutual_interaction_walk`. Armazenando as listas de interação mútua até uma certa quantidade, conseguimos rodar as interações paralelamente.
+- Isso dá alguns problemas quando N é grande porque o `REDUCTION` cria várias cópias, então consome memória e eventualmente não funciona. Mas para N relativamente pequeno funciona bem, melhor que o sequencial.
+
+---
+
+## [2026-11-17] v1.7.4: Perfis de densidade
 
 - Incorporados os perfis de densidade desenvolvidos no repositório `hierarquicos`. Agora é possível gerar valores iniciais com Plummer, Hernquist ou Homogeneous (ou `nenhum`, usar o antigo).
 - Também é possível definir a `seed` para gerar. Se passar `-1` não é usada nenhuma (pré-definida).

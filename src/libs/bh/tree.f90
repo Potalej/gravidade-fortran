@@ -44,10 +44,12 @@
 !  and using the Marcello (2017) correction to conserve angular
 !  momentum. To evaluate the forces, call the "dehnen_eval" routine:
 !
-!       CALL tree % dehnen_eval(theta2, eps2, G, fs)
+!       CALL tree % dehnen_eval(theta2, eps2, G, fs, nt)
 !
-!  At the moment, this is not parallelizable, as long it does a dual
-!  traversal and the parallelization of this is not imeddiate.
+!  At the moment, the parallelization is on the mutual interaction phase,
+!  where the mutual lists are made and, at some moment, the interactions
+!  are evaluated in parallel. This is not very good, but is what we have
+!  for now...
 !
 !  To use (3), pre-init the tree using method = 30, 31 or 32, being,
 !  respectively, the BH method with monopole, quadrupole and octupole.
@@ -70,7 +72,7 @@
 !    of Computational Physics, v. 87, n. 1, p. 161–170, 1 mar. 1990. 
 !
 !> Modified
-!  2026.11.03
+!  2026.11.17
 !
 !> Created
 !  2026.06.15
@@ -79,6 +81,7 @@
 !  oap
 !
 MODULE octree_mod
+    USE omp_lib
     IMPLICIT NONE
     PRIVATE
     PUBLIC OctreeType
@@ -93,6 +96,8 @@ MODULE octree_mod
         INTEGER :: max_depth = 25
         ! amplificator of the size of the quadtree-root
         REAL(pf) :: side_amplificator = 1.2_pf
+        ! coefficient of the size of the mutual interactions vector of the Dehnen's method
+        INTEGER :: dehnen_mutuals_mult = 36
 
         ! timers
         REAL(pf) :: time_basic, time_multipole, time_group, time_construct
@@ -156,7 +161,10 @@ MODULE octree_mod
         PROCEDURE :: dehnen_eval ! <- use this to eval the forces
         PROCEDURE :: dehnen_forces ! this and others are internal
         PROCEDURE :: evaluate_rmax
-        PROCEDURE :: mutual_interaction_walk
+        PROCEDURE :: dehnen_interact_parallel
+        PROCEDURE :: mutual_interaction_walk_sequential, mutual_interaction_walk_parallel
+        ! PROCEDURE :: evaluate_mutual_interaction_monopole, evaluate_mutual_interaction_monopole_parallel
+        ! PROCEDURE :: evaluate_mutual_interaction_quadrupole, evaluate_mutual_interaction_quadrupole_parallel
         PROCEDURE :: evaluate_mutual_interaction_monopole
         PROCEDURE :: evaluate_mutual_interaction_quadrupole
 
@@ -1120,7 +1128,7 @@ SUBROUTINE evaluate_rmax (self)
     END DO
 END SUBROUTINE
 
-SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
+SUBROUTINE mutual_interaction_walk_sequential (self, theta2, eps2, G)
 ! here we do a dual-traversal on the octree to determine which cells interact
 ! and how are the interactions
     CLASS(OctreeType), INTENT(INOUT) :: self
@@ -1132,6 +1140,9 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
     INTEGER :: i, j
     INTEGER :: child_a, child_b
     REAL(pf) :: dx, dy, dz, dist2, rsum2
+
+    REAL(pf) :: f(3), fa(3), fb(3)
+    REAL(pf) :: h(6), t(10), fc(3), ma, mb
 
     ! stacks of node pairs
     ALLOCATE(stack_a(36 * self % number_of_nodes))
@@ -1184,9 +1195,27 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
         IF (rsum2 <= theta2 * dist2) THEN
             ! we evaluate the coefficients of the expansion A <- B and B <- A
             IF (self % multipole == 1) THEN
-                CALL evaluate_mutual_interaction_monopole(self, a, b, G, eps2)
+                ! CALL evaluate_mutual_interaction_monopole(self, a, b, G, eps2)
+                CALL evaluate_mutual_interaction_monopole(self, a, b, G, eps2, f)
+                self % ns_force(:,a) = self % ns_force(:,a) + self % ns_mass(b) * f
+                self % ns_force(:,b) = self % ns_force(:,b) - self % ns_mass(a) * f
+
             ELSE IF (self % multipole == 4 .OR. self % multipole == 8) THEN
-                CALL evaluate_mutual_interaction_quadrupole(self, a, b, G, eps2)
+                ! CALL evaluate_mutual_interaction_quadrupole(self, a, b, G, eps2)
+                fc = 0.0_pf
+                CALL evaluate_mutual_interaction_quadrupole(self, a, b, G, eps2, fa, fb, h, t, fc)
+                
+                ma = self % ns_mass(a)
+                mb = self % ns_mass(b)
+
+                self % ns_force(:,a) = self % ns_force(:,a) + fa + fc / ma
+                self % ns_force(:,b) = self % ns_force(:,b) + fb - fc / mb
+
+                self % ns_hess(:,a) = self % ns_hess(:,a) + mb * h
+                self % ns_hess(:,b) = self % ns_hess(:,b) + ma * h
+
+                self % ns_third(:,a) = self % ns_third(:,a) + mb * t
+                self % ns_third(:,b) = self % ns_third(:,b) - ma * t
             ELSE
                 STOP "the multipole parameter needs to be 1, 4 or 8"
             ENDIF
@@ -1217,11 +1246,187 @@ SUBROUTINE mutual_interaction_walk (self, theta2, eps2, G)
     DEALLOCATE(stack_a, stack_b)
 END SUBROUTINE
 
-SUBROUTINE evaluate_mutual_interaction_monopole (self, a, b, G, eps2)
+SUBROUTINE mutual_interaction_walk_parallel (self, theta2, eps2, G, nt)
+! here we do a dual-traversal on the octree to determine which cells interact
+! and how are the interactions. the parallel part is do the interactions only
+! when the mutuals vector is full (or at the final)
+! NOTICE: if N is big enough, the REDUCTION may exlodes!!
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    REAL(pf), INTENT(IN) :: theta2, eps2, G
+    INTEGER,  INTENT(IN) :: nt
+
+    INTEGER, ALLOCATABLE :: stack_a(:), stack_b(:)
+    INTEGER :: top
+    INTEGER :: a, b
+    INTEGER :: i, j
+    INTEGER :: child_a, child_b
+    REAL(pf) :: dx, dy, dz, dist2, rsum2
+
+    REAL(pf) :: f(3), fa(3), fb(3)
+
+    INTEGER, ALLOCATABLE :: mutuals(:,:)
+    INTEGER :: mutuals_counter
+
+    REAL(pf) :: ns_force(3, self % number_of_nodes)
+    REAL(pf) :: ns_hess(6, self % number_of_nodes)
+    REAL(pf) :: ns_third(10, self % number_of_nodes)
+
+    ! stacks of node pairs
+    ALLOCATE(stack_a(36 * self % number_of_nodes))
+    ALLOCATE(stack_b(36 * self % number_of_nodes))
+    ALLOCATE(mutuals(2, self % dehnen_mutuals_mult * self % number_of_nodes))
+
+    ns_force = 0.0_pf
+
+    ! both starts at the root
+    top = 1
+    stack_a(top) = 1
+    stack_b(top) = 1
+    mutuals_counter = 0
+
+    IF (self % multipole >= 4) THEN
+        ns_hess = 0.0_pf
+        ns_third = 0.0_pf
+    ENDIF
+
+    ! dual traversal
+    DO WHILE (top > 0)
+
+        a = stack_a(top)
+        b = stack_b(top)
+        top = top - 1
+
+        ! empty nodes doesnt interact
+        IF (self % ns_mass(a) == 0.0_pf) CYCLE
+        IF (self % ns_mass(b) == 0.0_pf) CYCLE
+
+        ! self-interaction
+        IF (a == b) THEN
+            ! a particle doesnt interact with itself
+            IF (self % ns_type(a) == 1) CYCLE
+
+            ! for a cell we interact the pairs
+            DO i = 1, 8
+                child_a = self % ns_child(i,a) 
+                IF (child_a == -1) CYCLE
+                DO j = i, 8
+                    child_b = self % ns_child(j,a)
+                    IF (child_b == -1) CYCLE
+                    top = top + 1
+                    stack_a(top) = child_a
+                    stack_b(top) = child_b
+                END DO
+            END DO
+            CYCLE
+        ENDIF
+
+        ! Dehnen MAC criterion
+        dx = self % ns_qcm_x(a) - self % ns_qcm_x(b)
+        dy = self % ns_qcm_y(a) - self % ns_qcm_y(b)
+        dz = self % ns_qcm_z(a) - self % ns_qcm_z(b)
+        dist2 = dx*dx + dy*dy + dz*dz
+        rsum2 = (self % ns_rmax(a) + self % ns_rmax(b))**2
+
+        ! well-separated
+        IF (rsum2 <= theta2 * dist2) THEN
+            ! we evaluate the coefficients of the expansion A <- B and B <- A
+            mutuals_counter = mutuals_counter + 1
+            mutuals(:,mutuals_counter) = [a, b]
+
+            IF (mutuals_counter == SIZE(mutuals,2)) THEN
+                CALL self % dehnen_interact_parallel(G, eps2, mutuals, mutuals_counter, nt, &
+                                                    ns_force, ns_hess, ns_third)
+                mutuals_counter = 0
+            ENDIF
+            CYCLE
+        ENDIF
+
+        ! not well-separated, we subdivide the bigger node
+        IF (self % ns_rmax(a) >= self % ns_rmax(b)) THEN
+            ! opens A
+            DO i = 1, 8
+                child_a = self % ns_child(i,a)
+                IF (child_a == -1) CYCLE
+                top = top + 1
+                stack_a(top) = child_a
+                stack_b(top) = b
+            END DO
+        ELSE
+            ! opens B
+            DO i = 1, 8
+                child_b = self % ns_child(i,b)
+                IF (child_b == -1) CYCLE
+                top = top + 1
+                stack_a(top) = a
+                stack_b(top) = child_b
+            END DO
+        ENDIF
+    END DO
+    DEALLOCATE(stack_a, stack_b)
+
+    IF (mutuals_counter > 0) THEN
+        CALL self % dehnen_interact_parallel(G, eps2, mutuals, mutuals_counter, nt, &
+            ns_force, ns_hess, ns_third)
+    ENDIF
+    DEALLOCATE(mutuals)
+
+    self % ns_force = self % ns_force + ns_force
+    IF (self % multipole >= 4) THEN
+        self % ns_hess = self % ns_hess + ns_hess
+        self % ns_third = self % ns_third + ns_third
+    ENDIF
+END SUBROUTINE
+
+SUBROUTINE dehnen_interact_parallel (self, G, eps2, mutuals, mutuals_counter, nt, ns_force, ns_hess, ns_third)
+    CLASS(OctreeType), INTENT(INOUT) :: self
+    INTEGER,  INTENT(IN)    :: mutuals(:,:), mutuals_counter, nt
+    REAL(pf), INTENT(IN)    :: G, eps2
+    REAL(pf), INTENT(INOUT) :: ns_force(:,:), ns_hess(:,:), ns_third(:,:)
+    
+    INTEGER :: i
+    REAL(pf) :: fa(3), fb(3), ha(6), hb(6), ta(10), tb(10)
+    REAL(pf) :: f(3), h(6), t(10), fc(3), ma, mb
+
+    IF (self % multipole == 1) THEN
+        !$OMP PARALLEL DO PRIVATE(i, f) SHARED(mutuals, G, eps2) REDUCTION(+:ns_force) NUM_THREADS(nt)
+        DO i = 1, mutuals_counter
+            CALL evaluate_mutual_interaction_monopole(self, mutuals(1,i), mutuals(2,i), G, eps2, f)
+            ns_force(:,mutuals(1,i)) = ns_force(:,mutuals(1,i)) + self % ns_mass(mutuals(2,i)) * f
+            ns_force(:,mutuals(2,i)) = ns_force(:,mutuals(2,i)) - self % ns_mass(mutuals(1,i)) * f
+        END DO
+        !$OMP END PARALLEL DO
+    ELSE IF (self % multipole == 4 .OR. self % multipole == 8) THEN
+        !$OMP PARALLEL DO PRIVATE(i, fa, fb, h, t, fc, ma, mb) SHARED(mutuals, G, eps2) &
+        !$OMP REDUCTION(+:ns_force, ns_hess, ns_third) &
+        !$OMP NUM_THREADS(nt)
+        DO i = 1, mutuals_counter
+            ma = self % ns_mass(mutuals(1,i))
+            mb = self % ns_mass(mutuals(2,i))
+            fc = 0.0_pf
+            CALL evaluate_mutual_interaction_quadrupole(self, mutuals(1,i), mutuals(2,i), G, eps2, &
+                fa, fb, h, t, fc)
+
+            ns_force(:,mutuals(1,i)) = ns_force(:,mutuals(1,i)) + fa + fc / ma
+            ns_force(:,mutuals(2,i)) = ns_force(:,mutuals(2,i)) + fb - fc / mb
+
+            ns_hess(:,mutuals(1,i)) = ns_hess(:,mutuals(1,i)) + mb * h
+            ns_hess(:,mutuals(2,i)) = ns_hess(:,mutuals(2,i)) + ma * h
+
+            ns_third(:,mutuals(1,i)) = ns_third(:,mutuals(1,i)) + mb * t
+            ns_third(:,mutuals(2,i)) = ns_third(:,mutuals(2,i)) - ma * t
+        END DO
+        !$OMP END PARALLEL DO
+    ELSE
+        STOP "the multipole parameter needs to be 1, 4 or 8"
+    ENDIF
+END SUBROUTINE
+
+SUBROUTINE evaluate_mutual_interaction_monopole (self, a, b, G, eps2, f)
 ! this evaluates the gravitational interaction between two nodes a and b using monopoles
     CLASS(OctreeType), INTENT(INOUT) :: self
-    INTEGER,  INTENT(IN) :: a, b
-    REAL(pf), INTENT(IN) :: G, eps2
+    INTEGER,  INTENT(IN)  :: a, b
+    REAL(pf), INTENT(IN)  :: G, eps2
+    REAL(pf), INTENT(OUT) :: f(3)
     REAL(pf) :: dx, dy, dz, dist2, rinv3, factor
 
     ! vector point from A com to B com
@@ -1233,22 +1438,17 @@ SUBROUTINE evaluate_mutual_interaction_monopole (self, a, b, G, eps2)
     rinv3 = 1.0_pf / (dist2 + eps2)**1.5_pf
     factor = G * rinv3
 
-    ! A <- B
-    self % ns_force(1,a) = self % ns_force(1,a) + factor * self % ns_mass(b) * dx
-    self % ns_force(2,a) = self % ns_force(2,a) + factor * self % ns_mass(b) * dy
-    self % ns_force(3,a) = self % ns_force(3,a) + factor * self % ns_mass(b) * dz
-
-    ! B <- A
-    self % ns_force(1,b) = self % ns_force(1,b) - factor * self % ns_mass(a) * dx
-    self % ns_force(2,b) = self % ns_force(2,b) - factor * self % ns_mass(a) * dy
-    self % ns_force(3,b) = self % ns_force(3,b) - factor * self % ns_mass(a) * dz
+    f(1) = factor * dx
+    f(2) = factor * dy
+    f(3) = factor * dz
 END SUBROUTINE
 
-SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
+SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2, fa, fb, h, t, fc)
 ! this evaluates the gravitational interaction between two nodes a and b using quadrupoles
     CLASS(OctreeType), INTENT(INOUT) :: self
     INTEGER, INTENT(IN) :: a, b
     REAL(pf), INTENT(IN) :: G, eps2
+    REAL(pf), INTENT(INOUT) :: fa(3), fb(3), h(6), t(10), fc(3)
 
     INTEGER :: i
     REAL(pf) :: Ma, Mb
@@ -1260,7 +1460,6 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
 
     REAL(pf) :: R(3), ci(3), CRR(3), Cjkl
     INTEGER  :: j, k, l
-    REAL(pf) :: Fc(3)
 
     Ma = self%ns_mass(a)
     Mb = self%ns_mass(b)
@@ -1333,21 +1532,12 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
 
     ! coefficients of the local expansion in A
     ! dg_A (x) = Mb [D1 + 1/2 Qb D3 + D2 . x + 1/2 x . D3 x]
-    self%ns_force(1,a) = self%ns_force(1,a) + Mb * (D1(1) + 0.5_pf*CQb(1))
-    self%ns_force(2,a) = self%ns_force(2,a) + Mb * (D1(2) + 0.5_pf*CQb(2))
-    self%ns_force(3,a) = self%ns_force(3,a) + Mb * (D1(3) + 0.5_pf*CQb(3))
-    
-    self%ns_hess(1:6,a) = self%ns_hess(1:6,a) + Mb * D2(:)
-    self%ns_third(1:10,a) = self%ns_third(1:10,a) + Mb * D3(:)
-
     ! coefficients of the local expansion in B
     ! using that D1(-R) = -D1(R), D2(-R) =  D2(R), D3(-R) = -D3(R)
-    self%ns_force(1,b) = self%ns_force(1,b) - Ma * (D1(1) + 0.5_pf*CQa(1))
-    self%ns_force(2,b) = self%ns_force(2,b) - Ma * (D1(2) + 0.5_pf*CQa(2))
-    self%ns_force(3,b) = self%ns_force(3,b) - Ma * (D1(3) + 0.5_pf*CQa(3))
-
-    self%ns_hess(1:6,b) = self%ns_hess(1:6,b) + Ma * D2(:)
-    self%ns_third(1:10,b) = self%ns_third(1:10,b) - Ma * D3(:)
+    fa = Mb * (D1 + 0.5_pf*CQb)
+    fb = - Ma * (D1 + 0.5_pf*CQa)
+    h = D2
+    t = D3
 
     ! implementation of the Marcello's version, using the octupoles terms to
     ! vanish the torque (conserving angular momentum)
@@ -1368,9 +1558,6 @@ SUBROUTINE evaluate_mutual_interaction_quadrupole (self, a, b, G, eps2)
 
         ! F = 1/2 [ D2 c + D3 CRR ],  D2 = 3G/r^5,  D3 = -15G/r^7
         Fc = 0.5_pf * ( 3.0_pf*G*rinv5 * ci - 15.0_pf*G*rinv7 * CRR )
-
-        self % ns_force(:,a) = self%ns_force(:,a) + Fc / Ma
-        self % ns_force(:,b) = self%ns_force(:,b) - Fc / Mb
     ENDIF
 END SUBROUTINE
 
@@ -1489,12 +1676,19 @@ SUBROUTINE dehnen_forces (self, forces)
     END DO
 END SUBROUTINE
 
-SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces)
+SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces, nt_par)
 ! this subroutine do all the process to evaluate the Dehnen algorithm, assuming
 ! that the tree is already constructed
     CLASS(OctreeType), INTENT(INOUT) :: self
     REAL(pf), INTENT(IN)  :: theta2, potsoft2, G
     REAL(pf), INTENT(OUT) :: forces(:,:)
+    INTEGER,  INTENT(IN), OPTIONAL :: nt_par
+
+    INTEGER :: nt
+    REAL(pf) :: t0, t1
+
+    nt = 1
+    IF (PRESENT(nt_par)) nt = nt_par
 
     IF (self % multipole >= 4) THEN
         self % ns_hess = 0.0_pf
@@ -1506,7 +1700,11 @@ SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces)
     CALL self % evaluate_rmax()
 
     ! now we do the mutual interaction walk (dual traversal)
-    CALL self % mutual_interaction_walk(theta2, potsoft2, G)
+    IF (nt == 1) THEN
+        CALL self % mutual_interaction_walk_sequential(theta2, potsoft2, G)
+    ELSE
+        CALL self % mutual_interaction_walk_parallel(theta2, potsoft2, G, nt)
+    ENDIF
 
     ! and finally eval the forces
     CALL self % dehnen_forces(forces)
@@ -1609,19 +1807,24 @@ SUBROUTINE prepare_groups (self)
     END DO
 END SUBROUTINE
 
-SUBROUTINE forces_groups (self, theta2, G, eps2, forces)
+SUBROUTINE forces_groups (self, theta2, G, eps2, forces, nt_par)
 ! evaluate the forces with the BH method using interaction lists.
 ! its necessary to call self % prepare_groups() before
     CLASS(OctreeType), INTENT(INOUT) :: self
     REAL(pf), INTENT(IN)  :: theta2, G, eps2
     REAL(pf), INTENT(OUT) :: forces(:,:) ! (3,N) original order
+    INTEGER, INTENT(IN), OPTIONAL :: nt_par
+    INTEGER :: nt
+
+    nt = 1
+    IF (PRESENT(nt_par)) nt = nt_par    
 
     IF (.NOT. ALLOCATED(self % ns_count) .OR. self % ngroups == 0) THEN
         CALL self % prepare_groups()
     ENDIF
     
     ! the lists of each threads stay in local variables of group_worker
-    !$OMP PARALLEL DEFAULT(SHARED)
+    !$OMP PARALLEL DEFAULT(SHARED) NUM_THREADS(nt)
     CALL group_worker(self, theta2, G, eps2, forces)
     !$OMP END PARALLEL
 END SUBROUTINE

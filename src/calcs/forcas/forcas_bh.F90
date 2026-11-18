@@ -6,7 +6,7 @@
 !   o criterio de Barnes e Hut a partir do parametro `theta`.
 !
 ! Modificado:
-!   03 de novembro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -22,7 +22,7 @@ MODULE funcoes_forca_bh
 CONTAINS
 
 ! Sequencial com massas diferentes
-FUNCTION forcas_seq_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+FUNCTION forcas_seq_bh (m, R, G, N, dim, potsoft2, theta2, octree, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
@@ -32,6 +32,7 @@ FUNCTION forcas_seq_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas
   REAL(pf), DIMENSION(N, dim) :: forcas
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
+  INTEGER, INTENT(IN) :: nt
 
   CALL octree % init(R(:,1),R(:,2),R(:,3))
 
@@ -42,7 +43,7 @@ FUNCTION forcas_seq_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas
 END FUNCTION
 
 ! Paralelo com massas diferentes
-FUNCTION forcas_par_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+FUNCTION forcas_par_bh (m, R, G, N, dim, potsoft2, theta2, octree, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
@@ -51,12 +52,13 @@ FUNCTION forcas_par_bh (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas
   REAL(pf), DIMENSION(N, dim) :: forcas
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
+  INTEGER, INTENT(IN) :: nt
 
   CALL octree % init(R(:,1),R(:,2),R(:,3))
 
   !$OMP PARALLEL DO DEFAULT(NONE) &
   !$OMP SHARED(forcas, octree, theta2, G, potsoft2, N) &
-  !$OMP PRIVATE(a) SCHEDULE(DYNAMIC)
+  !$OMP PRIVATE(a) SCHEDULE(DYNAMIC) NUM_THREADS(nt)
   DO a = 1, N
     forcas(a,:) = octree % forces(a, theta2, G, potsoft2)
   END DO

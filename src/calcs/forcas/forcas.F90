@@ -16,7 +16,7 @@
 !   tarefa de apontar corretamente os ponteiros das funcoes.
 !
 ! Modificado:
-!   03 de novembro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -37,26 +37,28 @@ MODULE funcoes_forca
 
 !> Interface com o basico das funcoes de forca
   ABSTRACT INTERFACE
-    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft2)
+    FUNCTION forcas_funcbase (m, R, G, N, dim, potsoft2, nt)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft2
+        INTEGER,                     INTENT(IN) :: nt
         REAL(pf), DIMENSION(N, dim) :: forcas_funcbase
     END FUNCTION forcas_funcbase
 
-    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft2)
+    FUNCTION forcas_mi_funcbase (R, G, N, dim, potsoft2, nt)
         IMPORT :: pf
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
         REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
         REAL(pf),                    INTENT(IN) :: G, potsoft2
+        INTEGER,                     INTENT(IN) :: nt
         REAL(pf), DIMENSION(N, dim) :: forcas_mi_funcbase
     END FUNCTION forcas_mi_funcbase
 
-    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft2, theta2, octree)
+    FUNCTION forcas_tree_funcbase (m, R, G, N, dim, potsoft2, theta2, octree, nt)
         IMPORT :: pf, OctreeType
         IMPLICIT NONE
         INTEGER,                     INTENT(IN) :: N, dim
@@ -64,6 +66,7 @@ MODULE funcoes_forca
         REAL(pf), DIMENSION(N),      INTENT(IN) :: m
         REAL(pf),                    INTENT(IN) :: G, potsoft2, theta2
         CLASS(OctreeType),        INTENT(INOUT) :: octree
+        INTEGER,                     INTENT(IN) :: nt
         REAL(pf), DIMENSION(N, dim) :: forcas_tree_funcbase
     END FUNCTION forcas_tree_funcbase
   END INTERFACE

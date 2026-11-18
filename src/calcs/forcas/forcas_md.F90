@@ -6,7 +6,7 @@
 !   calculam as forcas do mesmo jeito.
 !
 ! Modificado:
-!   10 de julho de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -22,12 +22,13 @@ MODULE funcoes_forca_md
 CONTAINS
 
 ! Paralelo (CPU)
-FUNCTION forcas_par (m, R, G, N, dim, potsoft2) RESULT(forcas)
+FUNCTION forcas_par (m, R, G, N, dim, potsoft2, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft2
+  INTEGER,                     INTENT(IN) :: nt
   REAL(pf), DIMENSION(N, dim) :: forcas
   REAL(pf), DIMENSION(dim)    :: Fab
   INTEGER  :: a, b
@@ -35,6 +36,7 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft2) RESULT(forcas)
   forcas = 0.0_pf
 
   !$OMP PARALLEL DO DEFAULT(NONE) SHARED(m, R, G, N, potsoft2) &
+  !$OMP NUM_THREADS(nt) &
   !$OMP PRIVATE(a, b, Fab) SCHEDULE(DYNAMIC) REDUCTION(+:forcas)
   DO a = 2, N
     DO b = 1, a - 1
@@ -56,12 +58,13 @@ FUNCTION forcas_par (m, R, G, N, dim, potsoft2) RESULT(forcas)
 END FUNCTION forcas_par
 
 ! Sequencial
-FUNCTION forcas_seq (m, R, G, N, dim, potsoft2) RESULT(forcas)
+FUNCTION forcas_seq (m, R, G, N, dim, potsoft2, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft2
+  INTEGER,                     INTENT(IN) :: nt
   REAL(pf), DIMENSION(N, dim) :: forcas
   REAL(pf), DIMENSION(dim)    :: Fab
   INTEGER  :: a, b
@@ -108,11 +111,12 @@ END FUNCTION calcular_forca
 
 ! GPU
 #ifdef USAR_GPU
-FUNCTION forcas_par_gpu (m, R, G, N, dim, potsoft2) RESULT(forcas)
+FUNCTION forcas_par_gpu (m, R, G, N, dim, potsoft2, nt) RESULT(forcas)
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
   REAL(pf), DIMENSION(N),      INTENT(IN) :: m
   REAL(pf),                    INTENT(IN) :: G, potsoft2
+  INTEGER,                     INTENT(IN) :: nt
   INTEGER :: i, j, indice, chunk_size
   REAL(pf) :: dx, dy, dz, r2, rinv
   

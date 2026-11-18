@@ -6,7 +6,7 @@
 !   o algoritmo de Dehnen.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -22,7 +22,7 @@ MODULE funcoes_forca_dehnen
 CONTAINS
 
 ! Sequencial com massas diferentes
-FUNCTION forcas_seq_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+FUNCTION forcas_seq_dehnen (m, R, G, N, dim, potsoft2, theta2, octree, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
@@ -33,9 +33,10 @@ FUNCTION forcas_seq_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(fo
   REAL(pf), DIMENSION(dim, N) :: forcas_dehnen
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
+  INTEGER, INTENT(IN) :: nt
 
   CALL octree % init(R(:,1),R(:,2),R(:,3))
-  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen)
+  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen, 1)
   
   forcas(:,1) = forcas_dehnen(1,:)
   forcas(:,2) = forcas_dehnen(2,:)
@@ -45,7 +46,7 @@ END FUNCTION
 
 ! Paralelo
 ! Por enquanto faz a mesma coisa, nao sei como paralelizar ainda
-FUNCTION forcas_par_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(forcas)
+FUNCTION forcas_par_dehnen (m, R, G, N, dim, potsoft2, theta2, octree, nt) RESULT(forcas)
   IMPLICIT NONE
   INTEGER,                     INTENT(IN) :: N, dim
   REAL(pf), DIMENSION(N, dim), INTENT(IN) :: R
@@ -55,9 +56,10 @@ FUNCTION forcas_par_dehnen (m, R, G, N, dim, potsoft2, theta2, octree) RESULT(fo
   REAL(pf), DIMENSION(dim, N) :: forcas_dehnen
   INTEGER  :: a, b
   CLASS(OctreeType), INTENT(INOUT) :: octree
+  INTEGER, INTENT(IN) :: nt
 
   CALL octree % init(R(:,1),R(:,2),R(:,3))
-  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen)
+  call octree % dehnen_eval(theta2, potsoft2, G, forcas_dehnen, nt)
   
   forcas(:,1) = forcas_dehnen(1,:)
   forcas(:,2) = forcas_dehnen(2,:)

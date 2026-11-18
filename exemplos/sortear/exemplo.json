@@ -2,8 +2,9 @@
     "modo": "sorteio",
     
     "G": 1.0,
-    "N": 100,
-    "paralelo": false,
+    "N": 4096,
+    "paralelo": true,
+    "num_threads": 10,
     "gpu": false,
     "massas_iguais": true,
     "exibir": false,
@@ -42,7 +43,7 @@
         "tf": 40,
         "checkpoints": 40,
         "metodo_forcas": 0,
-        "tree_multipole": 1,
+        "tree_multipole": 0,
         "theta": 0.0
     },
 

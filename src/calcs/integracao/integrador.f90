@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   09 de novembro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -48,6 +48,7 @@ MODULE integrador
 
     ! Se vai ou nao usar paralelizacao
     LOGICAL :: paralelo = .FALSE., gpu = .FALSE.
+    INTEGER :: num_threads
 
     ! Se vai usar arvore
     INTEGER :: metodo_forcas = 0
@@ -98,7 +99,7 @@ END SUBROUTINE
 !   metodo.
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -143,6 +144,8 @@ SUBROUTINE iniciar_base (self, infos, timestep, massas, auxiliar)
   CALL json % get(infos, 'paralelo', self % paralelo)
   CALL json % get(infos, 'gpu', self % gpu, encontrado)
   IF (.NOT. encontrado) self % gpu = .FALSE.
+  CALL json % get(infos, 'num_threads', self % num_threads, encontrado)
+  IF (.NOT. encontrado) self % num_threads = 1
 
   !> Determinando as funcoes de forca a se utilizar
   !> Modulo: funcoes_forca
@@ -231,7 +234,7 @@ END SUBROUTINE inicializar_massas
 !! Calculo das forcas conforme as massas
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   17 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -244,14 +247,14 @@ FUNCTION forcas (self, R)
 
   IF (self % metodo_forcas > 0) THEN
     forcas = self % forcas_tree_funcao(self % m, R, self%G, self%N, self%dim, &
-                    self%potsoft2, self%theta2, self%octree)
+                    self%potsoft2, self%theta2, self%octree, self%num_threads)
   ELSE
     IF (self % mi) THEN
       forcas = self % forcas_mi_funcao(R, self%G, self%N, self%dim, &
-                      self%potsoft2)
+                      self%potsoft2, self%num_threads)
     ELSE
       forcas = self % forcas_funcao(self % m, R, self%G, self%N, self%dim, &
-                      self%potsoft2)
+                      self%potsoft2, self%num_threads)
     ENDIF
   ENDIF
 END FUNCTION forcas
