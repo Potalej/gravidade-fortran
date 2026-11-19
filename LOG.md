@@ -1,5 +1,12 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-19] v1.7.6: Correção
+
+- Havia um erro na versão paralelizada do Dehnen que introduzia lixo sobre as forças. Corrigido.
+- Também aumentado o número máximo de nós para a árvore quando $N < 1000$. Deixei $10N$ apenas porque deu certo, não tenho estimativas ainda.
+
+---
+
 ## [2026-11-18] v1.7.5: Dehnen paralelo
 
 - A parte que mais demora no método de Dehnen é o `mutual_interaction_walk`. Armazenando as listas de interação mútua até uma certa quantidade, conseguimos rodar as interações paralelamente.

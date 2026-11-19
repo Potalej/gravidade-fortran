@@ -72,7 +72,7 @@
 !    of Computational Physics, v. 87, n. 1, p. 161–170, 1 mar. 1990. 
 !
 !> Modified
-!  2026.11.17
+!  2026.11.19
 !
 !> Created
 !  2026.06.15
@@ -219,7 +219,11 @@ SUBROUTINE pre_init (self, m, method_par, collide_par, radii, group_size)
         ALLOCATE(self % counter_for_each_level(self % max_depth+1))
 
         ! allocate the other vectors
-        self % max_number_of_nodes = 3 * self % N
+        IF (self % N >= 1000) THEN
+            self % max_number_of_nodes = 3 * self % N
+        ELSE
+            self % max_number_of_nodes = 10 * self % N
+        ENDIF
         self % number_of_nodes = 0
         CALL self % allocate_nodes()
         
@@ -1370,7 +1374,7 @@ SUBROUTINE mutual_interaction_walk_parallel (self, theta2, eps2, G, nt)
     ENDIF
     DEALLOCATE(mutuals)
 
-    self % ns_force = self % ns_force + ns_force
+    self % ns_force = ns_force
     IF (self % multipole >= 4) THEN
         self % ns_hess = self % ns_hess + ns_hess
         self % ns_third = self % ns_third + ns_third
@@ -1388,7 +1392,7 @@ SUBROUTINE dehnen_interact_parallel (self, G, eps2, mutuals, mutuals_counter, nt
     REAL(pf) :: f(3), h(6), t(10), fc(3), ma, mb
 
     IF (self % multipole == 1) THEN
-        !$OMP PARALLEL DO PRIVATE(i, f) SHARED(mutuals, G, eps2) REDUCTION(+:ns_force) NUM_THREADS(nt)
+        !$OMP PARALLEL DO PRIVATE(i, f) DEFAULT(NONE) SHARED(self, mutuals, G, eps2) REDUCTION(+:ns_force) NUM_THREADS(nt)
         DO i = 1, mutuals_counter
             CALL evaluate_mutual_interaction_monopole(self, mutuals(1,i), mutuals(2,i), G, eps2, f)
             ns_force(:,mutuals(1,i)) = ns_force(:,mutuals(1,i)) + self % ns_mass(mutuals(2,i)) * f
@@ -1396,8 +1400,8 @@ SUBROUTINE dehnen_interact_parallel (self, G, eps2, mutuals, mutuals_counter, nt
         END DO
         !$OMP END PARALLEL DO
     ELSE IF (self % multipole == 4 .OR. self % multipole == 8) THEN
-        !$OMP PARALLEL DO PRIVATE(i, fa, fb, h, t, fc, ma, mb) SHARED(mutuals, G, eps2) &
-        !$OMP REDUCTION(+:ns_force, ns_hess, ns_third) &
+        !$OMP PARALLEL DO PRIVATE(i, fa, fb, h, t, fc, ma, mb) SHARED(self, mutuals, G, eps2) &
+        !$OMP REDUCTION(+:ns_force, ns_hess, ns_third) DEFAULT(NONE) &
         !$OMP NUM_THREADS(nt)
         DO i = 1, mutuals_counter
             ma = self % ns_mass(mutuals(1,i))
@@ -1700,7 +1704,7 @@ SUBROUTINE dehnen_eval (self, theta2, potsoft2, G, forces, nt_par)
     CALL self % evaluate_rmax()
 
     ! now we do the mutual interaction walk (dual traversal)
-    IF (nt == 1) THEN
+    IF (nt == -1) THEN
         CALL self % mutual_interaction_walk_sequential(theta2, potsoft2, G)
     ELSE
         CALL self % mutual_interaction_walk_parallel(theta2, potsoft2, G, nt)
