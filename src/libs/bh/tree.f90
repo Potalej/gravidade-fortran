@@ -1376,8 +1376,8 @@ SUBROUTINE mutual_interaction_walk_parallel (self, theta2, eps2, G, nt)
 
     self % ns_force = ns_force
     IF (self % multipole >= 4) THEN
-        self % ns_hess = self % ns_hess + ns_hess
-        self % ns_third = self % ns_third + ns_third
+        self % ns_hess = ns_hess
+        self % ns_third = ns_third
     ENDIF
 END SUBROUTINE
 
