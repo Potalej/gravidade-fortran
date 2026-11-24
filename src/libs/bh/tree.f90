@@ -72,7 +72,7 @@
 !    of Computational Physics, v. 87, n. 1, p. 161–170, 1 mar. 1990. 
 !
 !> Modified
-!  2026.11.19
+!  2026.11.24
 !
 !> Created
 !  2026.06.15
@@ -82,11 +82,10 @@
 !
 MODULE octree_mod
     USE omp_lib
+    USE tipos
     IMPLICIT NONE
     PRIVATE
     PUBLIC OctreeType
-
-    INTEGER, PARAMETER :: pf  = SELECTED_REAL_KIND(15, 307)
 
     TYPE :: OctreeType
         LOGICAL :: is_allocated = .FALSE.

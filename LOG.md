@@ -1,5 +1,13 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-19] v1.7.7: Correções + LW4SIM
+
+- **CORREÇÃO**: A árvore e os perfis de densidade não estavam usando o módulo `tipos`, então para `DPRECISAO=128` o programa não estava compilando (agora compila, mas não funciona. Preciso descobrir a razão);
+- **CORREÇÃO**: Os métodos multipasso lineares estavam sendo inicializados com a opção `massas_iguais:False` mesmo quando era `True`. Isso implicava numa diferença significativa nas forças, o que gerava erros. Isso foi corrigido.
+- Implementado o método de Lambert-Watson de 4ª Ordem Simétrico (`lw4sim`), que é um multipasso linear.
+
+---
+
 ## [2026-11-19] v1.7.6: Correção
 
 - Havia um erro na versão paralelizada do Dehnen que introduzia lixo sobre as forças. Corrigido.

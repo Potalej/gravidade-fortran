@@ -49,6 +49,9 @@ set(INTEGRADORES_MULTIPASSO
   "./src/calcs/integracao/multipasso/ab/ab3.f90"
   "./src/calcs/integracao/multipasso/ab/ab4.f90"
   "./src/calcs/integracao/multipasso/ab/ab5.f90"
+
+  # Lambert-Watson
+  "./src/calcs/integracao/multipasso/lw/lw4sim.f90"
 CACHE STRING "Lista de integradores multipasso")
 
 set(INTEGRADORES_SOURCE

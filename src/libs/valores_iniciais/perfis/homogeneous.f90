@@ -8,7 +8,7 @@
 !  physical.
 !
 !> Modified
-!  2026.09.28
+!  2026.11.24
 !
 !> Created
 !  2026.09.28
@@ -17,12 +17,13 @@
 !  oap
 !
 MODULE iv_homogeneous_sphere_mod
+  USE tipos
   IMPLICIT NONE
   PUBLIC
   PRIVATE PI, M0
 
-  REAL(8), PARAMETER :: PI = 4.0d0 * ATAN(1.0d0)
-  REAL(8), PARAMETER :: M0 = 1.0d0
+  REAL(pf), PARAMETER :: PI = 4.0_pf * ATAN(1.0_pf)
+  REAL(pf), PARAMETER :: M0 = 1.0_pf
 CONTAINS
 
 FUNCTION homogeneous_sphere_density (r, pars) RESULT(density)
@@ -31,15 +32,15 @@ FUNCTION homogeneous_sphere_density (r, pars) RESULT(density)
 ! where
 !   rho_0 = 3 / (4 pi R^3),
 ! in order to have M0 = 1.
-  REAL(8), INTENT(IN) :: r, pars(2)
-  REAL(8) :: density
-  REAL(8) :: Rpar, rho0
+  REAL(pf), INTENT(IN) :: r, pars(2)
+  REAL(pf) :: density
+  REAL(pf) :: Rpar, rho0
 
   Rpar = pars(2)
-  rho0 = 3.0d0 / (4.0d0 * PI * Rpar**3)
+  rho0 = 3.0_pf / (4.0_pf * PI * Rpar**3)
 
   IF (r > Rpar) THEN
-    density = 0.0d0
+    density = 0.0_pf
   ELSE
     density = rho0
   ENDIF
@@ -51,13 +52,13 @@ FUNCTION homogeneous_sphere_inverse_P (x, pars) RESULT(invP)
 !   M(r) = r^3 / R^3 if r < R else 1
 ! so we have
 !   r = R (x M_0)^3
-  REAL(8), INTENT(IN) :: x, pars(2)
-  REAL(8) :: invP
-  REAL(8) :: Rpar
+  REAL(pf), INTENT(IN) :: x, pars(2)
+  REAL(pf) :: invP
+  REAL(pf) :: Rpar
 
   Rpar = pars(2)
 
-  invP = Rpar * (x*M0)**(1.0d0/3.0d0)
+  invP = Rpar * (x*M0)**(1.0_pf/3.0_pf)
 END FUNCTION
 
 FUNCTION homogeneous_sphere_potential (r, pars) RESULT(potential)
@@ -68,9 +69,9 @@ FUNCTION homogeneous_sphere_potential (r, pars) RESULT(potential)
 ! else.
 ! The function Phi solves the Poisson equation for the Hernquist
 ! density profile.
-  REAL(8), INTENT(IN) :: r, pars(2)
-  REAL(8) :: potential
-  REAL(8) :: G, Rpar
+  REAL(pf), INTENT(IN) :: r, pars(2)
+  REAL(pf) :: potential
+  REAL(pf) :: G, Rpar
 
   G = pars(1)
   Rpar = pars(2)
@@ -78,7 +79,7 @@ FUNCTION homogeneous_sphere_potential (r, pars) RESULT(potential)
   IF (r > Rpar) THEN
     potential = G / r
   ELSE
-    potential = 0.5d0 * G * (r**2 - 3.0d0 * Rpar**2)
+    potential = 0.5_pf * G * (r**2 - 3.0_pf * Rpar**2)
   ENDIF
 END FUNCTION
 

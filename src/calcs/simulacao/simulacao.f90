@@ -5,7 +5,7 @@
 !   Arquivo base para fazer simulacoes.
 !
 ! Modificado:
-!   09 de novembro de 2026
+!   24 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -280,7 +280,7 @@ END SUBROUTINE inicializar_data
 !! Inicializa o integrador e o socket
 !
 ! Modificado:
-!   07 de outubro de 2026
+!   23 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -343,7 +343,8 @@ SUBROUTINE inicializar_metodo (self, h)
       ! Faz a integracao
       CALL self % integrador_auxiliar % aplicar(R, P)
       ! Agora salva
-      self % integrador % Ps_ant(pre_passo, :, :) = P
+      IF (ALLOCATED(self % integrador % Rs_ant)) self % integrador % Rs_ant(pre_passo, :, :) = R
+      IF (ALLOCATED(self % integrador % Ps_ant)) self % integrador % Ps_ant(pre_passo, :, :) = P
       self % integrador % Fs_ant(pre_passo, :, :) = self % integrador_auxiliar % fs
     END DO
 

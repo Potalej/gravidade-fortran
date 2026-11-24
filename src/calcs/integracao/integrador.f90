@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   17 de novembro de 2026
+!   24 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -62,7 +62,7 @@ MODULE integrador
 
     ! Se eh um metodo multipasso. 0 se nao eh, > 0 se for
     INTEGER :: multipasso = 0
-    REAL(pf), ALLOCATABLE :: Ps_ant(:,:,:), Fs_ant(:,:,:)
+    REAL(pf), ALLOCATABLE :: Ps_ant(:,:,:), Fs_ant(:,:,:), Rs_ant(:,:,:)
     INTEGER :: mp_rb_idx ! indice do ring buffer para metodos multipasso
 
     CONTAINS
@@ -80,6 +80,7 @@ CONTAINS
 SUBROUTINE limpar (self)
   CLASS(integracao), INTENT(INOUT) :: self
 
+  IF (ALLOCATED(self % rs_ant)) DEALLOCATE(self % rs_ant)
   IF (ALLOCATED(self % ps_ant)) DEALLOCATE(self % ps_ant)
   IF (ALLOCATED(self % fs_ant)) DEALLOCATE(self % fs_ant)
   IF (ALLOCATED(self % fs)) DEALLOCATE(self % fs)
@@ -161,7 +162,7 @@ END SUBROUTINE iniciar_base
 !! Inicializa as massas
 !
 ! Modificado:
-!   29 de maio de 2026
+!   23 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -175,12 +176,8 @@ SUBROUTINE inicializar_massas (self, infos, massas, auxiliar)
   LOGICAL :: encontrado
 
   !> Massas iguais
-  IF (auxiliar) THEN
-    self % mi = .FALSE.
-  ELSE
-    CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
-    IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
-  ENDIF
+  CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
+  IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
 
   !> Alocando vetor de massas
   IF (ALLOCATED(self % m)) DEALLOCATE(self % m)

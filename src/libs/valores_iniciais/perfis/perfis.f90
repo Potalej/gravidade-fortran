@@ -18,7 +18,7 @@
 !  uniform for the others.
 !
 !> Modified
-!  2026.09.28
+!  2026.11.24
 !
 !> Created
 !  2026.07.28
@@ -30,36 +30,37 @@ MODULE initial_values_mod
     USE iv_plummer_mod
     USE iv_homogeneous_sphere_mod
     USE iv_hernquist_mod
+    USE tipos
     IMPLICIT NONE
     PUBLIC generate_initial_values, api
     PRIVATE
 
-    REAL(8), PARAMETER :: PI = 4.0d0 * ATAN(1.0d0)
+    REAL(pf), PARAMETER :: PI = 4.0_pf * ATAN(1.0_pf)
 CONTAINS
 
 SUBROUTINE api (size_qs, size_ps, nm, td, pr, pp, m, qs, ps)
-    REAL(8), INTENT(IN) :: size_qs, size_ps
+    REAL(pf), INTENT(IN) :: size_qs, size_ps
     LOGICAL, INTENT(IN) :: nm ! normalized masses
     LOGICAL, INTENT(IN) :: td ! two dimensional
     CHARACTER(LEN=*), INTENT(IN) :: pr ! mass profile
-    REAL(8),          INTENT(IN) :: pp(:) ! profile parameters
-    REAL(8), INTENT(INOUT) :: m(:), qs(:,:), ps(:,:)
+    REAL(pf),          INTENT(IN) :: pp(:) ! profile parameters
+    REAL(pf), INTENT(INOUT) :: m(:), qs(:,:), ps(:,:)
 
     CALL generate_initial_values(SIZE(m), m, qs, ps, size_qs, size_ps, nm, td, pr, pp)
 END SUBROUTINE
 
 SUBROUTINE generate_initial_values (N, m, qs, ps, size_qs, size_ps, nm, td, pr, pp, seed)
     INTEGER,  INTENT(IN) :: N
-    REAL(8), INTENT(IN) :: size_qs, size_ps
+    REAL(pf), INTENT(IN) :: size_qs, size_ps
     LOGICAL,  INTENT(IN) :: nm ! normalized masses
     LOGICAL,  INTENT(IN) :: td ! two dimensional
     CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: pr ! mass profile
-    REAL(8), INTENT(IN), OPTIONAL         :: pp(:) ! profile parameters
+    REAL(pf), INTENT(IN), OPTIONAL         :: pp(:) ! profile parameters
     INTEGER, INTENT(IN), OPTIONAL         :: seed
-    REAL(8), INTENT(INOUT) :: m(N), qs(3,N), ps(3,N)
-    REAL(8) :: r(N), vr(N) ! radius and radial velocities
+    REAL(pf), INTENT(INOUT) :: m(N), qs(3,N), ps(3,N)
+    REAL(pf) :: r(N), vr(N) ! radius and radial velocities
 
-    REAL(8) :: tlm(3), com(3), big_ps, max_ps(3)
+    REAL(pf) :: tlm(3), com(3), big_ps, max_ps(3)
     INTEGER :: p
 
     INTEGER :: seed_size
@@ -76,10 +77,10 @@ SUBROUTINE generate_initial_values (N, m, qs, ps, size_qs, size_ps, nm, td, pr, 
 
     ! the massas can be equal or no
     IF (nm) THEN 
-        m = 1.0d0 / N
+        m = 1.0_pf / N
     ELSE
         CALL random_number(m)
-        DO WHILE (MINVAL(m) == 0.0d0)
+        DO WHILE (MINVAL(m) == 0.0_pf)
             CALL random_number(m)
         END DO
         m = m / SUM(m)
@@ -145,8 +146,8 @@ SUBROUTINE generate_initial_values (N, m, qs, ps, size_qs, size_ps, nm, td, pr, 
 
     !> 2d
     IF (td) THEN
-        ps(3,:) = 0.0d0
-        qs(3,:) = 0.0d0
+        ps(3,:) = 0.0_pf
+        qs(3,:) = 0.0_pf
     ENDIF
 
     ! velocities to momentum
@@ -163,7 +164,7 @@ SUBROUTINE generate_initial_values (N, m, qs, ps, size_qs, size_ps, nm, td, pr, 
     END DO
 
     ! center of mass to the origin
-    com = 0.0d0
+    com = 0.0_pf
     DO p = 1, N
         com = com + m(p) * qs(:,p)
     END DO
@@ -179,44 +180,44 @@ SUBROUTINE generate_initial_values_uniform (N, qs, ps, size_qs, size_ps)
 ! and momenta). The masses can be 1/N if nm == .TRUE. or uniformly
 ! distributed with M = 1.
     INTEGER, INTENT(IN)    :: N
-    REAL(8), INTENT(IN)    :: size_qs, size_ps
-    REAL(8), INTENT(INOUT) :: qs(3,N), ps(3,N)
+    REAL(pf), INTENT(IN)    :: size_qs, size_ps
+    REAL(pf), INTENT(INOUT) :: qs(3,N), ps(3,N)
 
     CALL random_number(qs)
-    qs = size_qs * (2.0d0 * qs - 1.0d0)
+    qs = size_qs * (2.0_pf * qs - 1.0_pf)
 
     CALL random_number(ps)
-    ps = size_ps * (2.0d0 * ps - 1.0d0)
+    ps = size_ps * (2.0_pf * ps - 1.0_pf)
 END SUBROUTINE
 
 SUBROUTINE generate_initial_values_uniform_spheric (N, r, vr, size_qs, size_ps)
 ! Generates random radius with uniform distribution. The masses can 
 ! be 1/N if nm == .TRUE. or uniformly distributed with M = 1.
     INTEGER, INTENT(IN)    :: N
-    REAL(8), INTENT(IN)    :: size_qs, size_ps
-    REAL(8), INTENT(INOUT) :: r(N), vr(N)
+    REAL(pf), INTENT(IN)    :: size_qs, size_ps
+    REAL(pf), INTENT(INOUT) :: r(N), vr(N)
 
     CALL random_number(r)
-    r = size_qs * (2.0d0 * r - 1.0d0)
+    r = size_qs * (2.0_pf * r - 1.0_pf)
 
     CALL random_number(vr)
-    vr = size_ps * (2.0d0 * vr - 1.0d0)
+    vr = size_ps * (2.0_pf * vr - 1.0_pf)
 END SUBROUTINE
 
 SUBROUTINE generate_initial_values_plummer (N, r, vr, size_qs, pars)
 ! Generates random initial values with Plummer density and isotropic velocities. 
 ! The masses can be 1/N if nm == .TRUE. or uniformly distributed with M = 1.
     INTEGER, INTENT(IN)    :: N
-    REAL(8), INTENT(IN)    :: pars(2) ! G and plummer parameter
-    REAL(8), INTENT(IN)    :: size_qs
-    REAL(8), INTENT(INOUT) :: r(N), vr(N)
+    REAL(pf), INTENT(IN)    :: pars(2) ! G and plummer parameter
+    REAL(pf), INTENT(IN)    :: size_qs
+    REAL(pf), INTENT(INOUT) :: r(N), vr(N)
 
-    REAL(8) :: X
+    REAL(pf) :: X
     
     INTEGER  :: i
-    REAL(8) :: potential, v_escape
-    REAL(8) :: G, plupar
-    REAL(8) :: qvn, yvn, edf, maximum
+    REAL(pf) :: potential, v_escape
+    REAL(pf) :: G, plupar
+    REAL(pf) :: qvn, yvn, edf, maximum
 
     ! parameters
     G = pars(1)
@@ -229,7 +230,7 @@ SUBROUTINE generate_initial_values_plummer (N, r, vr, size_qs, pars)
         CALL random_number(X)
 
         ! apply P^-1(u) = r
-        ! r(i) = X**(1.0d0/3.0d0) * plupar / (SQRT(1.0d0 - X**(2.0d0/3.0d0)))
+        ! r(i) = X**(1.0_pf/3.0_pf) * plupar / (SQRT(1.0_pf - X**(2.0_pf/3.0_pf)))
         r(i) = plummer_inverse_P(X, pars)
         
         IF (size_qs >= 0 .AND. r(i) > size_qs) CYCLE
@@ -238,10 +239,10 @@ SUBROUTINE generate_initial_values_plummer (N, r, vr, size_qs, pars)
 
     !> MOMENTA
     DO i = 1, N
-        ! potential = - G * 1.0d0 / SQRT(r(i)**2 + plupar**2)
+        ! potential = - G * 1.0_pf / SQRT(r(i)**2 + plupar**2)
         potential = plummer_potential(r(i), pars)
-        v_escape = SQRT(-2.0d0 * potential)
-        ! maximum = 0.1d0
+        v_escape = SQRT(-2.0_pf * potential)
+        ! maximum = 0.1_pf
         maximum = plummer_maximum_pdf()
 
         von_neumann: DO WHILE (.TRUE.)
@@ -251,7 +252,7 @@ SUBROUTINE generate_initial_values_plummer (N, r, vr, size_qs, pars)
 
             edf = plummer_edf_norm(qvn)
 
-            ! IF (yvn < qvn*qvn*(1.0d0 - qvn*qvn)**(3.5d0)) EXIT von_neumann
+            ! IF (yvn < qvn*qvn*(1.0_pf - qvn*qvn)**(3.5_pf)) EXIT von_neumann
             IF (yvn < qvn*qvn*edf) EXIT von_neumann
         END DO von_neumann
 
@@ -263,11 +264,11 @@ SUBROUTINE generate_initial_values_homogeneous_sphere (N, r, vr, size_qs, size_p
 ! Generates random initial values with homogeneous density and uniform velocities.
 ! The masses can be 1/N if nm == .TRUE. or uniformly distributed with M = 1.
     INTEGER, INTENT(IN)    :: N
-    REAL(8), INTENT(IN)    :: pars(2) ! G, R
-    REAL(8), INTENT(IN)    :: size_qs, size_ps
-    REAL(8), INTENT(INOUT) :: r(N), vr(N)
+    REAL(pf), INTENT(IN)    :: pars(2) ! G, R
+    REAL(pf), INTENT(IN)    :: size_qs, size_ps
+    REAL(pf), INTENT(INOUT) :: r(N), vr(N)
 
-    REAL(8) :: X
+    REAL(pf) :: X
     INTEGER  :: i
 
     !> POSITIONS
@@ -285,28 +286,28 @@ SUBROUTINE generate_initial_values_homogeneous_sphere (N, r, vr, size_qs, size_p
 
     !> MOMENTA
     CALL random_number(vr)
-    vr = size_ps * (2.0d0 * vr - 1.0d0)
+    vr = size_ps * (2.0_pf * vr - 1.0_pf)
 END SUBROUTINE
 
 SUBROUTINE generate_initial_values_hernquist_isotropic (N, r, vr, size_qs, pars)
 ! Generates random initial values with Hernquist density and isotropic velocities.
 ! The masses can be 1/N if nm == .TRUE. or uniformly distributed with M = 1.
     INTEGER, INTENT(IN)    :: N
-    REAL(8), INTENT(IN)    :: pars(3) ! G, R and rho0
-    REAL(8), INTENT(IN)    :: size_qs
-    REAL(8), INTENT(INOUT) :: r(N), vr(N)
+    REAL(pf), INTENT(IN)    :: pars(3) ! G, R and rho0
+    REAL(pf), INTENT(IN)    :: size_qs
+    REAL(pf), INTENT(INOUT) :: r(N), vr(N)
 
-    REAL(8) :: X
+    REAL(pf) :: X
     
     INTEGER :: i
-    REAL(8) :: potential, v_escape
-    REAL(8) :: G, apar ! parameters of the profile
+    REAL(pf) :: potential, v_escape
+    REAL(pf) :: G, apar ! parameters of the profile
 
-    REAL(8) :: qvn, yvn
-    REAL(8) :: edf
+    REAL(pf) :: qvn, yvn
+    REAL(pf) :: edf
 
     INTEGER :: counter
-    REAL(8) :: max_qvn
+    REAL(pf) :: max_qvn
 
     ! parameters
     G = pars(1)
@@ -328,7 +329,7 @@ SUBROUTINE generate_initial_values_hernquist_isotropic (N, r, vr, size_qs, pars)
     !> MOMENTA
     DO i = 1, N
         potential = hernquist_potential(r(i), pars)
-        v_escape = SQRT(-2.0d0 * potential)
+        v_escape = SQRT(-2.0_pf * potential)
 
         ! get the maximum of the distribution v^2 f(E)
         max_qvn = hernquist_maximum_pdf(r(i), pars)
@@ -356,24 +357,24 @@ END SUBROUTINE
 
 SUBROUTINE generate_cartesian_from_radius (N, r, qs, td)
     INTEGER, INTENT(IN)  :: N
-    REAL(8), INTENT(IN)  :: r(N)
-    REAL(8), INTENT(OUT) :: qs(3,N)
+    REAL(pf), INTENT(IN)  :: r(N)
+    REAL(pf), INTENT(OUT) :: qs(3,N)
     LOGICAL, INTENT(IN)  :: td ! 2d
-    REAL(8) :: X(N), phi(N), cos_theta(N), sin_theta(N)
+    REAL(pf) :: X(N), phi(N), cos_theta(N), sin_theta(N)
 
     ! phi angle variables
     CALL random_number(X)
-    phi = 2.0d0 * PI * X
+    phi = 2.0_pf * PI * X
 
     ! theta angle variables
     ! if two dimensional, theta = PI
     IF (td) THEN
-        cos_theta = 0.0d0
-        sin_theta = 1.0d0
+        cos_theta = 0.0_pf
+        sin_theta = 1.0_pf
     ELSE
         CALL random_number(X)
-        cos_theta = 2.0d0 * X - 1.0d0
-        sin_theta = SQRT(1.0d0 - cos_theta*cos_theta)
+        cos_theta = 2.0_pf * X - 1.0_pf
+        sin_theta = SQRT(1.0_pf - cos_theta*cos_theta)
     ENDIF
 
     ! now the cartesian coordinates
