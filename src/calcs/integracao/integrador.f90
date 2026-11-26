@@ -7,7 +7,7 @@
 !   dimensao, massas, etc.
 !
 ! Modificado:
-!   24 de novembro de 2026
+!   26 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -162,7 +162,7 @@ END SUBROUTINE iniciar_base
 !! Inicializa as massas
 !
 ! Modificado:
-!   23 de novembro de 2026
+!   26 de novembro de 2026
 !
 ! Autoria:
 !   oap
@@ -172,12 +172,18 @@ SUBROUTINE inicializar_massas (self, infos, massas, auxiliar)
   TYPE(json_value), POINTER, INTENT(IN) :: infos
   REAL(pf), ALLOCATABLE :: massas(:)
   LOGICAL, INTENT(IN) :: auxiliar
-  INTEGER :: a, i
+  INTEGER :: a, i, mf
   LOGICAL :: encontrado
 
   !> Massas iguais
   CALL json % get(infos, 'massas_iguais', self % mi, encontrado)
   IF (.NOT. encontrado .OR. self % metodo_forcas > 0) self % mi = .FALSE.
+
+  !> Para manter a coerencia entre o pre-inicializador e o multipasso
+  CALL json % get(infos, 'integracao.metodo_forcas', mf, encontrado)
+  IF (encontrado) THEN
+    IF (mf > 0 .AND. auxiliar) self % mi = .FALSE.
+  ENDIF
 
   !> Alocando vetor de massas
   IF (ALLOCATED(self % m)) DEALLOCATE(self % m)

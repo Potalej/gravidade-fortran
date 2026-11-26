@@ -1,5 +1,11 @@
 # LOG.md - Diário de Desenvolvimento
 
+## [2026-11-26] v1.7.8: Correção
+
+- Correção para manter a coerência quando um método multipasso for usar um método hierárquico e o parâmetro `massas_iguais` for `True`.
+
+---
+
 ## [2026-11-19] v1.7.7: Correções + LW4SIM
 
 - **CORREÇÃO**: A árvore e os perfis de densidade não estavam usando o módulo `tipos`, então para `DPRECISAO=128` o programa não estava compilando (agora compila, mas não funciona. Preciso descobrir a razão);
